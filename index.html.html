@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>お米発注システム｜丹波農商</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --rice: #c8a96e; --rice-light: #e8d5a3; --rice-dark: #8b6914;
+    --ink: #1a1208; --ink-soft: #3d2f0f;
+    --cream: #faf6ee; --paper: #f2ead6; --paper-dark: #e5d9b8;
+    --green: #2e7d52; --green-light: #edf7f1; --green-border: #a8dbbf;
+    --red: #c0392b; --shadow: rgba(26,18,8,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh;
+    background-image: radial-gradient(ellipse at 20% 0%, rgba(200,169,110,0.15) 0%, transparent 60%),
+                      radial-gradient(ellipse at 80% 100%, rgba(74,124,89,0.08) 0%, transparent 60%); }
+
+  header { background: var(--ink); padding: 18px 32px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 12px var(--shadow); }
+  .logo-mark { width: 44px; height: 44px; background: var(--rice); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif JP', serif; font-size: 20px; color: var(--ink); font-weight: 700; flex-shrink: 0; }
+  .header-text h1 { font-family: 'Noto Serif JP', serif; font-size: 18px; color: #fff; font-weight: 600; letter-spacing: 0.08em; }
+
+  main { max-width: 720px; margin: 0 auto; padding: 40px 20px 60px; }
+
+  .step-bar { display: flex; align-items: center; justify-content: center; margin-bottom: 36px; }
+  .step-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .step-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; border: 2px solid var(--paper-dark); background: #fff; color: var(--ink-soft); transition: all 0.3s; }
+  .step-label { font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
+  .step-line { width: 70px; height: 2px; background: var(--paper-dark); margin: 0 4px; margin-bottom: 22px; transition: background 0.3s; flex-shrink: 0; }
+  .step-item.active .step-circle { background: var(--rice-dark); border-color: var(--rice-dark); color: #fff; }
+  .step-item.active .step-label { color: var(--rice-dark); font-weight: 600; }
+  .step-item.done .step-circle { background: var(--green); border-color: var(--green); color: #fff; }
+  .step-item.done .step-label { color: var(--green); }
+  .step-line.done { background: var(--green); }
+
+  .page-title { text-align: center; margin-bottom: 28px; }
+  .page-title h2 { font-family: 'Noto Serif JP', serif; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: 0.05em; }
+  .page-title .divider { width: 60px; height: 2px; background: var(--rice); margin: 12px auto 0; border-radius: 2px; }
+
+  .card { background: #fff; border-radius: 12px; padding: 36px 40px; box-shadow: 0 4px 24px var(--shadow); border: 1px solid var(--paper-dark); }
+
+  .section-heading { font-family: 'Noto Serif JP', serif; font-size: 13px; font-weight: 700; color: var(--rice-dark); letter-spacing: 0.08em; margin: 32px 0 16px; padding-bottom: 8px; border-bottom: 1.5px solid var(--rice-light); display: flex; align-items: center; gap: 8px; }
+  .section-heading:first-child { margin-top: 0; }
+
+  .form-section { margin-bottom: 18px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+  .form-section > label { display: block; font-size: 13px; font-weight: 500; color: var(--ink-soft); margin-bottom: 7px; letter-spacing: 0.04em; }
+  .required { color: var(--red); font-size: 11px; margin-left: 4px; }
+  .optional { color: #999; font-size: 11px; margin-left: 4px; }
+
+  input[type="text"], input[type="date"], input[type="tel"], select {
+    width: 100%; padding: 11px 14px; border: 1.5px solid var(--paper-dark); border-radius: 8px;
+    font-family: 'Noto Sans JP', sans-serif; font-size: 14px; color: var(--ink); background: var(--cream);
+    transition: border-color 0.2s, box-shadow 0.2s; outline: none; appearance: none;
+  }
+  input:focus, select:focus { border-color: var(--rice); box-shadow: 0 0 0 3px rgba(200,169,110,0.18); background: #fff; }
+
+  /* 郵便番号ラッパー */
+  .postal-wrap { display: flex; gap: 10px; align-items: flex-start; }
+  .postal-wrap input { max-width: 180px; flex-shrink: 0; }
+  .postal-status { font-size: 12px; margin-top: 8px; min-height: 18px; }
+  .postal-status.ok { color: var(--green); }
+  .postal-status.err { color: var(--red); }
+  .postal-status.searching { color: var(--ink-soft); }
+
+  /* 注文数量 */
+  .qty-note { background: var(--paper); border: 1px solid var(--rice-light); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 12px; color: var(--ink-soft); line-height: 1.6; }
+  .qty-note strong { color: var(--rice-dark); }
+  .order-items { display: flex; flex-direction: column; gap: 10px; }
+  .order-item { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 12px; background: var(--cream); border: 1.5px solid var(--paper-dark); border-radius: 10px; padding: 12px 16px; transition: border-color 0.2s; }
+  .order-item.has-qty { border-color: var(--rice); background: var(--paper); }
+  .item-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .item-unit-price { font-size: 11px; color: var(--rice-dark); margin-top: 2px; }
+  .item-controls { display: flex; align-items: center; gap: 8px; }
+  .counter-btn { width: 32px; height: 32px; border: 1.5px solid var(--paper-dark); border-radius: 7px; background: #fff; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; color: var(--ink-soft); flex-shrink: 0; }
+  .counter-btn:hover { background: var(--paper); border-color: var(--rice); }
+  .counter-num { width: 44px; text-align: center; padding: 6px 4px; border: 1.5px solid var(--paper-dark); border-radius: 7px; font-family: 'Noto Serif JP', serif; font-size: 18px; font-weight: 600; color: var(--ink); background: var(--cream); }
+  .item-unit-label { font-size: 12px; color: var(--ink-soft); }
+  .item-subtotal { font-family: 'Noto Serif JP', serif; font-size: 13px; font-weight: 700; color: var(--rice-dark); min-width: 72px; text-align: right; }
+
+  /* 地域 */
+  .region-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .region-card { position: relative; }
+  .region-card input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+  .region-card label { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border: 2px solid var(--paper-dark); border-radius: 10px; cursor: pointer; transition: all 0.2s; background: var(--cream); margin: 0; }
+  .region-card label:hover { border-color: var(--rice); background: #fff; }
+  .region-card input:checked + label { border-color: var(--rice-dark); background: var(--paper); box-shadow: 0 2px 10px rgba(200,169,110,0.25); }
+  .region-icon { font-size: 20px; flex-shrink: 0; }
+  .region-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .region-fee { font-size: 11px; color: var(--rice-dark); font-weight: 600; }
+  .region-note { margin-top: 8px; font-size: 12px; color: var(--ink-soft); padding: 8px 12px; background: var(--paper); border-radius: 6px; border: 1px dashed var(--paper-dark); }
+
+  /* 納品日 */
+  .delivery-info-box { background: var(--blue-bg, #f0f4ff); border: 1px solid #c0cdf5; border-radius: 8px; padding: 10px 14px; margin-top: 8px; font-size: 12px; color: #2a3f8a; line-height: 1.6; display: none; }
+  .delivery-info-box.show { display: block; }
+
+  /* 時間指定 */
+  .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .time-card { position: relative; }
+  .time-card input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+  .time-card label { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 11px 6px; border: 2px solid var(--paper-dark); border-radius: 10px; cursor: pointer; transition: all 0.2s; background: var(--cream); margin: 0; text-align: center; }
+  .time-card label:hover { border-color: var(--rice); background: #fff; }
+  .time-card input:checked + label { border-color: var(--rice-dark); background: var(--paper); box-shadow: 0 2px 8px rgba(200,169,110,0.25); }
+  .time-label { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .time-sub { font-size: 10px; color: var(--ink-soft); margin-top: 2px; }
+  .time-card input:checked + label .time-label { color: var(--rice-dark); }
+
+  /* 料金 */
+  .price-box { background: var(--paper); border: 1px solid var(--rice-light); border-radius: 10px; padding: 20px 24px; margin-top: 28px; }
+  .price-box h3 { font-family: 'Noto Serif JP', serif; font-size: 13px; color: var(--rice-dark); margin-bottom: 14px; }
+  .price-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; border-bottom: 1px dashed var(--rice-light); font-size: 13px; }
+  .price-row:last-child { border-bottom: none; }
+  .price-label { color: var(--ink-soft); }
+  .price-value { font-weight: 500; color: var(--ink); }
+  .price-total-row { margin-top: 12px; padding-top: 12px; border-top: 2px solid var(--rice); display: flex; justify-content: space-between; align-items: baseline; }
+  .price-total-label { font-family: 'Noto Serif JP', serif; font-size: 14px; color: var(--rice-dark); }
+  .price-total-value { font-family: 'Noto Serif JP', serif; font-size: 26px; font-weight: 700; color: var(--ink); }
+
+  /* ボタン */
+  .btn { width: 100%; padding: 17px; border: none; border-radius: 10px; font-family: 'Noto Serif JP', serif; font-size: 16px; font-weight: 600; letter-spacing: 0.08em; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 20px; }
+  .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(26,18,8,0.2); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+  .btn-dark { background: var(--ink); color: #fff; }
+  .btn-dark:hover:not(:disabled) { background: var(--rice-dark); }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-green:hover:not(:disabled) { background: #1f6640; }
+  .btn-outline { background: transparent; color: var(--ink-soft); border: 1.5px solid var(--paper-dark); font-size: 14px; padding: 12px; margin-top: 10px; }
+  .btn-outline:hover:not(:disabled) { background: var(--paper); border-color: var(--rice); box-shadow: none !important; transform: none !important; }
+  .btn-icon { font-size: 18px; }
+  .spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+  .btn.loading .spinner { display: block; }
+  .btn.loading .btn-icon { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-msg { margin-top: 14px; padding: 13px 16px; border-radius: 8px; font-size: 13px; text-align: center; display: none; white-space: pre-line; line-height: 1.6; }
+  .status-msg.success { background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); display: block; }
+  .status-msg.error { background: #fdf2f2; color: var(--red); border: 1px solid #f5b8b8; display: block; }
+  .status-msg.loading { background: var(--paper); color: var(--ink-soft); border: 1px solid var(--rice-light); display: block; }
+
+  /* STEP 2 */
+  .approval-banner { background: var(--green-light); border: 1.5px solid var(--green-border); border-radius: 10px; padding: 16px 20px; margin-bottom: 22px; display: flex; align-items: center; gap: 14px; }
+  .approval-banner .icon { font-size: 26px; flex-shrink: 0; }
+  .approval-banner .text h3 { font-size: 14px; font-weight: 600; color: var(--green); }
+  .approval-banner .text p { font-size: 12px; color: #3a6b4e; margin-top: 3px; }
+  .confirm-card { background: var(--paper); border: 1px solid var(--paper-dark); border-radius: 10px; padding: 22px 26px; margin-bottom: 18px; }
+  .confirm-card h3 { font-family: 'Noto Serif JP', serif; font-size: 13px; color: var(--rice-dark); margin-bottom: 14px; }
+  .confirm-section-title { font-size: 11px; font-weight: 700; color: var(--rice-dark); letter-spacing: 0.08em; margin: 14px 0 8px; }
+  .confirm-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--rice-light); font-size: 13px; }
+  .confirm-row:last-child { border-bottom: none; }
+  .confirm-key { color: var(--ink-soft); flex-shrink: 0; margin-right: 12px; }
+  .confirm-val { font-weight: 600; color: var(--ink); text-align: right; }
+  .confirm-price-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--paper-dark); }
+  .confirm-price-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-soft); padding: 3px 0; }
+  .confirm-total-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--rice); }
+  .confirm-total-key { font-family: 'Noto Serif JP', serif; font-size: 14px; color: var(--rice-dark); }
+  .confirm-total-val { font-family: 'Noto Serif JP', serif; font-size: 24px; font-weight: 700; color: var(--ink); }
+  .send-target { border: 1.5px solid var(--paper-dark); border-radius: 8px; padding: 13px 16px; margin-bottom: 18px; background: #fff; font-size: 13px; color: var(--ink-soft); line-height: 2.0; }
+  .send-target strong { color: var(--ink); }
+
+  footer { text-align: center; font-size: 11px; color: var(--rice-dark); margin-top: 32px; opacity: 0.7; }
+
+  @media (max-width: 540px) {
+    .card { padding: 24px 16px; }
+    .form-row { grid-template-columns: 1fr; gap: 0; }
+    .step-line { width: 32px; }
+    .region-grid { grid-template-columns: 1fr; }
+    .time-grid { grid-template-columns: repeat(2, 1fr); }
+    .order-item { grid-template-columns: 1fr auto auto; }
+    .item-subtotal { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">米</div>
+  <div class="header-text"><h1>お米発注システム</h1></div>
+</header>
+
+<main>
+  <div class="step-bar">
+    <div class="step-item active" id="si1"><div class="step-circle">1</div><div class="step-label">内容を入力</div></div>
+    <div class="step-line" id="sl1"></div>
+    <div class="step-item" id="si2"><div class="step-circle">2</div><div class="step-label">内容を確認</div></div>
+    <div class="step-line" id="sl2"></div>
+    <div class="step-item" id="si3"><div class="step-circle">3</div><div class="step-label">送信完了</div></div>
+  </div>
+
+  <!-- ===== STEP 1 ===== -->
+  <div id="step1">
+    <div class="page-title"><h2>発注内容の入力</h2><div class="divider"></div></div>
+    <div class="card">
+
+      <div class="section-heading">🙋 発注者情報</div>
+
+      <div class="form-row">
+        <div class="form-section">
+          <label>発注者名（お名前）<span class="required">必須</span></label>
+          <input type="text" id="orderPersonName" placeholder="例：栗原 太郎"
+            oninput="syncName(this.value)" />
+        </div>
+        <div class="form-section">
+          <label>店舗名<span class="optional">任意</span></label>
+          <input type="text" id="shopName" placeholder="例：丹波農商 本店" />
+        </div>
+      </div>
+
+      <!-- 郵便番号 -->
+      <div class="form-section">
+        <label>郵便番号<span class="required">必須</span></label>
+        <div class="postal-wrap">
+          <input type="text" id="postalCode" placeholder="例：6693811"
+            maxlength="8" oninput="onPostalInput(this.value)" />
+          <div>
+            <div class="postal-status" id="postalStatus"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label>住所<span class="required">必須</span></label>
+        <input type="text" id="address" placeholder="郵便番号を入力すると自動補完されます" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-section">
+          <label>電話番号<span class="required">必須</span></label>
+          <input type="tel" id="tel" placeholder="例：079-594-XXXX" />
+        </div>
+        <div class="form-section">
+          <label>お名前（担当者）<span class="required">必須</span></label>
+          <input type="text" id="contactName" placeholder="例：栗原 太郎"
+            oninput="syncNameReverse(this.value)" />
+        </div>
+      </div>
+
+      <!-- 注文内容 -->
+      <div class="section-heading">🌾 注文内容</div>
+      <div class="qty-note">
+        <strong>すべて 10kg袋 でのお届けです。</strong><br>
+        例）30kgのご注文 → 10kg袋 × 3袋でお届けします。
+      </div>
+      <div class="order-items">
+        <div class="order-item" id="item-10">
+          <div><div class="item-name">10kg</div><div class="item-unit-price">¥7,500 / 袋（税込）</div></div>
+          <div class="item-controls"><button class="counter-btn" onclick="changeQty('q10',-1)">−</button><div class="counter-num" id="q10">0</div><button class="counter-btn" onclick="changeQty('q10',1)">＋</button></div>
+          <div class="item-unit-label">袋</div><div class="item-subtotal" id="sub10">—</div>
+        </div>
+        <div class="order-item" id="item-20">
+          <div><div class="item-name">20kg <span style="font-size:11px;font-weight:400;color:var(--ink-soft);">（10kg袋 × 2）</span></div><div class="item-unit-price">¥15,000 / セット（税込）</div></div>
+          <div class="item-controls"><button class="counter-btn" onclick="changeQty('q20',-1)">−</button><div class="counter-num" id="q20">0</div><button class="counter-btn" onclick="changeQty('q20',1)">＋</button></div>
+          <div class="item-unit-label">セット</div><div class="item-subtotal" id="sub20">—</div>
+        </div>
+        <div class="order-item" id="item-30">
+          <div><div class="item-name">30kg <span style="font-size:11px;font-weight:400;color:var(--ink-soft);">（10kg袋 × 3）</span></div><div class="item-unit-price">¥22,500 / セット（税込）</div></div>
+          <div class="item-controls"><button class="counter-btn" onclick="changeQty('q30',-1)">−</button><div class="counter-num" id="q30">0</div><button class="counter-btn" onclick="changeQty('q30',1)">＋</button></div>
+          <div class="item-unit-label">セット</div><div class="item-subtotal" id="sub30">—</div>
+        </div>
+        <div class="order-item" id="item-60">
+          <div><div class="item-name">60kg <span style="font-size:11px;font-weight:400;color:var(--ink-soft);">（10kg袋 × 6）</span></div><div class="item-unit-price">¥45,000 / セット（税込）</div></div>
+          <div class="item-controls"><button class="counter-btn" onclick="changeQty('q60',-1)">−</button><div class="counter-num" id="q60">0</div><button class="counter-btn" onclick="changeQty('q60',1)">＋</button></div>
+          <div class="item-unit-label">セット</div><div class="item-subtotal" id="sub60">—</div>
+        </div>
+        <div class="order-item" id="item-90">
+          <div><div class="item-name">90kg <span style="font-size:11px;font-weight:400;color:var(--ink-soft);">（10kg袋 × 9）</span></div><div class="item-unit-price">¥67,500 / セット（税込）</div></div>
+          <div class="item-controls"><button class="counter-btn" onclick="changeQty('q90',-1)">−</button><div class="counter-num" id="q90">0</div><button class="counter-btn" onclick="changeQty('q90',1)">＋</button></div>
+          <div class="item-unit-label">セット</div><div class="item-subtotal" id="sub90">—</div>
+        </div>
+        <div class="order-item" id="item-120">
+          <div><div class="item-name">120kg <span style="font-size:11px;font-weight:400;color:var(--ink-soft);">（10kg袋 × 12）</span></div><div class="item-unit-price">¥90,000 / セット（税込）</div></div>
+          <div class="item-controls"><button class="counter-btn" onclick="changeQty('q120',-1)">−</button><div class="counter-num" id="q120">0</div><button class="counter-btn" onclick="changeQty('q120',1)">＋</button></div>
+          <div class="item-unit-label">セット</div><div class="item-subtotal" id="sub120">—</div>
+        </div>
+        <div class="order-item" id="item-150">
+          <div><div class="item-name">150kg <span style="font-size:11px;font-weight:400;color:var(--ink-soft);">（10kg袋 × 15）</span></div><div class="item-unit-price">¥112,500 / セット（税込）</div></div>
+          <div class="item-controls"><button class="counter-btn" onclick="changeQty('q150',-1)">−</button><div class="counter-num" id="q150">0</div><button class="counter-btn" onclick="changeQty('q150',1)">＋</button></div>
+          <div class="item-unit-label">セット</div><div class="item-subtotal" id="sub150">—</div>
+        </div>
+      </div>
+
+      <!-- 配送情報 -->
+      <div class="section-heading" style="margin-top:36px;">🚚 配送情報</div>
+
+      <div class="form-section">
+        <label>送付先の地域<span class="required">必須</span></label>
+        <div class="region-grid">
+          <div class="region-card">
+            <input type="radio" name="region" id="r-kansai" value="関西" data-fee="1000">
+            <label for="r-kansai"><span class="region-icon">🏯</span><div><div class="region-name">関西</div><div class="region-fee">送料 ¥1,000 / 袋</div></div></label>
+          </div>
+          <div class="region-card">
+            <input type="radio" name="region" id="r-kanto" value="関東" data-fee="1500">
+            <label for="r-kanto"><span class="region-icon">🗼</span><div><div class="region-name">関東</div><div class="region-fee">送料 ¥1,500 / 袋</div></div></label>
+          </div>
+        </div>
+        <div class="region-note">⚠️ 関西・関東以外の地域への配送については、別途ご相談ください。</div>
+      </div>
+
+      <div class="form-section">
+        <label>希望納品日<span class="required">必須</span></label>
+        <input type="date" id="deliveryDate" style="max-width:240px;" onchange="onDateChange()" />
+        <div class="delivery-info-box" id="deliveryInfoBox"></div>
+      </div>
+
+      <div class="form-section">
+        <label>時間指定</label>
+        <div class="time-grid">
+          <div class="time-card"><input type="radio" name="timeslot" id="t0" value="指定なし"><label for="t0"><span class="time-label">指定なし</span></label></div>
+          <div class="time-card"><input type="radio" name="timeslot" id="t1" value="午前中（8〜12時）"><label for="t1"><span class="time-label">午前中</span><span class="time-sub">8:00〜12:00</span></label></div>
+          <div class="time-card"><input type="radio" name="timeslot" id="t2" value="12〜14時"><label for="t2"><span class="time-label">12〜14時</span></label></div>
+          <div class="time-card"><input type="radio" name="timeslot" id="t3" value="14〜16時"><label for="t3"><span class="time-label">14〜16時</span></label></div>
+          <div class="time-card"><input type="radio" name="timeslot" id="t4" value="16〜18時"><label for="t4"><span class="time-label">16〜18時</span></label></div>
+          <div class="time-card"><input type="radio" name="timeslot" id="t5" value="18〜20時"><label for="t5"><span class="time-label">18〜20時</span></label></div>
+        </div>
+      </div>
+
+      <!-- 料金 -->
+      <div class="price-box">
+        <h3>💴 料金内訳</h3>
+        <div id="price-items-area"><div class="price-row"><span class="price-label">商品を選択してください</span><span class="price-value">—</span></div></div>
+        <div class="price-row"><span class="price-label">送料</span><span class="price-value" id="p-shipping">地域を選択してください</span></div>
+        <div class="price-total-row"><span class="price-total-label">合計（税込）</span><span class="price-total-value" id="p-total">— 円</span></div>
+      </div>
+
+      <button class="btn btn-dark" id="step1Btn" onclick="goToStep2()">
+        <span class="btn-icon">✉️</span><div class="spinner"></div>
+        <span id="step1BtnText">確認メールを自分に送る</span>
+      </button>
+      <div class="status-msg" id="step1-status"></div>
+    </div>
+  </div>
+
+  <!-- ===== STEP 2 ===== -->
+  <div id="step2" style="display:none;">
+    <div class="page-title"><h2>内容を確認して承認</h2><div class="divider"></div></div>
+    <div class="card">
+      <div class="approval-banner">
+        <div class="icon">📬</div>
+        <div class="text"><h3>確認メールが届いています</h3><p>tamba.nosho@gmail.com の受信トレイをご確認ください</p></div>
+      </div>
+      <div class="confirm-card">
+        <h3>📋 発注内容</h3>
+        <div class="confirm-section-title">発注者情報</div>
+        <div class="confirm-row"><span class="confirm-key">発注者名</span><span class="confirm-val" id="c-orderPersonName">—</span></div>
+        <div class="confirm-row" id="c-shopRow"><span class="confirm-key">店舗名</span><span class="confirm-val" id="c-shopName">—</span></div>
+        <div class="confirm-row"><span class="confirm-key">郵便番号</span><span class="confirm-val" id="c-postal">—</span></div>
+        <div class="confirm-row"><span class="confirm-key">住所</span><span class="confirm-val" id="c-address">—</span></div>
+        <div class="confirm-row"><span class="confirm-key">電話番号</span><span class="confirm-val" id="c-tel">—</span></div>
+        <div class="confirm-row"><span class="confirm-key">お名前</span><span class="confirm-val" id="c-contactName">—</span></div>
+        <div class="confirm-section-title" style="margin-top:16px;">注文内容</div>
+        <div id="c-items-area"></div>
+        <div class="confirm-row"><span class="confirm-key">送付先地域</span><span class="confirm-val" id="c-region">—</span></div>
+        <div class="confirm-row"><span class="confirm-key">希望納品日</span><span class="confirm-val" id="c-date">—</span></div>
+        <div class="confirm-row"><span class="confirm-key">時間指定</span><span class="confirm-val" id="c-time">—</span></div>
+        <div class="confirm-price-block">
+          <div id="c-price-rows"></div>
+          <div class="confirm-price-row"><span>送料</span><span id="c-shipping">—</span></div>
+          <div class="confirm-total-row"><span class="confirm-total-key">合計（税込）</span><span class="confirm-total-val" id="c-total">— 円</span></div>
+        </div>
+      </div>
+      <div class="send-target">
+        <div>📮 <strong>TO　</strong>北村 様　m.kitamura@tanbei.co.jp</div>
+        <div>📋 <strong>CC　</strong>黒田 様　t.kuroda@tanbei.co.jp</div>
+        <div>🔒 <strong>BCC</strong>　tamba.nosho@gmail.com（控え）</div>
+      </div>
+      <button class="btn btn-green" id="approveBtn" onclick="sendToTanbei()">
+        <span class="btn-icon">🚀</span><div class="spinner"></div>
+        <span class="approve-text">但馬米穀へ発注メールを送信する</span>
+      </button>
+      <button class="btn btn-outline" onclick="backToStep1()">← 内容を修正する</button>
+      <div class="status-msg" id="step2-status"></div>
+    </div>
+  </div>
+
+  <!-- ===== STEP 3 ===== -->
+  <div id="step3" style="display:none;">
+    <div class="page-title"><h2>送信完了</h2><div class="divider"></div></div>
+    <div class="card" style="text-align:center; padding:48px 40px;">
+      <div style="font-size:58px; margin-bottom:20px;">✅</div>
+      <p style="font-family:'Noto Serif JP',serif; font-size:20px; font-weight:700; color:var(--green); margin-bottom:14px;">但馬米穀へ下書きを作成しました</p>
+      <p style="font-size:13px; color:var(--ink-soft); line-height:2.2;" id="done-summary"></p>
+      <p style="font-size:12px; color:var(--ink-soft); margin-top:16px; padding:12px 16px; background:var(--paper); border-radius:8px; line-height:1.8;">
+        📌 Gmailの <strong>「下書き」フォルダ</strong> に保存されています<br>内容を確認して「送信」を押してください
+      </p>
+      <button class="btn btn-dark" onclick="resetApp()" style="margin-top:28px; max-width:300px; margin-left:auto; margin-right:auto;">
+        <span class="btn-icon">＋</span><span>新しい発注を作成</span>
+      </button>
+    </div>
+  </div>
+
+  <footer>丹波農商 お米発注システム © 2026</footer>
+</main>
+
+<script>
+  const ITEMS = [
+    { id:'q10',  kg:10,  bags:1,  price:7500,   label:'10kg' },
+    { id:'q20',  kg:20,  bags:2,  price:15000,  label:'20kg（10kg袋×2）' },
+    { id:'q30',  kg:30,  bags:3,  price:22500,  label:'30kg（10kg袋×3）' },
+    { id:'q60',  kg:60,  bags:6,  price:45000,  label:'60kg（10kg袋×6）' },
+    { id:'q90',  kg:90,  bags:9,  price:67500,  label:'90kg（10kg袋×9）' },
+    { id:'q120', kg:120, bags:12, price:90000,  label:'120kg（10kg袋×12）' },
+    { id:'q150', kg:150, bags:15, price:112500, label:'150kg（10kg袋×15）' },
+  ];
+  let orderData = {};
+  let postalTimer = null;
+
+  // ====== 日付最小値：今日 + 中2日 or 金曜なら火曜 ======
+  function calcMinDate() {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const dow = today.getDay(); // 0=日, 1=月, ..., 5=金, 6=土
+    let addDays;
+    if (dow === 5) {
+      // 金曜 → 最短火曜（+4日）
+      addDays = 4;
+    } else if (dow === 6) {
+      // 土曜 → 翌月曜扱い的に火曜（+3日）
+      addDays = 3;
+    } else {
+      // 月〜木・日 → 中2日（+2日）
+      addDays = 2;
+    }
+    // 到着日が土日になる場合は月曜にずらす
+    const arrival = new Date(today);
+    arrival.setDate(arrival.getDate() + addDays);
+    if (arrival.getDay() === 0) arrival.setDate(arrival.getDate() + 1);
+    if (arrival.getDay() === 6) arrival.setDate(arrival.getDate() + 2);
+    return arrival;
+  }
+
+  function toDateStr(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function formatDate(val) {
+    if (!val) return null;
+    const d = new Date(val + 'T00:00:00');
+    const DOW = ['日','月','火','水','木','金','土'];
+    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${DOW[d.getDay()]}）`;
+  }
+
+  // 納品日フィールド初期化
+  function initDateField() {
+    const minDate = calcMinDate();
+    const dateEl = document.getElementById('deliveryDate');
+    dateEl.min = toDateStr(minDate);
+    // 今日が何曜日かに応じてヒントを更新
+    updateDeliveryHint();
+  }
+
+  function updateDeliveryHint() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dow = today.getDay();
+    const DOW_JP = ['日','月','火','水','木','金','土'];
+    const box = document.getElementById('deliveryInfoBox');
+    const val = document.getElementById('deliveryDate').value;
+    let msg = '';
+    if (dow === 5) {
+      msg = `📅 本日（金曜日）のご発注は、土日をはさむため <strong>最短で来週火曜日着</strong> となります。`;
+    } else if (dow === 6 || dow === 0) {
+      msg = `📅 週末のご発注は、翌週月曜の受付扱いとなります。最短で<strong>水曜日着</strong>となります。`;
+    } else {
+      msg = `📅 本日（${DOW_JP[dow]}曜日）のご発注は、発送まで中2日いただきます。`;
+    }
+    if (val) {
+      const chosen = new Date(val + 'T00:00:00');
+      msg += `<br>▶ ご希望：${formatDate(val)}`;
+    }
+    box.innerHTML = msg;
+    box.classList.add('show');
+  }
+
+  function onDateChange() { updateDeliveryHint(); }
+
+  initDateField();
+
+  // ====== 発注者名 ↔ お名前 連動 ======
+  let syncLock = false;
+  function syncName(v) {
+    if (syncLock) return;
+    syncLock = true;
+    document.getElementById('contactName').value = v;
+    syncLock = false;
+  }
+  function syncNameReverse(v) {
+    if (syncLock) return;
+    syncLock = true;
+    document.getElementById('orderPersonName').value = v;
+    syncLock = false;
+  }
+
+  // ====== 郵便番号 → 住所自動補完 ======
+  function onPostalInput(raw) {
+    const digits = raw.replace(/[^0-9]/g, '');
+    // ハイフン自動挿入（3桁-4桁）
+    if (digits.length > 3) {
+      document.getElementById('postalCode').value = digits.slice(0,3) + '-' + digits.slice(3,7);
+    }
+    clearTimeout(postalTimer);
+    if (digits.length === 7) {
+      document.getElementById('postalStatus').className = 'postal-status searching';
+      document.getElementById('postalStatus').textContent = '🔍 住所を検索中...';
+      postalTimer = setTimeout(() => fetchAddress(digits), 400);
+    } else {
+      document.getElementById('postalStatus').className = 'postal-status';
+      document.getElementById('postalStatus').textContent = '';
+    }
+  }
+
+  async function fetchAddress(digits) {
+    try {
+      const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${digits}`);
+      const json = await res.json();
+      if (json.results && json.results.length > 0) {
+        const r = json.results[0];
+        const addr = r.address1 + r.address2 + r.address3;
+        document.getElementById('address').value = addr;
+        document.getElementById('postalStatus').className = 'postal-status ok';
+        document.getElementById('postalStatus').textContent = '✅ 住所を補完しました';
+      } else {
+        document.getElementById('postalStatus').className = 'postal-status err';
+        document.getElementById('postalStatus').textContent = '⚠️ 該当する住所が見つかりません';
+      }
+    } catch(e) {
+      document.getElementById('postalStatus').className = 'postal-status err';
+      document.getElementById('postalStatus').textContent = '⚠️ 住所の検索に失敗しました';
+    }
+  }
+
+  // ====== 数量 ======
+  function getQty(id) { return parseInt(document.getElementById(id).textContent) || 0; }
+
+  function changeQty(id, delta) {
+    const el = document.getElementById(id);
+    const val = Math.max(0, Math.min(99, (parseInt(el.textContent)||0) + delta));
+    el.textContent = val;
+    const kg = id.replace('q','');
+    document.getElementById(`item-${kg}`).classList.toggle('has-qty', val > 0);
+    updatePricing();
+  }
+
+  function getRegion() {
+    const r = document.querySelector('input[name="region"]:checked');
+    return r ? { name: r.value, fee: parseInt(r.dataset.fee) } : null;
+  }
+
+  function getTimeslot() {
+    const r = document.querySelector('input[name="timeslot"]:checked');
+    return r ? r.value : '指定なし';
+  }
+
+  function fmt(n) { return '¥' + n.toLocaleString('ja-JP'); }
+
+  function calcTotals() {
+    let subtotal = 0, totalBags = 0;
+    const selected = [];
+    for (const item of ITEMS) {
+      const qty = getQty(item.id);
+      if (qty > 0) {
+        const s = item.price * qty;
+        subtotal += s; totalBags += item.bags * qty;
+        selected.push({ ...item, qty, itemSubtotal: s });
+      }
+    }
+    const region = getRegion();
+    const shipping = region ? region.fee * totalBags : null;
+    const total = shipping !== null ? subtotal + shipping : null;
+    return { selected, subtotal, totalBags, shipping, total, region };
+  }
+
+  function updatePricing() {
+    const { selected, subtotal, totalBags, shipping, total, region } = calcTotals();
+    const area = document.getElementById('price-items-area');
+    if (selected.length === 0) {
+      area.innerHTML = '<div class="price-row"><span class="price-label">商品を選択してください</span><span class="price-value">—</span></div>';
+    } else {
+      area.innerHTML = selected.map(it =>
+        `<div class="price-row"><span class="price-label">${it.label} × ${it.qty}</span><span class="price-value">${fmt(it.itemSubtotal)}</span></div>`
+      ).join('') +
+      `<div class="price-row"><span class="price-label">商品合計</span><span class="price-value" style="font-weight:700;">${fmt(subtotal)}</span></div>`;
+      for (const item of ITEMS) {
+        const qty = getQty(item.id);
+        document.getElementById(`sub${item.kg}`).textContent = qty > 0 ? fmt(item.price * qty) : '—';
+      }
+    }
+    document.getElementById('p-shipping').textContent = region
+      ? `${fmt(region.fee)} × ${totalBags}袋 = ${fmt(shipping)}（${region.name}）`
+      : '地域を選択してください';
+    document.getElementById('p-total').textContent = total !== null ? fmt(total) + ' 円' : '— 円';
+  }
+
+  document.querySelectorAll('input[name="region"]').forEach(r => r.addEventListener('change', updatePricing));
+
+  // ====== メール本文生成 ======
+  function buildBody(d, forSelf) {
+    const now = new Date();
+    const nowStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+    const itemLines = d.selected.map(it =>
+      `  ${it.label.padEnd(20)}× ${it.qty}　${fmt(it.itemSubtotal)}`
+    ).join('\n');
+    const shopLine = d.shopName ? `\n　店舗名　　：${d.shopName}` : '';
+
+    if (forSelf) {
+      return `【お米発注の確認】
+
+以下の内容で発注を予定しています。
+問題なければ「但馬米穀へ発注メールを送信する」ボタンを押してください。
+
+━━━━━━━━━━━━━━━━━━━━━━
+　発注者情報
+━━━━━━━━━━━━━━━━━━━━━━
+　発注者名　：${d.orderPersonName}${shopLine}
+　郵便番号　：${d.postalCode}
+　住　　所　：${d.address}
+　電話番号　：${d.tel}
+　お名前　　：${d.contactName}
+
+━━━━━━━━━━━━━━━━━━━━━━
+　注文内容
+━━━━━━━━━━━━━━━━━━━━━━
+${itemLines}
+  ─────────────────────
+　商品合計　：${fmt(d.subtotal)}（税込）
+　送　　料　：${fmt(d.shipping)}（${d.regionName} ${fmt(d.shippingPerBag)}/袋×${d.totalBags}袋）
+　合計金額　：${fmt(d.total)}（税込）
+
+━━━━━━━━━━━━━━━━━━━━━━
+　配送情報
+━━━━━━━━━━━━━━━━━━━━━━
+　送付先地域：${d.regionName}
+　希望納品日：${d.dateStr}
+　時間指定　：${d.timeslot}
+━━━━━━━━━━━━━━━━━━━━━━
+（入力日：${nowStr}）`;
+    } else {
+      return `但馬米穀　御中
+
+平素より大変お世話になっております。
+丹波農商の${d.orderPersonName}でございます。
+
+以下の通り、お米のご発注をお願いいたします。
+
+━━━━━━━━━━━━━━━━━━━━━━
+　発注者情報
+━━━━━━━━━━━━━━━━━━━━━━
+　発注者名　：${d.orderPersonName}${shopLine}
+　郵便番号　：${d.postalCode}
+　住　　所　：${d.address}
+　電話番号　：${d.tel}
+　お名前　　：${d.contactName}
+
+━━━━━━━━━━━━━━━━━━━━━━
+　ご注文内容
+━━━━━━━━━━━━━━━━━━━━━━
+${itemLines}
+  ─────────────────────
+　商品合計　：${fmt(d.subtotal)}（税込）
+　送　　料　：${fmt(d.shipping)}（${d.regionName} ${fmt(d.shippingPerBag)}/袋×${d.totalBags}袋）
+　合計金額　：${fmt(d.total)}（税込）
+
+━━━━━━━━━━━━━━━━━━━━━━
+　配送情報
+━━━━━━━━━━━━━━━━━━━━━━
+　送付先地域：${d.regionName}
+　希望納品日：${d.dateStr}
+　時間指定　：${d.timeslot}
+━━━━━━━━━━━━━━━━━━━━━━
+
+ご確認のほど、どうぞよろしくお願いいたします。
+
+━━━━━━━━━━━━━━━━━━━━━━
+丹波農商
+tamba.nosho@gmail.com
+（発注日：${nowStr}）
+━━━━━━━━━━━━━━━━━━━━━━`;
+    }
+  }
+
+  // ====== STEP 1 → 2 ======
+  async function goToStep2() {
+    const orderPersonName = document.getElementById('orderPersonName').value.trim();
+    const shopName        = document.getElementById('shopName').value.trim();
+    const postalCode      = document.getElementById('postalCode').value.trim();
+    const address         = document.getElementById('address').value.trim();
+    const tel             = document.getElementById('tel').value.trim();
+    const contactName     = document.getElementById('contactName').value.trim();
+    const dateVal         = document.getElementById('deliveryDate').value;
+    const timeslot        = getTimeslot();
+    const region          = getRegion();
+    const { selected, subtotal, totalBags, shipping, total } = calcTotals();
+    const statusEl = document.getElementById('step1-status');
+    const btn = document.getElementById('step1Btn');
+
+    if (!orderPersonName) { showStatus(statusEl,'error','⚠️ 発注者名を入力してください'); return; }
+    if (!postalCode)      { showStatus(statusEl,'error','⚠️ 郵便番号を入力してください'); return; }
+    if (!address)         { showStatus(statusEl,'error','⚠️ 住所を入力してください'); return; }
+    if (!tel)             { showStatus(statusEl,'error','⚠️ 電話番号を入力してください'); return; }
+    if (!contactName)     { showStatus(statusEl,'error','⚠️ お名前（担当者）を入力してください'); return; }
+    if (selected.length === 0) { showStatus(statusEl,'error','⚠️ 数量を選択してください'); return; }
+    if (!region)          { showStatus(statusEl,'error','⚠️ 送付先の地域を選択してください'); return; }
+    if (!dateVal)         { showStatus(statusEl,'error','⚠️ 希望納品日を選択してください'); return; }
+
+    // 納品日が最小日以上かチェック
+    const minDate = calcMinDate();
+    const chosen = new Date(dateVal + 'T00:00:00');
+    if (chosen < minDate) {
+      showStatus(statusEl,'error',`⚠️ 最短の納品日は ${formatDate(toDateStr(minDate))} です`); return;
+    }
+
+    orderData = {
+      orderPersonName, shopName, postalCode, address, tel, contactName,
+      selected, subtotal, totalBags, shipping, total,
+      shippingPerBag: region.fee, regionName: region.name,
+      dateStr: formatDate(dateVal), timeslot
+    };
+
+    btn.disabled = true; btn.classList.add('loading');
+    document.getElementById('step1BtnText').textContent = '送信中...';
+    showStatus(statusEl,'loading','⏳ 確認メールを送信しています...');
+
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:1000,
+          system:`You are a Gmail assistant. Use the gmail_create_draft MCP tool immediately.
+to: tamba.nosho@gmail.com
+subject: 【発注確認】${shopName || orderPersonName} / 合計${fmt(total)} / 納品希望：${orderData.dateStr}
+body: ${buildBody(orderData, true)}
+Reply: done`,
+          messages:[{role:'user',content:'Create confirmation draft now.'}],
+          mcp_servers:[{type:'url',url:'https://gmail.mcp.claude.com/mcp',name:'gmail-mcp'}]
+        })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.content && data.content.length > 0) {
+        advanceToStep2();
+      } else { throw new Error(data.error?.message || '送信に失敗しました'); }
+    } catch(err) {
+      showStatus(statusEl,'error',`❌ エラーが発生しました\n${err.message}`);
+      btn.disabled = false; btn.classList.remove('loading');
+      document.getElementById('step1BtnText').textContent = '確認メールを自分に送る';
+    }
+  }
+
+  function advanceToStep2() {
+    document.getElementById('step1').style.display = 'none';
+    document.getElementById('step2').style.display = 'block';
+    document.getElementById('si1').className = 'step-item done';
+    document.getElementById('si1').querySelector('.step-circle').textContent = '✓';
+    document.getElementById('sl1').className = 'step-line done';
+    document.getElementById('si2').className = 'step-item active';
+    const d = orderData;
+    document.getElementById('c-orderPersonName').textContent = d.orderPersonName;
+    if (d.shopName) {
+      document.getElementById('c-shopRow').style.display = 'flex';
+      document.getElementById('c-shopName').textContent = d.shopName;
+    } else {
+      document.getElementById('c-shopRow').style.display = 'none';
+    }
+    document.getElementById('c-postal').textContent = d.postalCode;
+    document.getElementById('c-address').textContent = d.address;
+    document.getElementById('c-tel').textContent = d.tel;
+    document.getElementById('c-contactName').textContent = d.contactName;
+    document.getElementById('c-region').textContent = d.regionName;
+    document.getElementById('c-date').textContent = d.dateStr;
+    document.getElementById('c-time').textContent = d.timeslot;
+    document.getElementById('c-items-area').innerHTML = d.selected.map(it =>
+      `<div class="confirm-row"><span class="confirm-key">${it.label}</span><span class="confirm-val">${it.qty} × ${fmt(it.itemSubtotal)}</span></div>`
+    ).join('');
+    document.getElementById('c-price-rows').innerHTML =
+      `<div class="confirm-price-row"><span>商品合計（税込）</span><span>${fmt(d.subtotal)}</span></div>`;
+    document.getElementById('c-shipping').textContent =
+      `${fmt(d.shippingPerBag)} × ${d.totalBags}袋 = ${fmt(d.shipping)}`;
+    document.getElementById('c-total').textContent = fmt(d.total) + ' 円';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  // ====== STEP 2 → 3 ======
+  async function sendToTanbei() {
+    const btn = document.getElementById('approveBtn');
+    const statusEl = document.getElementById('step2-status');
+    btn.disabled = true; btn.classList.add('loading');
+    showStatus(statusEl,'loading','⏳ 但馬米穀へ送信中...');
+    const d = orderData;
+    const subject = `【お米発注】${d.shopName || d.orderPersonName} / 合計${fmt(d.total)} / 納品希望：${d.dateStr}`;
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:1000,
+          system:`You are a Gmail assistant. Use the gmail_create_draft MCP tool immediately.
+to: m.kitamura@tanbei.co.jp
+cc: t.kuroda@tanbei.co.jp
+bcc: tamba.nosho@gmail.com
+subject: ${subject}
+body: ${buildBody(d, false)}
+Reply: done`,
+          messages:[{role:'user',content:'Create order draft to Tanbei now.'}],
+          mcp_servers:[{type:'url',url:'https://gmail.mcp.claude.com/mcp',name:'gmail-mcp'}]
+        })
+      });
+      const data = await resp.json();
+      if (resp.ok && data.content && data.content.length > 0) {
+        document.getElementById('step2').style.display = 'none';
+        document.getElementById('step3').style.display = 'block';
+        document.getElementById('sl2').className = 'step-line done';
+        document.getElementById('si2').className = 'step-item done';
+        document.getElementById('si2').querySelector('.step-circle').textContent = '✓';
+        document.getElementById('si3').className = 'step-item done';
+        document.getElementById('si3').querySelector('.step-circle').textContent = '✓';
+        document.getElementById('done-summary').textContent =
+          `${d.shopName ? d.shopName + '　' : ''}${d.orderPersonName} 様\n` +
+          d.selected.map(it=>`${it.label} × ${it.qty}`).join('、') + '\n\n' +
+          `商品合計：${fmt(d.subtotal)}　送料：${fmt(d.shipping)}\n合　　計：${fmt(d.total)}（税込）\n\n希望納品日：${d.dateStr}　${d.timeslot}`;
+        window.scrollTo({top:0,behavior:'smooth'});
+      } else { throw new Error(data.error?.message || '送信に失敗しました'); }
+    } catch(err) {
+      showStatus(statusEl,'error',`❌ エラーが発生しました\n${err.message}`);
+      btn.disabled = false; btn.classList.remove('loading');
+    }
+  }
+
+  function backToStep1() {
+    document.getElementById('step2').style.display = 'none';
+    document.getElementById('step1').style.display = 'block';
+    document.getElementById('si1').className = 'step-item active';
+    document.getElementById('si1').querySelector('.step-circle').textContent = '1';
+    document.getElementById('sl1').className = 'step-line';
+    document.getElementById('si2').className = 'step-item';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function resetApp() {
+    document.getElementById('step3').style.display = 'none';
+    document.getElementById('step1').style.display = 'block';
+    ['orderPersonName','shopName','postalCode','address','tel','contactName','deliveryDate']
+      .forEach(id => document.getElementById(id).value = '');
+    ITEMS.forEach(it => {
+      document.getElementById(it.id).textContent = '0';
+      document.getElementById(`item-${it.kg}`).classList.remove('has-qty');
+      document.getElementById(`sub${it.kg}`).textContent = '—';
+    });
+    document.querySelectorAll('input[name="region"], input[name="timeslot"]').forEach(r => r.checked = false);
+    ['si1','si2','si3'].forEach((id,i) => {
+      document.getElementById(id).className = i===0 ? 'step-item active' : 'step-item';
+      document.getElementById(id).querySelector('.step-circle').textContent = i+1;
+    });
+    document.getElementById('sl1').className = 'step-line';
+    document.getElementById('sl2').className = 'step-line';
+    document.getElementById('step1-status').className = 'status-msg';
+    document.getElementById('postalStatus').textContent = '';
+    const btn = document.getElementById('step1Btn');
+    btn.disabled = false; btn.classList.remove('loading');
+    document.getElementById('step1BtnText').textContent = '確認メールを自分に送る';
+    document.getElementById('deliveryInfoBox').classList.remove('show');
+    orderData = {};
+    updatePricing();
+    initDateField();
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  function showStatus(el, type, msg) { el.className = `status-msg ${type}`; el.textContent = msg; }
+</script>
+</body>
+</html>
