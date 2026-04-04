@@ -687,20 +687,14 @@ function escapeHtml(str) {
 async function adminLogin() {
   var pw = document.getElementById('admin-pw').value;
   if (!pw) { document.getElementById('login-error').textContent = 'パスワードを入力してください'; return; }
-  setLoader(true, '認証中...');
-  try {
-    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'adminLogin', password: pw }) });
-    var result = await res.json();
-    setLoader(false);
-    if (result.result === 'ok') {
-      adminToken = pw;
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('admin-main').classList.add('show');
-      loadStock();
-    } else {
-      document.getElementById('login-error').textContent = 'パスワードが正しくありません';
-    }
-  } catch (e) { setLoader(false); document.getElementById('login-error').textContent = '通信エラーが発生しました'; }
+  if (pw === '1108') {
+    adminToken = pw;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-main').classList.add('show');
+    loadStock();
+  } else {
+    document.getElementById('login-error').textContent = 'パスワードが正しくありません';
+  }
 }
 
 // ═══ Tabs ═══
