@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>土壌診断・堆肥分析ツール｜丹波農商</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --soil: #3d2b1a;
+  --soil-mid: #5c3d22;
+  --clay: #8b5e3c;
+  --straw: #c8a96e;
+  --rice: #f0e6c8;
+  --leaf: #4a6741;
+  --leaf-light: #6b9162;
+  --sky: #dbe8f0;
+  --white: #fdfaf5;
+  --text: #2a1f14;
+  --text-mid: #5a4433;
+  --accent: #c85a2a;
+  --shadow: 0 4px 24px rgba(61,43,26,0.10);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--white); color: var(--text); min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse at 10% 0%, rgba(200,169,110,0.13) 0%, transparent 55%),
+    radial-gradient(ellipse at 90% 100%, rgba(74,103,65,0.10) 0%, transparent 55%);
+}
+
+header {
+  background: var(--soil); position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.22);
+}
+.header-inner {
+  max-width: 900px; margin: 0 auto; padding: 14px 20px;
+  display: flex; align-items: center; gap: 14px;
+}
+.header-icon { font-size: 2rem; line-height: 1; }
+.header-text h1 {
+  font-family: 'Noto Serif JP', serif; font-size: 1.15rem; font-weight: 700;
+  letter-spacing: 0.06em; color: var(--straw);
+}
+.header-text p { font-size: 0.72rem; color: rgba(240,230,200,0.65); margin-top: 2px; }
+.header-nav { margin-left: auto; }
+.header-nav a {
+  color: var(--straw); font-size: 0.78rem; text-decoration: none;
+  border: 1px solid rgba(200,169,110,0.4); padding: 5px 12px; border-radius: 20px;
+  transition: background 0.15s;
+}
+.header-nav a:hover { background: rgba(200,169,110,0.15); }
+
+main { max-width: 900px; margin: 0 auto; padding: 28px 16px 60px; }
+
+/* タブ */
+.tabs {
+  display: flex; gap: 4px; margin-bottom: 24px;
+  background: rgba(61,43,26,0.06); border-radius: 12px; padding: 4px;
+}
+.tab-btn {
+  flex: 1; padding: 10px 8px; border: none; border-radius: 9px;
+  background: transparent; cursor: pointer;
+  font-family: 'Noto Sans JP', sans-serif; font-size: 0.85rem; font-weight: 500;
+  color: var(--text-mid); transition: all 0.18s;
+}
+.tab-btn.active {
+  background: #fff; color: var(--soil); font-weight: 700;
+  box-shadow: 0 2px 8px rgba(61,43,26,0.12);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* セクション共通 */
+.section {
+  background: #fff; border-radius: 14px; box-shadow: var(--shadow);
+  padding: 26px 24px; margin-bottom: 20px;
+  border: 1px solid rgba(200,169,110,0.18); position: relative; overflow: hidden;
+}
+.section::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: linear-gradient(to bottom, var(--leaf), var(--straw));
+}
+.section-title {
+  font-family: 'Noto Serif JP', serif; font-size: 1rem; font-weight: 700;
+  color: var(--soil); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+}
+
+/* 分析データグリッド */
+.analysis-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;
+}
+.analysis-card {
+  background: #fdfaf5; border: 1px solid rgba(200,169,110,0.2); border-radius: 10px;
+  padding: 14px 16px;
+}
+.analysis-card .label {
+  font-size: 0.72rem; color: var(--text-mid); font-weight: 500; margin-bottom: 4px;
+}
+.analysis-card .value {
+  font-size: 1.4rem; font-weight: 700; color: var(--soil);
+  font-family: 'Noto Serif JP', serif; line-height: 1.1;
+}
+.analysis-card .unit {
+  font-size: 0.72rem; color: var(--clay); font-weight: 400; margin-left: 3px;
+}
+.analysis-card .note { font-size: 0.68rem; color: var(--text-mid); margin-top: 4px; }
+
+/* 菌検査テーブル */
+.bacteria-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: 0.82rem;
+}
+.bacteria-table th {
+  background: var(--soil); color: var(--straw);
+  padding: 8px 12px; font-weight: 600; text-align: center;
+}
+.bacteria-table th:first-child { border-radius: 8px 0 0 0; }
+.bacteria-table th:last-child { border-radius: 0 8px 0 0; }
+.bacteria-table td {
+  padding: 8px 12px; text-align: center;
+  border-bottom: 1px solid rgba(200,169,110,0.15);
+  color: var(--text);
+}
+.bacteria-table tr:nth-child(even) td { background: #faf6ee; }
+.bacteria-table tr:last-child td:first-child { border-radius: 0 0 0 8px; }
+.bacteria-table tr:last-child td:last-child { border-radius: 0 0 8px 0; }
+
+/* DLボタン */
+.dl-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, var(--soil), var(--soil-mid));
+  color: var(--straw); border: none; border-radius: 30px;
+  padding: 11px 28px; font-size: 0.88rem;
+  font-family: 'Noto Serif JP', serif; font-weight: 700;
+  cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 14px rgba(61,43,26,0.22); text-decoration: none;
+}
+.dl-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(61,43,26,0.28); }
+
+/* アップロードエリア */
+.upload-area {
+  border: 2px dashed rgba(139,94,60,0.3); border-radius: 12px;
+  padding: 36px 24px; text-align: center; cursor: pointer;
+  transition: all 0.2s; background: #fdfaf5;
+}
+.upload-area:hover, .upload-area.dragover {
+  border-color: var(--leaf); background: #f0f6ee;
+}
+.upload-area .icon { font-size: 2.5rem; margin-bottom: 10px; }
+.upload-area .main-text {
+  font-size: 0.95rem; font-weight: 600; color: var(--soil); margin-bottom: 6px;
+}
+.upload-area .sub-text { font-size: 0.76rem; color: var(--text-mid); }
+#fileInput { display: none; }
+
+/* 作物選択 */
+.crop-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px;
+  margin-bottom: 16px;
+}
+.crop-btn {
+  padding: 9px 8px; border: 1.5px solid rgba(139,94,60,0.22); border-radius: 8px;
+  background: #fff; cursor: pointer; font-size: 0.82rem; font-weight: 500;
+  color: var(--text-mid); font-family: 'Noto Sans JP', sans-serif;
+  transition: all 0.15s; text-align: center;
+}
+.crop-btn.selected {
+  border-color: var(--leaf); background: #e6f4e4; color: var(--leaf); font-weight: 700;
+}
+
+/* 結果エリア */
+.result-box {
+  border-radius: 12px; padding: 20px 22px; margin-top: 20px;
+  display: none;
+}
+.result-box.show { display: block; }
+.result-box.consulting {
+  background: linear-gradient(135deg, #f0f6ee, #e8f4e6);
+  border: 1.5px solid var(--leaf);
+}
+.result-title {
+  font-family: 'Noto Serif JP', serif; font-size: 1rem; font-weight: 700;
+  color: var(--leaf); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.result-items { display: flex; flex-direction: column; gap: 10px; }
+.result-item {
+  background: #fff; border-radius: 8px; padding: 12px 16px;
+  border-left: 3px solid var(--leaf);
+}
+.result-item .ri-label { font-size: 0.74rem; color: var(--text-mid); font-weight: 500; margin-bottom: 3px; }
+.result-item .ri-value { font-size: 0.9rem; color: var(--text); line-height: 1.6; }
+.result-item .ri-value strong { color: var(--leaf); font-size: 1.05rem; }
+
+.caution-box {
+  margin-top: 16px; background: #fffbea; border: 1px solid #e8d06a;
+  border-radius: 8px; padding: 12px 16px; font-size: 0.78rem; color: #7a6020;
+  display: flex; gap: 8px;
+}
+
+/* 読み取り結果テーブル */
+.extracted-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: 0.84rem; margin-top: 12px;
+}
+.extracted-table th {
+  background: #f5f0e8; color: var(--soil); padding: 7px 12px;
+  font-weight: 600; text-align: left;
+  border-bottom: 2px solid rgba(200,169,110,0.3);
+}
+.extracted-table td {
+  padding: 8px 12px; border-bottom: 1px solid rgba(200,169,110,0.12);
+  vertical-align: top;
+}
+.extracted-table tr:last-child td { border-bottom: none; }
+.tag-low { color: #c85a2a; font-weight: 600; font-size: 0.72rem;
+  background: #fdf0ea; padding: 2px 6px; border-radius: 4px; }
+.tag-high { color: #1a6b8a; font-weight: 600; font-size: 0.72rem;
+  background: #e8f4fa; padding: 2px 6px; border-radius: 4px; }
+.tag-ok { color: #4a6741; font-weight: 600; font-size: 0.72rem;
+  background: #e6f4e4; padding: 2px 6px; border-radius: 4px; }
+
+/* ローダー */
+.loader-wrap {
+  display: none; flex-direction: column; align-items: center;
+  gap: 12px; padding: 32px; color: var(--text-mid); font-size: 0.86rem;
+}
+.loader-wrap.show { display: flex; }
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid rgba(74,103,65,0.2); border-top-color: var(--leaf);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* フォーム */
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+label { font-size: 0.79rem; font-weight: 500; color: var(--text-mid); }
+input[type="text"], input[type="number"], textarea, select {
+  width: 100%; border: 1.5px solid rgba(139,94,60,0.22); border-radius: 8px;
+  padding: 9px 12px; font-size: 0.9rem; font-family: 'Noto Sans JP', sans-serif;
+  color: var(--text); background: var(--white); outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--leaf); box-shadow: 0 0 0 3px rgba(74,103,65,0.12);
+}
+
+/* API notice */
+.api-notice {
+  background: #fffbea; border: 1px solid #e8d06a; border-radius: 8px;
+  padding: 10px 14px; font-size: 0.78rem; color: #7a6020;
+  margin-bottom: 16px; display: flex; gap: 8px; align-items: flex-start;
+}
+
+@media (max-width: 540px) {
+  .section { padding: 20px 14px; }
+  .analysis-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-icon">🌱</div>
+    <div class="header-text">
+      <h1>土壌診断・堆肥分析ツール</h1>
+      <p>丹波農商 ／ 牛ふん堆肥 資材情報＆土壌診断サポート</p>
+    </div>
+    <nav class="header-nav">
+      <a href="tamba_compost_order.html">← 発注フォームへ</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- タブ -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('compost')">🧪 堆肥分析データ</button>
+  <button class="tab-btn" onclick="switchTab('soil')">🌾 土壌診断サポート</button>
+</div>
+
+<!-- ===== タブ①：堆肥分析データ ===== -->
+<div class="tab-panel active" id="tab-compost">
+
+  <div class="section">
+    <div class="section-title">📋 分析結果報告書｜牛ふん堆肥（検体③ 1-1）</div>
+    <p style="font-size:0.76rem;color:var(--text-mid);margin-bottom:16px;">
+      分析機関：株式会社食環境衛生研究所　／　受付番号：No.260119234　／　報告日：2026年2月2日
+    </p>
+
+    <div class="analysis-grid">
+      <div class="analysis-card">
+        <div class="label">水分</div>
+        <div class="value">59.7<span class="unit">%現物</span></div>
+      </div>
+      <div class="analysis-card">
+        <div class="label">灰分</div>
+        <div class="value">16.8<span class="unit">%現物</span></div>
+      </div>
+      <div class="analysis-card">
+        <div class="label">pH</div>
+        <div class="value">8.1</div>
+        <div class="note">測定温度 25.6℃</div>
+      </div>
+      <div class="analysis-card">
+        <div class="label">電気伝導率（EC）</div>
+        <div class="value">4.0<span class="unit">mS/cm</span></div>
+        <div class="note">測定温度 25.0℃</div>
+      </div>
+      <div class="analysis-card">
+        <div class="label">窒素全量（N）</div>
+        <div class="value">0.82<span class="unit">%現物</span></div>
+      </div>
+      <div class="analysis-card">
+        <div class="label">りん酸全量（P₂O₅）</div>
+        <div class="value">1.2<span class="unit">%現物</span></div>
+      </div>
+      <div class="analysis-card">
+        <div class="label">加里全量（K₂O）</div>
+        <div class="value">1.7<span class="unit">%現物</span></div>
+      </div>
+      <div class="analysis-card">
+        <div class="label">有機炭素</div>
+        <div class="value">13.2<span class="unit">%現物</span></div>
+      </div>
+      <div class="analysis-card">
+        <div class="label">炭素窒素比（C/N比）</div>
+        <div class="value">16.1</div>
+        <div class="note">完熟度の目安：20以下で良好</div>
+      </div>
+      <div class="analysis-card" style="border-color:rgba(74,103,65,0.3);background:#f4f9f2;">
+        <div class="label">腐植酸（酸不溶アルカリ可溶分）</div>
+        <div class="value" style="color:var(--leaf);">5.5<span class="unit">%現物</span></div>
+        <div class="note">土壌改良効果の指標</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap;">
+      <button class="dl-btn" onclick="downloadCompostPDF()">
+        ⬇ 分析結果PDFをダウンロード
+      </button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🦠 有益菌検査結果｜完成品</div>
+    <p style="font-size:0.8rem;color:var(--text-mid);line-height:1.7;margin-bottom:16px;padding:11px 14px;background:#f8f4ee;border-radius:8px;border-left:3px solid var(--straw);">
+      生分解・4週間熟成・完成の3段階で品質確認を行い、出荷前に第三者機関による菌検査を実施しています。
+    </p>
+    <p style="font-size:0.76rem;color:var(--text-mid);margin-bottom:12px;">
+      分析機関：株式会社食環境衛生研究所　／　採材日：2026年1月17日　／　報告日：2026年2月2日
+    </p>
+
+    <div class="analysis-grid">
+      <div class="analysis-card" style="border-color:rgba(74,103,65,0.3);background:#f4f9f2;">
+        <div class="label">糸状菌（カビ）数</div>
+        <div class="value" style="color:var(--leaf);">2.3×10⁴<span class="unit">cfu/g</span></div>
+      </div>
+      <div class="analysis-card" style="border-color:rgba(74,103,65,0.3);background:#f4f9f2;">
+        <div class="label">酵母数</div>
+        <div class="value" style="color:var(--leaf);">陰性（−）</div>
+        <div class="note">10²cfu/g未満</div>
+      </div>
+      <div class="analysis-card" style="border-color:rgba(74,103,65,0.3);background:#f4f9f2;">
+        <div class="label">乳酸菌数</div>
+        <div class="value" style="color:var(--leaf);">7.2×10⁴<span class="unit">cfu/g</span></div>
+      </div>
+      <div class="analysis-card" style="border-color:rgba(74,103,65,0.3);background:#f4f9f2;">
+        <div class="label">芽胞菌数（バチルス属）</div>
+        <div class="value" style="color:var(--leaf);">6.2×10⁵<span class="unit">cfu/g</span></div>
+      </div>
+      <div class="analysis-card" style="border-color:rgba(74,103,65,0.3);background:#f4f9f2;">
+        <div class="label">放線菌数</div>
+        <div class="value" style="color:var(--leaf);">4.9×10⁶<span class="unit">cfu/g</span></div>
+        <div class="note">土壌改良に有益な有益菌</div>
+      </div>
+    </div>
+    <p style="font-size:0.71rem;color:var(--text-mid);margin-top:10px;">
+      ※ 検査責任者：山本獣医師（食環境衛生研究所）
+    </p>
+
+    <div style="margin-top:16px;">
+      <button class="dl-btn" onclick="downloadBacteriaPDF()">
+        ⬇ 菌検査結果PDFをダウンロード
+      </button>
+    </div>
+  </div>
+
+  <!-- 堆肥特徴まとめ -->
+  <div class="section">
+    <div class="section-title">💡 この堆肥の特徴まとめ</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="background:#f4f9f2;border-radius:10px;padding:14px 16px;border-left:3px solid var(--leaf);">
+        <div style="font-size:0.78rem;font-weight:700;color:var(--leaf);margin-bottom:6px;">✅ 完熟堆肥</div>
+        <div style="font-size:0.8rem;color:var(--text);line-height:1.6;">C/N比16.1と低く、発酵が十分に進んでいます。施用後すぐに効果が出やすい状態です。</div>
+      </div>
+      <div style="background:#f4f9f2;border-radius:10px;padding:14px 16px;border-left:3px solid var(--leaf);">
+        <div style="font-size:0.78rem;font-weight:700;color:var(--leaf);margin-bottom:6px;">✅ 腐植酸が豊富</div>
+        <div style="font-size:0.8rem;color:var(--text);line-height:1.6;">腐植酸5.5%は土壌改良効果が高く、土の団粒構造の形成・保水性・CEC向上に貢献します。</div>
+      </div>
+      <div style="background:#f4f9f2;border-radius:10px;padding:14px 16px;border-left:3px solid var(--leaf);">
+        <div style="font-size:0.78rem;font-weight:700;color:var(--leaf);margin-bottom:6px;">✅ バチルス菌が豊富</div>
+        <div style="font-size:0.8rem;color:var(--text);line-height:1.6;">有益微生物（バチルス属・放線菌）が高密度に含まれ、土壌の生物性改善に効果的です。</div>
+      </div>
+      <div style="background:#fdf0ea;border-radius:10px;padding:14px 16px;border-left:3px solid var(--accent);">
+        <div style="font-size:0.78rem;font-weight:700;color:var(--accent);margin-bottom:6px;">⚠ ECに注意</div>
+        <div style="font-size:0.8rem;color:var(--text);line-height:1.6;">EC4.0は塩類濃度がやや高め。多量施用時は塩類障害に注意。適切な量を守ってください。</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /tab-compost -->
+
+
+<!-- ===== タブ②：土壌診断サポート ===== -->
+<div class="tab-panel" id="tab-soil">
+
+  <div class="section">
+    <div class="section-title">🌾 土壌診断シートをアップロード</div>
+    <p style="font-size:0.8rem;color:var(--text-mid);line-height:1.7;margin-bottom:16px;">
+      土壌診断の結果シート（PDF・Excel・画像など）をアップロードしてください。<br>
+      AIが内容を読み取り、数値を整理して表示します。フォーマットは問いません。
+    </p>
+
+    <div class="api-notice">
+      ⚠️ <span>この機能にはAnthropicのAPIキーが必要です。HTMLファイル内の <code>ANTHROPIC_API_KEY</code> を差し替えてください。</span>
+    </div>
+
+    <!-- 作物選択 -->
+    <div class="field">
+      <label>作物の種類を選んでください（推奨量の目安に使用します）</label>
+      <div class="crop-grid" id="cropGrid">
+        <button class="crop-btn" onclick="selectCrop(this,'水稲')">🌾 水稲</button>
+        <button class="crop-btn" onclick="selectCrop(this,'黒豆')">🫘 黒豆</button>
+        <button class="crop-btn" onclick="selectCrop(this,'野菜（葉菜類）')">🥬 葉菜類</button>
+        <button class="crop-btn" onclick="selectCrop(this,'野菜（根菜類）')">🥕 根菜類</button>
+        <button class="crop-btn" onclick="selectCrop(this,'果樹')">🍎 果樹</button>
+        <button class="crop-btn" onclick="selectCrop(this,'その他')">… その他</button>
+      </div>
+      <input type="text" id="cropOther" placeholder="その他の場合はここに作物名を入力" style="display:none;margin-top:4px;">
+    </div>
+
+    <!-- アップロード -->
+    <div class="upload-area" id="uploadArea"
+      onclick="document.getElementById('fileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('dragover')"
+      ondragleave="this.classList.remove('dragover')"
+      ondrop="handleDrop(event)">
+      <div class="icon">📄</div>
+      <div class="main-text">クリックまたはドラッグ＆ドロップ</div>
+      <div class="sub-text">PDF・Excel・PNG・JPG など対応 ／ 複数フォーマットOK</div>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf,.xlsx,.xls,.png,.jpg,.jpeg"
+      onchange="handleFileSelect(event)">
+
+    <div id="fileNameDisplay" style="font-size:0.78rem;color:var(--leaf);margin-top:8px;display:none;"></div>
+
+    <button id="analyzeBtn"
+      style="margin-top:16px;display:none;padding:11px 28px;border-radius:30px;
+        background:linear-gradient(135deg,var(--leaf),var(--leaf-light));
+        color:#fff;border:none;font-size:0.9rem;font-family:'Noto Sans JP',sans-serif;
+        font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(74,103,65,0.28);"
+      onclick="analyzeSoil()">
+      🤖 AIで診断シートを読み取る
+    </button>
+  </div>
+
+  <!-- ローダー -->
+  <div class="loader-wrap" id="loader">
+    <div class="spinner"></div>
+    <span>AIが診断シートを読み取っています…</span>
+  </div>
+
+  <!-- 結果 -->
+  <div id="soilResult"></div>
+
+</div><!-- /tab-soil -->
+
+</main>
+
+<!-- トースト -->
+<div id="toast" style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--leaf);color:#fff;padding:13px 28px;border-radius:30px;
+  font-size:0.9rem;font-weight:500;box-shadow:0 8px 30px rgba(0,0,0,0.22);
+  transition:transform 0.35s cubic-bezier(.34,1.56,.64,1),opacity 0.35s;
+  opacity:0;z-index:999;pointer-events:none;white-space:nowrap;"></div>
+
+<script>
+// =======================================
+// 設定（差し替えてください）
+// =======================================
+const ANTHROPIC_API_KEY = 'YOUR_API_KEY_HERE';
+// =======================================
+
+let selectedCrop = '';
+let uploadedFile = null;
+
+// タブ切り替え
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='compost')||(i===1&&tab==='soil')));
+  document.getElementById('tab-compost').classList.toggle('active', tab==='compost');
+  document.getElementById('tab-soil').classList.toggle('active', tab==='soil');
+}
+
+// 作物選択
+function selectCrop(btn, crop) {
+  document.querySelectorAll('.crop-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedCrop = crop;
+  document.getElementById('cropOther').style.display = crop === 'その他' ? 'block' : 'none';
+}
+
+// ファイル選択
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) setFile(file);
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadArea').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) setFile(file);
+}
+function setFile(file) {
+  uploadedFile = file;
+  const disp = document.getElementById('fileNameDisplay');
+  disp.textContent = `📎 ${file.name}（${(file.size/1024).toFixed(0)} KB）`;
+  disp.style.display = 'block';
+  document.getElementById('analyzeBtn').style.display = 'inline-block';
+}
+
+// トースト
+function showToast(msg, dur=4000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.opacity='1';
+  t.style.transform='translateX(-50%) translateY(0)';
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(80px)'; }, dur);
+}
+
+// ===== AI土壌診断 =====
+async function analyzeSoil() {
+  if (!uploadedFile) { showToast('⚠️ ファイルをアップロードしてください'); return; }
+  const crop = selectedCrop || (document.getElementById('cropOther').value.trim()) || '未選択';
+
+  // APIキー未設定チェック
+  if (ANTHROPIC_API_KEY === 'YOUR_API_KEY_HERE') {
+    showToast('⚠️ APIキーを設定してください');
+    // デモ動作：ダミーデータで表示
+    showDemoResult(crop);
+    return;
+  }
+
+  document.getElementById('loader').classList.add('show');
+  document.getElementById('soilResult').innerHTML = '';
+
+  try {
+    // ファイルをbase64変換
+    const base64 = await fileToBase64(uploadedFile);
+    const mimeType = getMimeType(uploadedFile);
+
+    // 堆肥分析データ（丹波農商）
+    const compostInfo = `
+丹波農商の牛ふん堆肥（最新分析値）:
+- 水分: 59.7%現物
+- pH: 8.1
+- EC: 4.0 mS/cm
+- 窒素全量(N): 0.82%現物
+- りん酸全量(P₂O₅): 1.2%現物
+- 加里全量(K₂O): 1.7%現物
+- 有機炭素: 13.2%現物
+- C/N比: 16.1（完熟）
+- 腐植酸: 5.5%現物
+`;
+
+    const systemPrompt = `あなたは土壌医（土壌診断の専門家）のアシスタントです。
+農家が提出した土壌診断シートを読み取り、以下のJSON形式のみで返答してください。
+他のテキストは一切含めないでください。
+
+{
+  "items": [
+    { "name": "項目名", "value": "数値", "unit": "単位", "status": "low|ok|high", "comment": "簡単なコメント" }
+  ],
+  "summary": "土壌状態の総合コメント（2〜3文）",
+  "recommendation": "この土壌への牛ふん堆肥の投入目安（作物別）と理由。あくまで目安であり、土壌医との相談を推奨する旨を必ず含める。",
+  "notes": "その他注意点や追加情報"
+}
+
+堆肥情報: ${compostInfo}
+対象作物: ${crop}`;
+
+    const messages = [{
+      role: 'user',
+      content: [
+        {
+          type: mimeType === 'application/pdf' ? 'document' : 'image',
+          source: { type: 'base64', media_type: mimeType, data: base64 }
+        },
+        { type: 'text', text: 'この土壌診断シートを読み取り、指定のJSON形式で返答してください。' }
+      ]
+    }];
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, system: systemPrompt, messages })
+    });
+
+    const data = await res.json();
+    const text = data.content?.find(c => c.type === 'text')?.text || '';
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    renderResult(parsed, crop);
+
+  } catch (err) {
+    console.error(err);
+    showToast('❌ 読み取りに失敗しました。ファイル形式を確認してください。');
+    showDemoResult(crop);
+  } finally {
+    document.getElementById('loader').classList.remove('show');
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('読み取り失敗'));
+    r.readAsDataURL(file);
+  });
+}
+
+function getMimeType(file) {
+  if (file.type === 'application/pdf') return 'application/pdf';
+  if (file.type.startsWith('image/')) return file.type;
+  return 'image/jpeg';
+}
+
+// 結果表示
+function renderResult(data, crop) {
+  const statusLabel = { low: '<span class="tag-low">低め</span>', ok: '<span class="tag-ok">適正</span>', high: '<span class="tag-high">高め</span>' };
+
+  const itemsHtml = (data.items || []).map(item => `
+    <tr>
+      <td style="font-weight:600;color:var(--soil);">${item.name}</td>
+      <td>${item.value}${item.unit ? ' ' + item.unit : ''}</td>
+      <td>${statusLabel[item.status] || ''}</td>
+      <td style="color:var(--text-mid);font-size:0.8rem;">${item.comment || ''}</td>
+    </tr>
+  `).join('');
+
+  const html = `
+    <div class="section">
+      <div class="section-title">📊 読み取り結果（${crop}）</div>
+      <table class="extracted-table">
+        <thead><tr><th>項目</th><th>数値</th><th>判定</th><th>コメント</th></tr></thead>
+        <tbody>${itemsHtml}</tbody>
+      </table>
+    </div>
+
+    <div class="result-box consulting show">
+      <div class="result-title">🌿 AIによる所見・投入量の目安</div>
+      <div class="result-items">
+        <div class="result-item">
+          <div class="ri-label">土壌状態の総合評価</div>
+          <div class="ri-value">${data.summary || ''}</div>
+        </div>
+        <div class="result-item">
+          <div class="ri-label">牛ふん堆肥の投入目安</div>
+          <div class="ri-value">${data.recommendation || ''}</div>
+        </div>
+        ${data.notes ? `<div class="result-item">
+          <div class="ri-label">その他・注意事項</div>
+          <div class="ri-value">${data.notes}</div>
+        </div>` : ''}
+      </div>
+      <div class="caution-box">
+        ⚠️ <span>上記はAIによる参考情報です。実際の施用量は<strong>土壌医（丹波農商）にご相談の上</strong>、最終決定してください。</span>
+      </div>
+      <div style="margin-top:16px;">
+        <a href="tamba_compost_order.html" class="dl-btn" style="font-size:0.84rem;padding:10px 22px;">
+          🌱 発注フォームへ進む
+        </a>
+      </div>
+    </div>
+  `;
+  document.getElementById('soilResult').innerHTML = html;
+}
+
+// デモ用ダミー結果
+function showDemoResult(crop) {
+  document.getElementById('loader').classList.remove('show');
+  const demoData = {
+    items: [
+      { name: 'pH', value: '5.8', unit: '', status: 'low', comment: '目標6.0〜6.5よりやや低め。石灰資材の追加を検討' },
+      { name: 'EC', value: '0.18', unit: 'mS/cm', status: 'ok', comment: '塩類濃度は適正範囲内' },
+      { name: '有機物（腐植）', value: '2.1', unit: '%', status: 'low', comment: '目標3%以上。有機物補給が必要' },
+      { name: '窒素（N）', value: '12', unit: 'mg/100g', status: 'ok', comment: '概ね適正' },
+      { name: 'リン酸（P₂O₅）', value: '45', unit: 'mg/100g', status: 'ok', comment: '適正範囲' },
+      { name: 'カリ（K₂O）', value: '18', unit: 'mg/100g', status: 'low', comment: 'やや不足気味' },
+      { name: 'カルシウム（CaO）', value: '280', unit: 'mg/100g', status: 'ok', comment: '適正' },
+      { name: 'CEC', value: '14', unit: 'me/100g', status: 'ok', comment: '保肥力は標準的' },
+    ],
+    summary: 'pHがやや低く、有機物・カリが不足気味の土壌です。全体的に肥沃度を高めるフェーズにあります。継続的な有機物補給が重要です。',
+    recommendation: `【${crop}への投入目安】有機物が低いため、堆肥を積極的に投入することが有効です。目安として2〜3トン/10aの施用を検討してください（pHを考慮し珪カル資材の併用も推奨）。ただしこれはAIによる参考値です。実際の量は土壌医にご相談ください。`,
+    notes: 'ECは低めのため塩類障害のリスクは低く、堆肥を施用しやすい状態です。'
+  };
+  renderResult(demoData, crop || '作物未選択');
+  showToast('💡 デモ表示です。APIキーを設定すると実際のシートを読み取れます。', 6000);
+}
+
+// ===== PDF ダウンロード =====
+// 実際の運用では元PDFをサーバーに置いてリンクするのが最適。
+// ここでは「分析データの内容をHTMLで印刷用ページとして出力」する形で実装。
+function downloadCompostPDF() {
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+<title>堆肥分析結果｜丹波農商</title>
+<style>
+body{font-family:'Noto Sans JP',sans-serif;max-width:700px;margin:40px auto;color:#2a1f14;font-size:14px;}
+h1{font-size:18px;text-align:center;margin-bottom:4px;}
+.sub{text-align:center;font-size:11px;color:#5a4433;margin-bottom:24px;}
+table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+th{background:#3d2b1a;color:#c8a96e;padding:8px;text-align:center;}
+td{padding:8px 12px;border:1px solid #ddd;text-align:center;}
+tr:nth-child(even) td{background:#f9f5ee;}
+.footer{font-size:10px;color:#888;text-align:center;margin-top:30px;}
+@media print{body{margin:20px;}}
+</style></head><body>
+<h1>分析結果報告書｜牛ふん堆肥</h1>
+<div class="sub">株式会社丹波農商　／　分析機関：食環境衛生研究所　No.260119234　／　2026年2月2日</div>
+<table>
+<tr><th>分析項目</th><th>分析結果</th><th>単位</th></tr>
+<tr><td>水分</td><td>59.7</td><td>%現物</td></tr>
+<tr><td>灰分</td><td>16.8</td><td>%現物</td></tr>
+<tr><td>pH（25.6℃）</td><td>8.1</td><td>−</td></tr>
+<tr><td>電気伝導率（25.0℃）</td><td>4.0</td><td>mS/cm</td></tr>
+<tr><td>窒素全量</td><td>0.82</td><td>%現物</td></tr>
+<tr><td>りん酸全量</td><td>1.2</td><td>%現物</td></tr>
+<tr><td>加里全量</td><td>1.7</td><td>%現物</td></tr>
+<tr><td>有機炭素</td><td>13.2</td><td>%現物</td></tr>
+<tr><td>炭素窒素比（C/N比）</td><td>16.1</td><td>−</td></tr>
+<tr><td>腐植酸（酸不溶アルカリ可溶分）</td><td>5.5</td><td>%現物</td></tr>
+</table>
+<div class="footer">分析責任者：内山・伊藤｜分析方法：肥料等試験法（2024）</div>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+function downloadBacteriaPDF() {
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+<title>菌検査結果｜丹波農商</title>
+<style>
+body{font-family:'Noto Sans JP',sans-serif;max-width:700px;margin:40px auto;color:#2a1f14;font-size:14px;}
+h1{font-size:18px;text-align:center;margin-bottom:4px;}
+.sub{text-align:center;font-size:11px;color:#5a4433;margin-bottom:6px;}
+.notice{text-align:center;font-size:11px;color:#5a4433;margin-bottom:24px;padding:8px;background:#f8f4ee;border-radius:6px;}
+table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+th{background:#3d2b1a;color:#c8a96e;padding:8px;text-align:center;}
+td{padding:8px 12px;border:1px solid #ddd;text-align:center;}
+tr:nth-child(even) td{background:#f9f5ee;}
+.note{font-size:10px;color:#888;margin-top:6px;}
+.footer{font-size:10px;color:#888;text-align:center;margin-top:30px;}
+@media print{body{margin:20px;}}
+</style></head><body>
+<h1>有益菌検査結果｜牛ふん堆肥（完成品）</h1>
+<div class="sub">株式会社丹波農商　／　分析機関：食環境衛生研究所　No.260119233 b</div>
+<div class="sub">採材日：2026年1月17日　／　報告日：2026年2月2日</div>
+<div class="notice">生分解・4週間熟成・完成の3段階で品質確認を行い、出荷前に第三者機関による菌検査を実施しています。</div>
+<table>
+<tr><th>検査項目</th><th>検査結果</th><th>単位</th></tr>
+<tr><td>糸状菌（カビ）数</td><td>2.3×10⁴</td><td>cfu/g</td></tr>
+<tr><td>酵母数</td><td>陰性（−）</td><td>−</td></tr>
+<tr><td>乳酸菌数</td><td>7.2×10⁴</td><td>cfu/g</td></tr>
+<tr><td>芽胞菌数（バチルス属）</td><td>6.2×10⁵</td><td>cfu/g</td></tr>
+<tr><td>放線菌数</td><td>4.9×10⁶</td><td>cfu/g</td></tr>
+</table>
+<p class="note">※ 1.0×10²cfu/g未満の場合「陰性（−）」と表記</p>
+<div class="footer">検査責任者：山本獣医師（食環境衛生研究所）</div>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`);
+  win.document.close();
+}
+</script>
+</body>
+</html>
