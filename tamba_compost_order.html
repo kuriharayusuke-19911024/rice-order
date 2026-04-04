@@ -329,6 +329,11 @@ textarea { resize: vertical; min-height: 72px; }
 }
 .step-nav-btn.primary:hover { background: var(--soil-mid); }
 .step-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.step-nav-bottom {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 0 10px; margin-top: 16px;
+  border-top: 1px solid rgba(200,169,110,0.15);
+}
 
 /* ステップパネル */
 .step-panels {
@@ -441,6 +446,10 @@ textarea { resize: vertical; min-height: 72px; }
     </div>
   </div>
 </div>
+<div class="step-nav-bottom">
+  <span></span>
+  <button class="step-nav-btn primary" onclick="changeStep(1)">次へ →</button>
+</div>
 </div>
 
 <!-- STEP 2: 圃場・散布計画 -->
@@ -521,6 +530,10 @@ textarea { resize: vertical; min-height: 72px; }
     <div class="map-legend" id="mapLegend"></div>
   </div>
 </div>
+<div class="step-nav-bottom">
+  <button class="step-nav-btn" onclick="changeStep(-1)">← 戻る</button>
+  <button class="step-nav-btn primary" onclick="changeStep(1)">次へ →</button>
+</div>
 </div>
 
 <!-- STEP 3: 用途・作物 -->
@@ -572,6 +585,10 @@ textarea { resize: vertical; min-height: 72px; }
     </div>
   </div>
 </div>
+<div class="step-nav-bottom">
+  <button class="step-nav-btn" onclick="changeStep(-1)">← 戻る</button>
+  <button class="step-nav-btn primary" onclick="changeStep(1)">次へ →</button>
+</div>
 </div>
 
 <!-- STEP 4: 配送日・備考 -->
@@ -612,6 +629,10 @@ textarea { resize: vertical; min-height: 72px; }
     <textarea id="remarks" placeholder="ご要望、注意事項など自由にご記入ください。" style="min-height:90px;"></textarea>
   </div>
 </div>
+<div class="step-nav-bottom">
+  <button class="step-nav-btn" onclick="changeStep(-1)">← 戻る</button>
+  <button class="step-nav-btn primary" onclick="changeStep(1)">確認へ →</button>
+</div>
 </div>
 
 <!-- STEP 5: 確認・送信 -->
@@ -621,6 +642,7 @@ textarea { resize: vertical; min-height: 72px; }
   <div id="confirmSummary" style="font-size:0.86rem;line-height:1.9;color:var(--text);"></div>
 </div>
 <div class="submit-wrap">
+  <button class="step-nav-btn" onclick="changeStep(-1)" style="margin-bottom:16px;">← 戻って修正する</button>
   <button class="submit-btn" onclick="submitOrder()">発注内容を送信する 🌱</button>
   <p class="submit-note">送信後、担当者よりメールにてご連絡いたします。</p>
 </div>
