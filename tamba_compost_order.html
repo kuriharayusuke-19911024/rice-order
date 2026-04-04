@@ -25,73 +25,35 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: 'Noto Sans JP', sans-serif;
-  background: var(--white);
-  color: var(--text);
-  min-height: 100vh;
+  background: var(--white); color: var(--text); min-height: 100vh;
   background-image:
     radial-gradient(ellipse at 10% 0%, rgba(200,169,110,0.13) 0%, transparent 55%),
     radial-gradient(ellipse at 90% 100%, rgba(74,103,65,0.10) 0%, transparent 55%);
 }
 
-/* --- Header --- */
+/* ヘッダー */
 header {
-  background: var(--soil);
-  color: var(--rice);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  background: var(--soil); position: sticky; top: 0; z-index: 100;
   box-shadow: 0 2px 12px rgba(0,0,0,0.22);
 }
 .header-inner {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 14px 20px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  max-width: 860px; margin: 0 auto; padding: 14px 20px;
+  display: flex; align-items: center; gap: 14px;
 }
 .header-icon { font-size: 2rem; line-height: 1; }
 .header-text h1 {
-  font-family: 'Noto Serif JP', serif;
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--straw);
+  font-family: 'Noto Serif JP', serif; font-size: 1.15rem; font-weight: 700;
+  letter-spacing: 0.06em; color: var(--straw);
 }
-.header-text p {
-  font-size: 0.72rem;
-  color: rgba(240,230,200,0.65);
-  letter-spacing: 0.05em;
-  margin-top: 2px;
-}
-.header-admin-link {
-  margin-left: auto;
-  background: none;
-  border: 1px solid rgba(200,169,110,0.3);
-  color: rgba(200,169,110,0.5);
-  font-size: 0.7rem;
-  padding: 4px 10px;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: 'Noto Sans JP', sans-serif;
-  text-decoration: none;
-}
-.header-admin-link:hover { color: var(--straw); border-color: var(--straw); }
-.progress-bar { background: rgba(200,169,110,0.15); height: 4px; width: 100%; }
-.progress-fill {
-  height: 100%; background: linear-gradient(90deg, var(--leaf), var(--straw));
-  width: 0%; transition: width 0.4s ease; border-radius: 0 2px 2px 0;
-}
+.header-text p { font-size: 0.72rem; color: rgba(240,230,200,0.65); letter-spacing: 0.05em; margin-top: 2px; }
 
 main { max-width: 860px; margin: 0 auto; padding: 28px 16px 60px; }
 
-/* --- Section --- */
+/* セクション */
 .section {
   background: #fff; border-radius: 14px; box-shadow: var(--shadow);
   padding: 26px 24px; margin-bottom: 20px;
-  border: 1px solid rgba(200,169,110,0.18);
-  position: relative; overflow: hidden;
+  border: 1px solid rgba(200,169,110,0.18); position: relative; overflow: hidden;
 }
 .section::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
@@ -99,29 +61,28 @@ main { max-width: 860px; margin: 0 auto; padding: 28px 16px 60px; }
 }
 .section-title {
   font-family: 'Noto Serif JP', serif; font-size: 1rem; font-weight: 700;
-  color: var(--soil); margin-bottom: 18px;
-  display: flex; align-items: center; gap: 8px;
+  color: var(--soil); margin-bottom: 18px; display: flex; align-items: center; gap: 8px;
 }
 .section-title .num {
   background: var(--soil); color: var(--straw); font-size: 0.72rem;
-  font-family: 'Noto Sans JP', sans-serif; font-weight: 500;
-  border-radius: 50%; width: 22px; height: 22px;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  font-family: 'Noto Sans JP', sans-serif; font-weight: 500; border-radius: 50%;
+  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 
+/* フォーム共通 */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.span2 { grid-column: 1 / -1; }
 @media (max-width: 540px) {
   .form-grid { grid-template-columns: 1fr; }
-  .section { padding: 20px 16px; }
+  .section { padding: 20px 14px; }
 }
-.span2 { grid-column: 1 / -1; }
 .field { display: flex; flex-direction: column; gap: 5px; }
 label { font-size: 0.79rem; font-weight: 500; color: var(--text-mid); letter-spacing: 0.02em; }
 label .req { color: var(--accent); margin-left: 3px; font-size: 0.8em; }
-input[type="text"], input[type="number"], input[type="tel"],
-input[type="email"], input[type="date"], select, textarea {
+input[type="text"], input[type="number"], input[type="email"],
+input[type="date"], select, textarea {
   width: 100%; border: 1.5px solid rgba(139,94,60,0.22); border-radius: 8px;
-  padding: 11px 14px; font-size: 1rem; font-family: 'Noto Sans JP', sans-serif;
+  padding: 9px 12px; font-size: 0.9rem; font-family: 'Noto Sans JP', sans-serif;
   color: var(--text); background: var(--white);
   transition: border-color 0.2s, box-shadow 0.2s; outline: none;
 }
@@ -129,122 +90,175 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--leaf); box-shadow: 0 0 0 3px rgba(74,103,65,0.12);
 }
 textarea { resize: vertical; min-height: 72px; }
-
-/* Quick buttons */
-.quick-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.quick-btn {
-  border: 1.5px solid rgba(139,94,60,0.2); background: var(--white);
-  color: var(--text-mid); padding: 6px 14px; border-radius: 20px;
-  font-size: 0.82rem; font-family: 'Noto Sans JP', sans-serif;
-  cursor: pointer; transition: all 0.15s; user-select: none;
-}
-.quick-btn:hover { border-color: var(--leaf); color: var(--leaf); background: #f0f6ee; }
-.quick-btn:active { transform: scale(0.95); }
-
-/* Vegetable tags */
-.tag-select { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-.tag-item {
-  display: inline-flex; align-items: center; padding: 6px 14px;
-  border: 1.5px solid rgba(139,94,60,0.2); border-radius: 20px;
-  font-size: 0.85rem; cursor: pointer; background: var(--white);
-  color: var(--text-mid); transition: all 0.15s; user-select: none;
-}
-.tag-item.selected { border-color: var(--leaf); background: #f0f6ee; color: var(--leaf); font-weight: 500; }
-.tag-item:active { transform: scale(0.95); }
-
-/* Radio / Check */
 .check-row, .radio-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 2px; }
 .check-item, .radio-item { display: flex; align-items: center; gap: 7px; cursor: pointer; }
 .check-item input[type="checkbox"], .radio-item input[type="radio"] {
-  width: 18px; height: 18px; accent-color: var(--leaf); cursor: pointer; flex-shrink: 0;
+  width: 17px; height: 17px; accent-color: var(--leaf); cursor: pointer; flex-shrink: 0;
 }
-.check-item span, .radio-item span { font-size: 0.9rem; color: var(--text); user-select: none; }
+.check-item span, .radio-item span { font-size: 0.88rem; color: var(--text); user-select: none; }
 
-/* Service type */
-.svc-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.svc-row input[type="radio"] { display: none; }
-.svc-row label {
-  display: flex; align-items: center; gap: 6px; padding: 10px 16px;
-  border: 2px solid rgba(139,94,60,0.18); border-radius: 10px;
-  cursor: pointer; background: var(--white); transition: all 0.2s;
-  color: var(--text-mid); font-size: 0.85rem; font-weight: 500; user-select: none;
-}
-.svc-row label .icon { font-size: 1.2rem; }
-.svc-row input[type="radio"]:checked + label {
-  border-color: var(--leaf); background: #f0f6ee; color: var(--leaf);
-  box-shadow: 0 2px 8px rgba(74,103,65,0.12);
-}
-
-/* Field card */
+/* ===============================
+   圃場カード
+=============================== */
 .field-card {
-  background: #faf7f0; border: 1.5px solid rgba(200,169,110,0.25);
-  border-radius: 12px; padding: 20px; margin-bottom: 14px;
+  border: 1.5px solid rgba(139,94,60,0.20); border-radius: 12px;
+  padding: 16px; margin-bottom: 12px; background: #fdfaf5;
+  position: relative; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
-.field-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.field-card-title {
-  font-family: 'Noto Serif JP', serif; font-size: 0.95rem; font-weight: 700;
-  color: var(--soil); display: flex; align-items: center; gap: 8px;
+.field-card.pinning {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200,90,42,0.14);
 }
-.field-card-title .card-num {
-  background: var(--leaf); color: #fff; font-size: 0.7rem;
-  font-family: 'Noto Sans JP', sans-serif; border-radius: 50%;
-  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
-}
-.remove-field-btn {
-  background: none; border: 1px solid rgba(200,100,42,0.3); color: var(--accent);
-  font-size: 0.78rem; padding: 4px 12px; border-radius: 16px; cursor: pointer;
-  transition: all 0.15s; font-family: 'Noto Sans JP', sans-serif;
-}
-.remove-field-btn:hover { background: rgba(200,90,42,0.08); }
-.field-card .form-grid { gap: 12px; }
-.add-field-btn {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  width: 100%; padding: 14px; border: 2px dashed rgba(74,103,65,0.3);
-  border-radius: 12px; background: rgba(74,103,65,0.04); color: var(--leaf);
-  font-size: 0.9rem; font-weight: 500; font-family: 'Noto Sans JP', sans-serif;
-  cursor: pointer; transition: all 0.15s;
-}
-.add-field-btn:hover { background: rgba(74,103,65,0.08); border-color: var(--leaf); }
+.field-card.pinned { border-color: var(--leaf); background: #f4f9f2; }
 
-/* Map */
+.field-card-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+}
+.field-badge {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--soil); color: var(--straw);
+  font-size: 0.82rem; font-weight: 700; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+.field-card-name-input {
+  flex: 1; border: none; border-bottom: 1.5px solid rgba(139,94,60,0.18);
+  border-radius: 0; padding: 4px 2px; font-size: 0.92rem; font-weight: 600;
+  color: var(--soil); background: transparent; outline: none;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.field-card-name-input:focus { border-bottom-color: var(--leaf); }
+.field-card-name-input::placeholder { color: #b09070; font-weight: 400; }
+.field-card-pin-status {
+  font-size: 0.72rem; color: var(--leaf); font-weight: 600;
+  white-space: nowrap; display: none;
+}
+.field-card.pinned .field-card-pin-status { display: block; }
+
+.field-card-body {
+  display: grid; grid-template-columns: 100px 80px; gap: 10px;
+  margin-bottom: 14px;
+}
+
+/* 作業形態 ピル選択 */
+.service-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.service-pills input[type="radio"] { display: none; }
+.service-pills label {
+  padding: 5px 12px; border: 1.5px solid rgba(139,94,60,0.22); border-radius: 20px;
+  cursor: pointer; font-size: 0.76rem; font-weight: 500;
+  color: var(--text-mid); background: #fff;
+  transition: all 0.15s; user-select: none; line-height: 1.5;
+}
+.service-pills input[type="radio"]:checked + label {
+  border-color: var(--leaf); background: #e6f4e4; color: var(--leaf); font-weight: 600;
+}
+
+/* ピン操作エリア */
+.pin-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.pin-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 14px; border: 1.5px dashed rgba(139,94,60,0.35); border-radius: 8px;
+  cursor: pointer; background: transparent; color: var(--clay);
+  font-size: 0.76rem; font-family: 'Noto Sans JP', sans-serif;
+  transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+}
+.pin-btn:hover { background: #f5ece0; border-color: var(--clay); }
+.pin-btn.active {
+  border-style: solid; border-color: var(--accent); color: var(--accent);
+  background: #fdf0ea; animation: pulse-btn 1.2s ease-in-out infinite;
+}
+@keyframes pulse-btn {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200,90,42,0.25); }
+  50% { box-shadow: 0 0 0 5px rgba(200,90,42,0); }
+}
+.pin-addr { font-size: 0.72rem; color: var(--leaf); min-height: 16px; line-height: 1.4; }
+
+.remove-field-btn {
+  position: absolute; top: 12px; right: 12px;
+  background: none; border: none; color: #c0a090; font-size: 1rem;
+  cursor: pointer; padding: 3px 7px; border-radius: 50%;
+  transition: color 0.15s, background 0.15s; line-height: 1;
+}
+.remove-field-btn:hover { color: var(--accent); background: #fde8df; }
+
+/* 合計バー */
+.fields-total-row {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  margin-top: 4px; padding: 10px 14px; background: #f5f0e8; border-radius: 8px;
+  font-size: 0.85rem; color: var(--soil);
+}
+.fields-total-row strong { font-size: 1.1rem; font-weight: 700; color: var(--leaf); }
+
+/* 地図エリア */
+.map-section { margin-top: 24px; }
+.map-section-label {
+  font-size: 0.84rem; font-weight: 600; color: var(--soil); margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
 .map-container {
-  border-radius: 10px; overflow: hidden;
-  border: 1.5px solid rgba(139,94,60,0.18); height: 380px;
+  border-radius: 12px; overflow: hidden;
+  border: 1.5px solid rgba(139,94,60,0.20); height: 380px;
   background: var(--sky); position: relative;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.map-container.pinning-mode {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200,90,42,0.14);
 }
 #map { width: 100%; height: 100%; }
-.map-hint {
-  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-  background: rgba(61,43,26,0.82); color: var(--rice); font-size: 0.74rem;
-  padding: 5px 14px; border-radius: 20px; pointer-events: none; white-space: nowrap; z-index: 5;
+.map-banner {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: #fff; font-size: 0.8rem; font-weight: 600;
+  padding: 7px 20px; border-radius: 20px; pointer-events: none;
+  white-space: nowrap; opacity: 0; transition: opacity 0.25s;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.22); z-index: 10;
 }
+.map-banner.show { opacity: 1; }
+.map-idle-hint {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(61,43,26,0.78); color: var(--rice);
+  font-size: 0.73rem; padding: 5px 14px; border-radius: 20px;
+  pointer-events: none; white-space: nowrap;
+}
+.map-legend {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; min-height: 24px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.74rem; color: var(--text-mid);
+  background: #f5f0e8; padding: 3px 9px; border-radius: 12px;
+}
+.legend-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+
+/* API notice */
 .api-notice {
   background: #fffbea; border: 1px solid #e8d06a; border-radius: 8px;
-  padding: 10px 14px; font-size: 0.78rem; color: #7a6020; margin-bottom: 16px;
-  display: flex; gap: 8px; align-items: flex-start;
+  padding: 10px 14px; font-size: 0.78rem; color: #7a6020;
+  margin-bottom: 12px; display: flex; gap: 8px; align-items: flex-start;
 }
-.pin-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
-.pin-item {
-  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
-  background: #f5f0e8; border-radius: 8px; font-size: 0.82rem; color: var(--text);
-}
-.pin-item .pin-color {
-  width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
-  border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-.pin-item .pin-text { flex: 1; }
-.pin-remove { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.9rem; padding: 2px 6px; }
 
-/* Date range */
+/* 追加ボタン */
+.add-field-btn {
+  width: 100%; margin-top: 4px; padding: 11px;
+  border: 1.5px dashed var(--clay); border-radius: 10px;
+  background: transparent; color: var(--clay);
+  font-size: 0.84rem; font-family: 'Noto Sans JP', sans-serif;
+  cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.add-field-btn:hover { background: #f5ece0; color: var(--soil); }
+
+/* 日付 */
 .date-range { display: flex; align-items: center; gap: 10px; }
 .date-range input { flex: 1; }
 .date-range span { font-size: 0.85rem; color: var(--text-mid); flex-shrink: 0; }
 
-/* Submit */
+/* 送信 */
 .submit-wrap { text-align: center; margin-top: 8px; }
 .submit-btn {
-  background: linear-gradient(135deg, var(--soil), var(--soil-mid)); color: var(--straw);
-  border: none; border-radius: 40px; padding: 16px 56px; font-size: 1.05rem;
+  background: linear-gradient(135deg, var(--soil), var(--soil-mid));
+  color: var(--straw); border: none; border-radius: 40px;
+  padding: 15px 52px; font-size: 1rem;
   font-family: 'Noto Serif JP', serif; font-weight: 700; letter-spacing: 0.1em;
   cursor: pointer; transition: transform 0.18s, box-shadow 0.18s;
   box-shadow: 0 6px 20px rgba(61,43,26,0.28); position: relative; overflow: hidden;
@@ -255,10 +269,9 @@ textarea { resize: vertical; min-height: 72px; }
 }
 .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(61,43,26,0.32); }
 .submit-btn:active { transform: scale(0.97); }
-.submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 .submit-note { font-size: 0.74rem; color: var(--text-mid); margin-top: 10px; }
 
-/* Toast */
+/* トースト */
 .toast {
   position: fixed; bottom: 28px; left: 50%;
   transform: translateX(-50%) translateY(80px);
@@ -269,9 +282,9 @@ textarea { resize: vertical; min-height: 72px; }
 }
 .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
-/* Loader */
+/* ローダー */
 .loader-overlay {
-  position: fixed; inset: 0; background: rgba(253,250,245,0.85);
+  position: fixed; inset: 0; background: rgba(253,250,245,0.88);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.25s;
 }
@@ -284,41 +297,69 @@ textarea { resize: vertical; min-height: 72px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loader-text { font-size: 0.85rem; color: var(--text-mid); }
 
-/* Confirmation modal */
-.confirm-overlay {
-  position: fixed; inset: 0; background: rgba(42,31,20,0.6);
-  z-index: 300; display: none; align-items: center; justify-content: center;
+/* ===== ステップナビゲーション ===== */
+.step-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: #fff;
+  border-bottom: 1px solid rgba(200,169,110,0.15);
+  position: sticky; top: 57px; z-index: 90;
+  box-shadow: 0 2px 8px rgba(61,43,26,0.06);
 }
-.confirm-overlay.show { display: flex; }
-.confirm-dialog {
-  background: #fff; border-radius: 16px; padding: 28px; width: 90%; max-width: 520px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 80vh; overflow-y: auto;
+.step-dots {
+  display: flex; gap: 6px; align-items: center;
 }
-.confirm-dialog h2 {
-  font-family: 'Noto Serif JP', serif; font-size: 1.1rem; color: var(--soil); margin-bottom: 20px;
-  text-align: center;
+.step-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(139,94,60,0.2); transition: all 0.25s; cursor: pointer;
 }
-.confirm-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-bottom: 20px; }
-.confirm-table th {
-  text-align: left; padding: 8px 10px; color: var(--text-mid); font-weight: 500;
-  background: #faf7f0; border-bottom: 1px solid rgba(200,169,110,0.2); width: 30%;
+.step-dot.active { background: var(--leaf); width: 24px; border-radius: 4px; }
+.step-dot.done { background: rgba(74,103,65,0.4); }
+.step-label {
+  font-size: 0.78rem; font-weight: 600; color: var(--soil);
+  font-family: 'Noto Serif JP', serif;
 }
-.confirm-table td { padding: 8px 10px; border-bottom: 1px solid rgba(200,169,110,0.1); }
-.confirm-btns { display: flex; gap: 12px; justify-content: center; }
-.confirm-btns button {
-  padding: 12px 32px; border-radius: 8px; font-size: 0.95rem;
-  font-family: 'Noto Sans JP', sans-serif; font-weight: 500; cursor: pointer; transition: opacity 0.2s;
+.step-nav-btn {
+  background: none; border: 1.5px solid rgba(139,94,60,0.25); border-radius: 8px;
+  padding: 6px 14px; font-size: 0.78rem; color: var(--clay);
+  font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.15s;
 }
-.btn-confirm { background: var(--soil); color: var(--straw); border: none; }
-.btn-cancel { background: none; border: 1.5px solid rgba(139,94,60,0.3); color: var(--text-mid); }
-.btn-confirm:hover, .btn-cancel:hover { opacity: 0.85; }
+.step-nav-btn:hover { background: #f5ece0; }
+.step-nav-btn.primary {
+  background: var(--soil); color: var(--straw); border-color: var(--soil);
+}
+.step-nav-btn.primary:hover { background: var(--soil-mid); }
+.step-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-@media (max-width: 480px) {
-  .svc-row { flex-direction: column; }
-  .svc-row label { justify-content: center; }
-  .date-range { flex-direction: column; gap: 6px; }
-  .date-range input { width: 100%; }
+/* ステップパネル */
+.step-panels {
+  overflow: hidden; position: relative;
 }
+.step-panel {
+  display: none;
+  animation: fadeIn 0.25s ease;
+}
+.step-panel.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+@keyframes fadeInLeft { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: none; } }
+.step-panel.slide-left { animation: fadeInLeft 0.25s ease; }
+
+/* 管理者ログインモーダル */
+.admin-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 500; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.admin-modal-overlay.show { opacity: 1; pointer-events: all; }
+.admin-modal-box {
+  background: var(--white); border-radius: 16px; padding: 32px 28px;
+  width: 90%; max-width: 340px; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.admin-modal-box h2 {
+  font-family: 'Noto Serif JP', serif; font-size: 1.1rem; color: var(--soil);
+  margin-bottom: 6px;
+}
+.admin-modal-box p { font-size: 0.78rem; color: var(--text-mid); margin-bottom: 18px; }
 </style>
 </head>
 <body>
@@ -330,52 +371,218 @@ textarea { resize: vertical; min-height: 72px; }
       <h1>堆肥発注フォーム</h1>
       <p>丹波農商 ／ 牛ふん堆肥 オンライン発注</p>
     </div>
-    <a class="header-admin-link" href="tamba_soil_tool.html">土壌ツール</a>
-    <a class="header-admin-link" href="tamba_admin.html">管理</a>
+    <button onclick="openAdminModal()"
+      style="margin-left:auto;background:rgba(255,255,255,0.1);border:1px solid rgba(200,169,110,0.3);
+        color:rgba(200,169,110,0.6);padding:5px 12px;border-radius:20px;font-size:0.72rem;
+        cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all 0.15s;"
+      onmouseenter="this.style.background='rgba(255,255,255,0.18)'"
+      onmouseleave="this.style.background='rgba(255,255,255,0.1)'">管理者</button>
+    <a href="tamba_soil_tool.html" style="background:rgba(255,255,255,0.1);border:1px solid rgba(200,169,110,0.3);
+        color:rgba(200,169,110,0.6);padding:5px 12px;border-radius:20px;font-size:0.72rem;
+        cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all 0.15s;text-decoration:none;margin-left:6px;"
+      onmouseenter="this.style.background='rgba(255,255,255,0.18)'"
+      onmouseleave="this.style.background='rgba(255,255,255,0.1)'">土壌ツール</a>
   </div>
-  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
 </header>
+
+<!-- 管理者ログインモーダル -->
+<div class="admin-modal-overlay" id="adminModal">
+  <div class="admin-modal-box">
+    <h2>🔐 管理者ログイン</h2>
+    <p>管理者パスワードを入力してください</p>
+    <input type="password" id="adminPwInput" placeholder="••••" maxlength="10"
+      style="width:100%;border:2px solid rgba(139,94,60,0.2);border-radius:10px;padding:12px;
+        font-size:1.2rem;text-align:center;letter-spacing:0.3em;outline:none;margin-bottom:12px;
+        font-family:'Noto Sans JP',sans-serif;"
+      onkeydown="if(event.key==='Enter')checkAdminPw()">
+    <button onclick="checkAdminPw()"
+      style="width:100%;padding:12px;background:linear-gradient(135deg,#3d2b1a,#5c3d22);
+        color:#c8a96e;border:none;border-radius:10px;font-size:0.9rem;
+        font-family:'Noto Serif JP',serif;font-weight:700;cursor:pointer;margin-bottom:8px;">
+      管理画面へ進む
+    </button>
+    <button onclick="closeAdminModal()"
+      style="width:100%;padding:8px;background:none;border:none;color:var(--text-mid);
+        font-size:0.8rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">キャンセル</button>
+    <div id="adminPwError" style="color:#c85a2a;font-size:0.78rem;margin-top:6px;min-height:18px;"></div>
+  </div>
+</div>
 
 <main>
 
-<!-- 1. Customer info -->
+<!-- ステップナビ -->
+<div class="step-nav" id="stepNav">
+  <button class="step-nav-btn" id="prevBtn" onclick="changeStep(-1)" disabled>← 戻る</button>
+  <div style="text-align:center;">
+    <div class="step-label" id="stepLabel">基本情報</div>
+    <div class="step-dots" id="stepDots"></div>
+  </div>
+  <button class="step-nav-btn primary" id="nextBtn" onclick="changeStep(1)">次へ →</button>
+</div>
+
+<div class="step-panels" id="stepPanels">
+
+<!-- STEP 1: 基本情報 -->
+<div class="step-panel active" data-step="0">
 <div class="section">
-  <div class="section-title"><span class="num">1</span> お客様情報</div>
+  <div class="section-title"><span class="num">1</span> 基本情報</div>
   <div class="form-grid">
     <div class="field">
       <label>お名前<span class="req">*</span></label>
-      <input type="text" id="name" placeholder="例：山田 太郎" required autocomplete="name">
+      <input type="text" id="name" placeholder="例：山田 太郎" required>
     </div>
     <div class="field">
-      <label>電話番号<span class="req">*</span></label>
-      <input type="tel" id="phone" placeholder="例：079-000-0000" autocomplete="tel">
+      <label>電話番号</label>
+      <input type="text" id="phone" placeholder="例：079-000-0000">
     </div>
     <div class="field span2">
       <label>メールアドレス<span class="req">*</span></label>
-      <input type="email" id="email" placeholder="例：yamada@example.com" required autocomplete="email">
-      <span style="font-size:0.72rem;color:var(--text-mid);margin-top:2px;">確認メールをこのアドレスにお送りします</span>
+      <input type="email" id="email" placeholder="例：yamada@example.com" required>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- STEP 2: 圃場・散布計画 -->
+<div class="step-panel" data-step="1">
+<div class="section">
+  <div class="section-title"><span class="num">2</span> 圃場ごとの散布計画（最大10か所）</div>
+  <p style="font-size:0.78rem;color:var(--text-mid);margin-bottom:16px;">
+    圃場ごとに数量・作業形態を入力し、住所を入力すると地図に自動でピンが立ちます。
+  </p>
+
+  <div id="fieldCards"></div>
+
+  <!-- 朝来市チェック -->
+  <div id="asagoAlert" style="display:none;margin:8px 0;padding:9px 14px;background:#fff8e6;
+    border:1.5px solid #e8c84a;border-radius:8px;font-size:0.78rem;color:#7a5c00;display:none;">
+    🏔️ 朝来市エリアを検出しました。配送割増（＋¥1,000/t）が自動適用されます。
+  </div>
+  <div style="margin:10px 0 4px;display:flex;align-items:center;gap:8px;">
+    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:0.82rem;color:var(--text-mid);">
+      <input type="checkbox" id="asagoCheck" style="width:16px;height:16px;accent-color:var(--leaf);"
+        onchange="updateTotal()">
+      <span>🏔️ 朝来市エリアへの配送（＋¥1,000/t）</span>
+    </label>
+    <span style="font-size:0.7rem;color:var(--text-mid);">※住所から自動判別されます</span>
+  </div>
+
+  <!-- 単価参考表 -->
+  <div style="margin:16px 0 4px;padding:12px 16px;background:#f8f4ee;border-radius:10px;border:1px solid rgba(200,169,110,0.2);">
+    <div style="font-size:0.76rem;font-weight:700;color:var(--soil);margin-bottom:8px;">💴 単価の目安（税込・1トンあたり）</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;">
+      <div style="background:#fff;border-radius:7px;padding:7px 10px;border:1px solid rgba(200,169,110,0.15);">
+        <div style="font-size:0.68rem;color:var(--text-mid);">🚜 フルサービス</div>
+        <div style="font-size:0.94rem;font-weight:700;color:var(--soil);">¥7,500<span style="font-size:0.68rem;color:var(--clay);">/t</span></div>
+      </div>
+      <div style="background:#fff;border-radius:7px;padding:7px 10px;border:1px solid rgba(200,169,110,0.15);">
+        <div style="font-size:0.68rem;color:var(--text-mid);">🚛 ダンプ下ろし</div>
+        <div style="font-size:0.94rem;font-weight:700;color:var(--soil);">¥5,200<span style="font-size:0.68rem;color:var(--clay);">/t</span></div>
+      </div>
+      <div style="background:#fff;border-radius:7px;padding:7px 10px;border:1px solid rgba(200,169,110,0.15);">
+        <div style="font-size:0.68rem;color:var(--text-mid);">👤 積込み付き</div>
+        <div style="font-size:0.94rem;font-weight:700;color:var(--soil);">¥4,200<span style="font-size:0.68rem;color:var(--clay);">/t</span></div>
+      </div>
+      <div style="background:#fff;border-radius:7px;padding:7px 10px;border:1px solid rgba(200,169,110,0.15);">
+        <div style="font-size:0.68rem;color:var(--text-mid);">🚗 自分で取りに来る</div>
+        <div style="font-size:0.94rem;font-weight:700;color:var(--soil);">¥3,000<span style="font-size:0.68rem;color:var(--clay);">/t</span></div>
+      </div>
+    </div>
+    <div style="font-size:0.68rem;color:var(--text-mid);margin-top:6px;">※ 10km超は距離割増あり。4.5トン未満は少量割増+20%。</div>
+  </div>
+
+  <div class="fields-total-row" style="flex-direction:column;align-items:stretch;gap:8px;">
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;">
+      <span>合計数量：</span>
+      <strong id="totalQty">0.0</strong>
+      <span>トン</span>
+    </div>
+    <div id="priceBreakdown" style="display:none;border-top:1px solid rgba(139,94,60,0.15);padding-top:8px;"></div>
+    <div id="minLotWarning" style="display:none;font-size:0.78rem;color:var(--accent);background:#fdf0ea;border-radius:6px;padding:8px 12px;"></div>
+    <div id="distanceWarning" style="display:none;font-size:0.78rem;color:#1a6b8a;background:#e8f4fa;border-radius:6px;padding:8px 12px;"></div>
+  </div>
+
+  <button type="button" class="add-field-btn" id="addFieldBtn" onclick="addField()">
+    ＋ 圃場を追加する
+  </button>
+
+  <!-- 地図 -->
+  <div class="map-section">
+    <div class="map-section-label">🗺️ 配送先マップ</div>
+    <p style="font-size:0.76rem;color:var(--text-mid);margin-bottom:10px;">住所を入力すると自動でピンが立ちます。地図を直接タップして修正することもできます。</p>
+    <div class="api-notice" style="display:none;">
+      ⚠️ <span>Google Maps APIキー設定済み</span>
+    </div>
+    <div class="map-container" id="mapContainer">
+      <div id="map"></div>
+      <div class="map-banner" id="mapBanner">地図をタップして圃場の位置を指定</div>
+      <div class="map-idle-hint" id="mapIdleHint">📍 住所を入力するか、圃場の「地図で直接指定」を押してタップ</div>
+    </div>
+    <div class="map-legend" id="mapLegend"></div>
+  </div>
+</div>
+</div>
+
+<!-- STEP 3: 用途・作物 -->
+<div class="step-panel" data-step="2">
+<div class="section">
+  <div class="section-title"><span class="num">3</span> 用途・作物</div>
+  <div class="form-grid">
+    <div class="field span2">
+      <label>用途<span class="req">*</span></label>
+      <div class="radio-row">
+        <label class="radio-item"><input type="radio" name="usage" value="野菜" id="use-veg" checked><span>野菜</span></label>
+        <label class="radio-item"><input type="radio" name="usage" value="水稲" id="use-rice"><span>水稲</span></label>
+        <label class="radio-item"><input type="radio" name="usage" value="果樹" id="use-fruit"><span>果樹</span></label>
+        <label class="radio-item"><input type="radio" name="usage" value="その他" id="use-other"><span>その他</span></label>
+      </div>
+    </div>
+    <div class="field span2" id="veg-field">
+      <label>野菜の種類（自由入力）</label>
+      <input type="text" id="vegType" placeholder="例：黒豆、にんじん、玉ねぎ">
+    </div>
+    <div class="field span2">
+      <label>前作情報</label>
+      <textarea id="prevCrop" placeholder="例：前作は大豆。昨年は牛ふん堆肥を1トン施用。"></textarea>
     </div>
   </div>
 </div>
 
-<!-- 2. Field cards -->
+<!-- 品質オプション -->
 <div class="section">
-  <div class="section-title"><span class="num">2</span> 圃場ごとの発注内容</div>
-  <p style="font-size:0.8rem;color:var(--text-mid);margin-bottom:14px;">圃場（田んぼ・畑）ごとに数量やサービスを設定できます。複数ある場合は「＋ 圃場を追加」を押してください。</p>
-  <div id="field-cards"></div>
-  <button type="button" class="add-field-btn" onclick="addFieldCard()">＋ 圃場を追加</button>
+  <div class="section-title"><span class="num">4</span> 品質オプション</div>
+  <div class="form-grid">
+    <div class="field">
+      <label>有機JAS対応</label>
+      <div class="check-row" style="margin-top:8px;">
+        <label class="check-item">
+          <input type="checkbox" id="organicJAS">
+          <span>有機JAS対応品を希望</span>
+        </label>
+      </div>
+    </div>
+    <div class="field">
+      <label>珪カル資材</label>
+      <div class="check-row" style="margin-top:8px;">
+        <label class="check-item">
+          <input type="checkbox" id="keical">
+          <span>珪カル資材を追加希望</span>
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
 </div>
 
-<!-- 3. Preferred date range -->
+<!-- STEP 4: 配送日・備考 -->
+<div class="step-panel" data-step="3">
 <div class="section">
-  <div class="section-title"><span class="num">3</span> 散布希望期間</div>
+  <div class="section-title"><span class="num">5</span> 配送希望期間</div>
+  <p style="font-size:0.82rem;color:var(--text-mid);line-height:1.7;margin-bottom:14px;padding:12px 14px;background:#f8f4ee;border-radius:8px;border-left:3px solid var(--straw);">
+    天候の兼ね合いや、堆肥の製造スケジュールの都合により、1週間から2週間ほどの期間をいただけますと幸いです。
+  </p>
   <div class="field">
-    <label>希望開始日〜終了日（1〜2週間の幅でご指定ください）<span class="req">*</span></label>
-    <div class="quick-btns" style="margin-bottom:10px;">
-      <button type="button" class="quick-btn" id="date-1w">1週間後から2週間</button>
-      <button type="button" class="quick-btn" id="date-2w">2週間後から2週間</button>
-      <button type="button" class="quick-btn" id="date-1m">1ヶ月後から2週間</button>
-    </div>
+    <label>希望開始日〜終了日<span class="req">*</span></label>
     <div class="date-range">
       <input type="date" id="dateFrom" required>
       <span>〜</span>
@@ -385,341 +592,914 @@ textarea { resize: vertical; min-height: 72px; }
   </div>
 </div>
 
-<!-- 4. Map -->
-<div class="section" id="map-section">
-  <div class="section-title"><span class="num">4</span> 散布先（地図で複数ピン指定）</div>
-  <p style="font-size:0.78rem;color:var(--text-mid);margin-bottom:10px;">
-    地図をタップ／クリックして、各圃場の場所にピンを立ててください。<br>
-    ピンをクリックすると削除できます。
-  </p>
-  <div class="api-notice" id="api-notice" style="display:none;">
-    ⚠️ <span>Google Maps の読み込みに失敗しました。APIキーの設定を確認してください。</span>
-  </div>
-  <div class="map-container">
-    <div id="map"></div>
-    <div class="map-hint" id="map-hint">📍 タップしてピンを追加</div>
-  </div>
-  <div class="pin-list" id="pin-list"></div>
-  <div class="field" style="margin-top:12px;">
-    <label>住所・補足（任意）</label>
-    <input type="text" id="addressNote" placeholder="例：○○市○○町 ○番地付近、入口は東側">
-  </div>
-</div>
-
-<!-- 5. Remarks -->
 <div class="section">
-  <div class="section-title"><span class="num">5</span> その他・備考</div>
+  <div class="section-title"><span class="num">6</span> その他・備考</div>
+  <div class="field" style="margin-bottom:14px;">
+    <label>ご相談・オプション</label>
+    <div class="check-row" style="margin-top:8px;flex-direction:column;gap:12px;">
+      <label class="check-item" style="align-items:flex-start;">
+        <input type="checkbox" id="consultSoilDoctor" style="margin-top:2px;">
+        <span>🧑‍🌾 土壌医検定2級資格保持者と相談したい</span>
+      </label>
+      <label class="check-item" style="align-items:flex-start;">
+        <input type="checkbox" id="consultQty">
+        <span>📊 相談した上で数量を決めたい</span>
+      </label>
+    </div>
+  </div>
   <div class="field">
+    <label>備考・ご要望（自由記入）</label>
     <textarea id="remarks" placeholder="ご要望、注意事項など自由にご記入ください。" style="min-height:90px;"></textarea>
   </div>
 </div>
-
-<div class="submit-wrap">
-  <button class="submit-btn" id="submit-btn" onclick="submitOrder()">発注内容を送信する 🌱</button>
-  <p class="submit-note">送信後、確認メールが届きます。担当者よりご連絡いたします。</p>
 </div>
+
+<!-- STEP 5: 確認・送信 -->
+<div class="step-panel" data-step="4">
+<div class="section">
+  <div class="section-title">✅ 発注内容の確認</div>
+  <div id="confirmSummary" style="font-size:0.86rem;line-height:1.9;color:var(--text);"></div>
+</div>
+<div class="submit-wrap">
+  <button class="submit-btn" onclick="submitOrder()">発注内容を送信する 🌱</button>
+  <p class="submit-note">送信後、担当者よりメールにてご連絡いたします。</p>
+</div>
+</div>
+
+</div><!-- /step-panels -->
 
 </main>
-
-<!-- Confirmation dialog -->
-<div class="confirm-overlay" id="confirm-overlay">
-  <div class="confirm-dialog">
-    <h2>📋 発注内容の確認</h2>
-    <div id="confirm-body"></div>
-    <div class="confirm-btns">
-      <button class="btn-cancel" onclick="closeConfirm()">修正する</button>
-      <button class="btn-confirm" onclick="doSubmit()">この内容で送信する</button>
-    </div>
-  </div>
-</div>
 
 <div class="toast" id="toast"></div>
 <div class="loader-overlay" id="loader">
   <div class="loader-spinner"></div>
-  <div class="loader-text" id="loader-msg">送信中です...</div>
+  <div class="loader-text">送信中です...</div>
 </div>
 
+<!-- ===== JS ===== -->
 <script>
-// =======================================
-// Config
-// =======================================
-var MAPS_API_KEY = 'AIzaSyDU1llWB4bNzM_N2ZZE7vWVV5W-2Ag2bfk';
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbyC7k3wKrr2p_UJRBzgG0dVi7hOOjWpjLHdPZBBx4jJ47eS-6h9ZnIeXKtHe-kNzmmVIA/exec';
-// =======================================
+const FORMSPREE_URL = 'https://formspree.io/f/YOUR_FORM_ID';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjf4FYGdfLbmuGIhgFVOMZDylT0w7ws_vPIYYKJLWZJR_IWZPlTXHo2p2l6SH9FmGdkw/exec';
+const NOTIFY_EMAILS = ['tamba.nosho@gmail.com']; // 2つ目は後ほど追加
 
-var PIN_COLORS = ['#c85a2a','#4a6741','#3d6ba8','#a8443d','#7a5bbf','#b8860b','#2a8c8c','#c44daa','#5a8c2a','#8b4513'];
-var map = null;
-var markers = [];
-var pinData = [];
-var pendingPayload = null;
+// 圃場ごとのピンカラー（10色）
+const PIN_COLORS = [
+  '#c85a2a','#4a6741','#1a6b8a','#7a4098','#b5860d',
+  '#1a7a5e','#8a1a1a','#2a5a8a','#5c6b1a','#3d2b1a'
+];
 
+let map = null;
+let activePinIdx = null;   // ピン指定モードの圃場ID
+let fieldSeq = 0;          // 単調増加するID
+let fieldIds = [];         // 現在表示中の圃場IDリスト
+const fieldData = {};      // { [id]: { marker, lat, lng, address } }
+
+// ===== Google Maps 初期化 =====
 function initMap() {
-  var center = { lat: 35.1767, lng: 135.0340 };
   map = new google.maps.Map(document.getElementById('map'), {
-    center: center, zoom: 12, mapTypeId: 'hybrid',
-    gestureHandling: 'greedy', disableDefaultUI: false,
+    center: { lat: 35.1767, lng: 135.0340 }, zoom: 12,
+    mapTypeId: 'hybrid', gestureHandling: 'greedy',
     zoomControl: true, mapTypeControl: false, streetViewControl: false, fullscreenControl: true,
   });
-  google.maps.event.addListener(map, 'click', function(e) {
-    addPin(e.latLng.lat(), e.latLng.lng());
-  });
-}
 
-function addPin(lat, lng) {
-  var idx = markers.length;
-  var color = PIN_COLORS[idx % PIN_COLORS.length];
-  var marker = new google.maps.Marker({
-    position: { lat: lat, lng: lng }, map: map,
-    animation: google.maps.Animation.DROP,
-    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 12, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 },
-    label: { text: String(idx + 1), color: '#fff', fontSize: '11px', fontWeight: 'bold' }
-  });
-  google.maps.event.addListener(marker, 'click', function() { removePin(markers.indexOf(marker)); });
-  markers.push(marker);
-  pinData.push({ lat: lat, lng: lng, address: '' });
-  var geocoder = new google.maps.Geocoder();
-  geocoder.geocode({ location: { lat: lat, lng: lng } }, function(results, status) {
-    if (status === 'OK' && results[0]) {
-      var ci = markers.indexOf(marker);
-      if (ci >= 0) { pinData[ci].address = results[0].formatted_address; renderPinList(); }
+  map.addListener('click', e => {
+    if (activePinIdx === null) {
+      showToast('💡 圃場の「📍 地図でピン指定」を先に押してください');
+      return;
     }
+    doSetPin(activePinIdx, e.latLng.lat(), e.latLng.lng());
   });
-  renderPinList(); updateProgress();
-  var hint = document.getElementById('map-hint');
-  if (hint) hint.style.display = 'none';
-}
 
-function removePin(idx) {
-  if (idx < 0 || idx >= markers.length) return;
-  markers[idx].setMap(null); markers.splice(idx, 1); pinData.splice(idx, 1);
-  for (var i = 0; i < markers.length; i++) {
-    markers[i].setLabel({ text: String(i+1), color: '#fff', fontSize: '11px', fontWeight: 'bold' });
-    markers[i].setIcon({ path: google.maps.SymbolPath.CIRCLE, scale: 12, fillColor: PIN_COLORS[i % PIN_COLORS.length], fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 });
-  }
-  renderPinList(); updateProgress();
-  if (markers.length === 0) { var h = document.getElementById('map-hint'); if (h) h.style.display = ''; }
-}
-
-function renderPinList() {
-  var list = document.getElementById('pin-list'); var html = '';
-  for (var i = 0; i < pinData.length; i++) {
-    var p = pinData[i]; var color = PIN_COLORS[i % PIN_COLORS.length];
-    var addr = p.address || ('緯度:'+p.lat.toFixed(5)+' 経度:'+p.lng.toFixed(5));
-    html += '<div class="pin-item"><span class="pin-color" style="background:'+color+'"></span>'
-      + '<span class="pin-text">📍 ピン'+(i+1)+'：'+escapeHtml(addr)+'</span>'
-      + '<button class="pin-remove" onclick="removePin('+i+')" title="削除">✕</button></div>';
-  }
-  list.innerHTML = html;
-}
-
-function escapeHtml(str) {
-  var div = document.createElement('div');
-  div.appendChild(document.createTextNode(str));
-  return div.innerHTML;
-}
-
-// -- Field cards --
-var fieldCount = 0;
-function addFieldCard() {
-  fieldCount++;
-  var id = fieldCount;
-  var vegTags = ['黒豆','にんじん','玉ねぎ','大根','白菜','キャベツ','じゃがいも','さつまいも','ほうれん草','トマト','なす'];
-  var tagHtml = '';
-  for (var i = 0; i < vegTags.length; i++) tagHtml += '<span class="tag-item" data-veg="'+vegTags[i]+'" onclick="toggleTag(this)">'+vegTags[i]+'</span>';
-  var card = document.createElement('div');
-  card.className = 'field-card'; card.id = 'fc-'+id; card.dataset.fieldId = id;
-  card.innerHTML = '<div class="field-card-header"><div class="field-card-title"><span class="card-num">'+id+'</span> 圃場 '+id+'</div><button type="button" class="remove-field-btn" onclick="removeFieldCard('+id+')">削除</button></div>'
-    + '<div class="form-grid">'
-    + '<div class="field"><label>数量（トン）<span class="req">*</span></label><input type="number" class="fc-qty" placeholder="例：2" min="0.1" step="0.1"><div class="quick-btns"><button type="button" class="quick-btn" onclick="this.closest(\'.field\').querySelector(\'input\').value=0.5">0.5t</button><button type="button" class="quick-btn" onclick="this.closest(\'.field\').querySelector(\'input\').value=1">1t</button><button type="button" class="quick-btn" onclick="this.closest(\'.field\').querySelector(\'input\').value=2">2t</button><button type="button" class="quick-btn" onclick="this.closest(\'.field\').querySelector(\'input\').value=3">3t</button><button type="button" class="quick-btn" onclick="this.closest(\'.field\').querySelector(\'input\').value=5">5t</button></div></div>'
-    + '<div class="field"><label>散布面積（a）</label><input type="number" class="fc-area" placeholder="例：30" min="0" step="0.1"><div class="quick-btns"><button type="button" class="quick-btn" onclick="this.closest(\'.field\').querySelector(\'input\').value=10">10a</button><button type="button" class="quick-btn" onclick="this.closest(\'.field\').querySelector(\'input\').value=30">30a</button><button type="button" class="quick-btn" onclick="this.closest(\'.field\').querySelector(\'input\').value=50">50a</button><button type="button" class="quick-btn" onclick="this.closest(\'.field\').querySelector(\'input\').value=100">100a</button></div></div>'
-    + '<div class="field span2"><label>用途<span class="req">*</span></label><div class="radio-row"><label class="radio-item"><input type="radio" name="usage-'+id+'" value="野菜" checked onchange="toggleVegField('+id+')"><span>野菜</span></label><label class="radio-item"><input type="radio" name="usage-'+id+'" value="田んぼ" onchange="toggleVegField('+id+')"><span>田んぼ</span></label><label class="radio-item"><input type="radio" name="usage-'+id+'" value="果樹" onchange="toggleVegField('+id+')"><span>果樹</span></label><label class="radio-item"><input type="radio" name="usage-'+id+'" value="その他" onchange="toggleVegField('+id+')"><span>その他</span></label></div></div>'
-    + '<div class="field span2 fc-veg-field" id="veg-field-'+id+'"><label>野菜の種類（タップで選択）</label><div class="tag-select">'+tagHtml+'</div><input type="text" class="fc-veg-other" placeholder="その他の野菜があれば入力"></div>'
-    + '<div class="field"><label>品質オプション</label><div class="check-row" style="margin-top:6px;"><label class="check-item"><input type="checkbox" class="fc-jas"><span>有機JAS対応</span></label></div><div class="check-row" style="margin-top:4px;"><label class="check-item"><input type="checkbox" class="fc-keical"><span>珪カル資材追加</span></label></div></div>'
-    + '<div class="field"><label>作業形態<span class="req">*</span></label><div class="svc-row" style="margin-top:6px;"><input type="radio" name="svc-'+id+'" id="svc-full-'+id+'" value="フルサービス" checked><label for="svc-full-'+id+'"><span class="icon">🚜</span> フルサービス</label><input type="radio" name="svc-'+id+'" id="svc-dump-'+id+'" value="ダンプ下ろし"><label for="svc-dump-'+id+'"><span class="icon">🚛</span> ダンプ下ろし</label></div></div>'
-    + '<div class="field span2"><label>前作情報（任意）</label><input type="text" class="fc-prev" placeholder="例：前作は大豆。昨年は牛ふん堆肥を1トン施用。"></div>'
-    + '</div>';
-  document.getElementById('field-cards').appendChild(card);
-  renumberCards(); updateProgress();
-}
-
-function removeFieldCard(id) { var c = document.getElementById('fc-'+id); if (c) c.remove(); renumberCards(); updateProgress(); }
-function renumberCards() {
-  var cards = document.querySelectorAll('.field-card');
-  for (var i = 0; i < cards.length; i++) {
-    var num = cards[i].querySelector('.card-num'); if (num) num.textContent = i+1;
-    var t = cards[i].querySelector('.field-card-title'); if (t) t.childNodes[t.childNodes.length-1].textContent = ' 圃場 '+(i+1);
-  }
-}
-function toggleVegField(id) {
-  var u = document.querySelector('input[name="usage-'+id+'"]:checked');
-  var v = document.getElementById('veg-field-'+id);
-  if (v) v.style.display = (u && u.value === '野菜') ? 'flex' : 'none';
-}
-function toggleTag(el) { el.classList.toggle('selected'); }
-
-// -- Phone formatting --
-document.getElementById('phone').addEventListener('input', function() {
-  var v = this.value.replace(/[^\d]/g, '');
-  if (v.length > 3 && v.length <= 7) v = v.slice(0,3)+'-'+v.slice(3);
-  else if (v.length > 7) v = v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7,11);
-  this.value = v;
-});
-
-// -- Date helpers --
-function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate()+n); return x.toISOString().split('T')[0]; }
-var todayStr = new Date().toISOString().split('T')[0];
-document.getElementById('dateFrom').min = todayStr;
-document.getElementById('dateTo').min = todayStr;
-document.getElementById('date-1w').addEventListener('click', function() { document.getElementById('dateFrom').value = addDays(todayStr,7); document.getElementById('dateTo').value = addDays(todayStr,21); checkDateRange(); updateProgress(); });
-document.getElementById('date-2w').addEventListener('click', function() { document.getElementById('dateFrom').value = addDays(todayStr,14); document.getElementById('dateTo').value = addDays(todayStr,28); checkDateRange(); updateProgress(); });
-document.getElementById('date-1m').addEventListener('click', function() { document.getElementById('dateFrom').value = addDays(todayStr,30); document.getElementById('dateTo').value = addDays(todayStr,44); checkDateRange(); updateProgress(); });
-
-function checkDateRange() {
-  var f = document.getElementById('dateFrom').value, t = document.getElementById('dateTo').value, w = document.getElementById('date-warning');
-  if (!f||!t) { w.textContent=''; return; }
-  var d = (new Date(t)-new Date(f))/86400000;
-  if (d<0) w.textContent='⚠️ 終了日が開始日より前です。';
-  else if (d<7) w.textContent='⚠️ 期間が1週間未満です。余裕をもってご指定ください。';
-  else if (d>14) w.textContent='⚠️ 期間が2週間を超えています。1〜2週間でご指定ください。';
-  else w.textContent='';
-}
-document.getElementById('dateFrom').addEventListener('change', function(){ checkDateRange(); updateProgress(); });
-document.getElementById('dateTo').addEventListener('change', function(){ checkDateRange(); updateProgress(); });
-
-function updateProgress() {
-  var checks = [
-    !!document.getElementById('name').value.trim(),
-    !!document.getElementById('email').value.trim(),
-    document.querySelectorAll('.field-card').length > 0,
-    !!document.getElementById('dateFrom').value && !!document.getElementById('dateTo').value,
-  ];
-  var done = 0;
-  for (var i = 0; i < checks.length; i++) if (checks[i]) done++;
-  document.getElementById('progress').style.width = Math.round((done/checks.length)*100)+'%';
-}
-document.querySelectorAll('input, textarea').forEach(function(el) {
-  el.addEventListener('input', updateProgress);
-  el.addEventListener('change', updateProgress);
-});
-
-function showToast(msg, dur) {
-  dur = dur || 4000;
-  var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
-  setTimeout(function(){ t.classList.remove('show'); }, dur);
-}
-function setLoader(show, msg) {
-  document.getElementById('loader').classList.toggle('show', show);
-  if (msg) document.getElementById('loader-msg').textContent = msg;
-}
-function mapError() {
-  document.getElementById('map').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#5a4433;font-size:0.85rem;flex-direction:column;gap:8px;"><span style="font-size:2rem;">🗺️</span><span>地図を読み込めませんでした。<br>APIキーの設定を確認してください。</span></div>';
-  document.getElementById('map-hint').style.display = 'none';
-  document.getElementById('api-notice').style.display = 'flex';
-}
-
-function collectFieldCards() {
-  var cards = document.querySelectorAll('.field-card'); var fields = [];
-  for (var i = 0; i < cards.length; i++) {
-    var c = cards[i]; var tags = c.querySelectorAll('.tag-item.selected'); var vegs = [];
-    for (var j = 0; j < tags.length; j++) vegs.push(tags[j].dataset.veg);
-    var vo = c.querySelector('.fc-veg-other').value.trim(); if (vo) vegs.push(vo);
-    fields.push({
-      fieldNum: i+1, quantity: c.querySelector('.fc-qty').value, unit: 'トン',
-      area: c.querySelector('.fc-area').value || '',
-      usage: (c.querySelector('input[name^="usage-"]:checked')||{}).value || '',
-      vegType: vegs.join('、'),
-      organicJAS: c.querySelector('.fc-jas').checked ? '希望' : 'なし',
-      keical: c.querySelector('.fc-keical').checked ? '希望' : 'なし',
-      service: (c.querySelector('input[name^="svc-"]:checked')||{}).value || '',
-      prevCrop: c.querySelector('.fc-prev').value.trim(),
+  // 現在地ボタン
+  if (navigator.geolocation) {
+    const btn = document.createElement('button');
+    btn.textContent = '📍 現在地';
+    btn.style.cssText = 'margin:10px;padding:7px 14px;border:none;border-radius:6px;background:#3d2b1a;color:#c8a96e;font-size:0.82rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);';
+    map.controls[google.maps.ControlPosition.TOP_RIGHT].push(btn);
+    btn.addEventListener('click', () => {
+      if (activePinIdx === null) { showToast('💡 圃場の「📍 地図でピン指定」を先に押してください'); return; }
+      navigator.geolocation.getCurrentPosition(pos => {
+        doSetPin(activePinIdx, pos.coords.latitude, pos.coords.longitude);
+        map.setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        map.setZoom(15);
+      });
     });
   }
-  return fields;
 }
 
-// -- Submit with confirmation --
-function submitOrder() {
-  var name = document.getElementById('name').value.trim();
-  var email = document.getElementById('email').value.trim();
-  var phone = document.getElementById('phone').value.trim();
-  var dateFrom = document.getElementById('dateFrom').value;
-  var dateTo = document.getElementById('dateTo').value;
+function mapError() {
+  document.getElementById('map').innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#5a4433;font-size:0.85rem;flex-direction:column;gap:8px;"><span style="font-size:2rem;">🗺️</span><span>地図を表示するにはAPIキーを設定してください</span></div>';
+  document.getElementById('mapIdleHint').style.display = 'none';
+}
+
+// ===== ピン設定 =====
+function doSetPin(id, lat, lng, resolvedAddress) {
+  const orderNum = fieldIds.indexOf(id) + 1;
+  const color = PIN_COLORS[(orderNum - 1) % PIN_COLORS.length];
+
+  // 既存マーカー削除
+  if (fieldData[id] && fieldData[id].marker) fieldData[id].marker.setMap(null);
+
+  // SVGピン（番号入り）
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
+    <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}" stroke="white" stroke-width="2.5"/>
+    <circle cx="18" cy="18" r="10" fill="white" opacity="0.92"/>
+    <text x="18" y="23" text-anchor="middle" font-size="12" font-weight="bold" font-family="sans-serif" fill="${color}">${orderNum}</text>
+  </svg>`;
+
+  const marker = new google.maps.Marker({
+    position: { lat, lng }, map,
+    animation: google.maps.Animation.DROP,
+    icon: {
+      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+      scaledSize: new google.maps.Size(36, 48),
+      anchor: new google.maps.Point(18, 48),
+    },
+    title: `圃場${orderNum}`,
+  });
+
+  if (!fieldData[id]) fieldData[id] = {};
+  fieldData[id].marker = marker;
+  fieldData[id].lat = lat.toFixed(6);
+  fieldData[id].lng = lng.toFixed(6);
+  fieldData[id].address = resolvedAddress || '';
+
+  // Geocoding
+  if (!resolvedAddress) {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ location: { lat, lng } }, (res, st) => {
+      if (st === 'OK' && res[0]) {
+        fieldData[id].address = res[0].formatted_address;
+        const addrInput = card.querySelector('.addr-input');
+        if (addrInput && !addrInput.value) addrInput.value = res[0].formatted_address;
+        const addrStatus = card.querySelector('.addr-status');
+        if (addrStatus) {
+          addrStatus.textContent = '✅ ' + res[0].formatted_address;
+          addrStatus.style.color = 'var(--leaf)';
+        }
+        checkAsago(res[0].formatted_address);
+      }
+    });
+  } else {
+    checkAsago(resolvedAddress);
+  }
+
+  // カードUI更新
+  const card = document.getElementById(`fc-${id}`);
+  if (card) {
+    card.classList.add('pinned');
+    card.querySelector('.field-card-pin-status').textContent = '✅ ピン済み';
+    const pinBtn = card.querySelector('.pin-btn');
+    if (pinBtn) pinBtn.classList.remove('active');
+  }
+
+  stopPinning();
+  updateLegend();
+  updateTotal();
+  map.panTo({ lat, lng });
+}
+
+// ===== 朝来市判別 =====
+function checkAsago(address) {
+  if (!address) return;
+  const isAsago = ASAGO_KEYWORDS.some(k => address.includes(k));
+  const check = document.getElementById('asagoCheck');
+  const alert = document.getElementById('asagoAlert');
+  if (isAsago) {
+    if (check) check.checked = true;
+    if (alert) alert.style.display = 'block';
+    showToast('🏔️ 朝来市エリアを検出しました（＋¥1,000/t）', 3000);
+  }
+  updateTotal();
+}
+
+// ===== 管理者モーダル =====
+const ADMIN_PW = '1108';
+function openAdminModal() {
+  document.getElementById('adminModal').classList.add('show');
+  document.getElementById('adminPwInput').value = '';
+  document.getElementById('adminPwError').textContent = '';
+  setTimeout(() => document.getElementById('adminPwInput').focus(), 100);
+}
+function closeAdminModal() {
+  document.getElementById('adminModal').classList.remove('show');
+}
+function checkAdminPw() {
+  const val = document.getElementById('adminPwInput').value;
+  if (val === ADMIN_PW) {
+    window.location.href = 'tamba_admin.html';
+  } else {
+    document.getElementById('adminPwError').textContent = 'パスワードが違います';
+    document.getElementById('adminPwInput').value = '';
+  }
+}
+document.getElementById('adminModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('adminModal')) closeAdminModal();
+});
+
+function startPinning(id) {
+  if (activePinIdx !== null && activePinIdx !== id) stopPinning();
+  activePinIdx = id;
+  const orderNum = fieldIds.indexOf(id) + 1;
+
+  const card = document.getElementById(`fc-${id}`);
+  if (card) {
+    card.classList.add('pinning');
+    const btn = document.getElementById(`manualPinBtn-${id}`);
+    if (btn) btn.style.color = 'var(--accent)';
+  }
+  document.getElementById('mapContainer').classList.add('pinning-mode');
+  const banner = document.getElementById('mapBanner');
+  banner.textContent = `📍 圃場${orderNum} の位置を地図でタップして指定してください`;
+  banner.classList.add('show');
+  document.getElementById('mapContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function stopPinning() {
+  if (activePinIdx !== null) {
+    const card = document.getElementById(`fc-${activePinIdx}`);
+    if (card) {
+      card.classList.remove('pinning');
+      const btn = document.getElementById(`manualPinBtn-${activePinIdx}`);
+      if (btn) btn.style.color = 'var(--clay)';
+    }
+  }
+  activePinIdx = null;
+  document.getElementById('mapContainer').classList.remove('pinning-mode');
+  document.getElementById('mapBanner').classList.remove('show');
+}
+
+function togglePinning(id) {
+  if (activePinIdx === id) { stopPinning(); return; }
+  startPinning(id);
+}
+
+// ===== 凡例更新 =====
+function updateLegend() {
+  const legend = document.getElementById('mapLegend');
+  legend.innerHTML = '';
+  fieldIds.forEach((id, i) => {
+    if (fieldData[id] && fieldData[id].lat) {
+      const color = PIN_COLORS[i % PIN_COLORS.length];
+      const nameEl = document.querySelector(`#fc-${id} .field-card-name-input`);
+      const name = nameEl?.value.trim() || `圃場${i+1}`;
+      const div = document.createElement('div');
+      div.className = 'legend-item';
+      div.innerHTML = `<div class="legend-dot" style="background:${color}">${i+1}</div><span>${name}</span>`;
+      legend.appendChild(div);
+    }
+  });
+}
+
+// ===== 住所→自動ジオコーディング =====
+const geocodeTimers = {};
+
+function onAddressInput(id) {
+  clearTimeout(geocodeTimers[id]);
+  const card = document.getElementById(`fc-${id}`);
+  if (!card) return;
+  const val = card.querySelector('.addr-input').value.trim();
+  if (!val) return;
+
+  // ステータス表示
+  const addrStatus = card.querySelector('.addr-status');
+  addrStatus.textContent = '🔍 検索中…';
+  addrStatus.style.color = 'var(--clay)';
+
+  geocodeTimers[id] = setTimeout(() => {
+    if (!window.google) return;
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: val + ' 兵庫県', region: 'JP' }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        const lat = results[0].geometry.location.lat();
+        const lng = results[0].geometry.location.lng();
+        doSetPin(id, lat, lng, results[0].formatted_address);
+        map.setCenter({ lat, lng });
+        map.setZoom(15);
+        addrStatus.textContent = '✅ ' + results[0].formatted_address;
+        addrStatus.style.color = 'var(--leaf)';
+      } else {
+        addrStatus.textContent = '⚠️ 住所が見つかりませんでした。もう少し詳しく入力してください。';
+        addrStatus.style.color = 'var(--accent)';
+      }
+    });
+  }, 800); // 800ms デバウンス
+}
+
+// ===== 圃場カード =====
+function addField() {
+  if (fieldIds.length >= 10) { showToast('⚠️ 圃場は最大10か所までです'); return; }
+  const id = ++fieldSeq;
+  fieldIds.push(id);
+  const orderNum = fieldIds.length;
+  const color = PIN_COLORS[(orderNum - 1) % PIN_COLORS.length];
+
+  const card = document.createElement('div');
+  card.className = 'field-card';
+  card.id = `fc-${id}`;
+  card.innerHTML = `
+    <button type="button" class="remove-field-btn" onclick="removeField(${id})" title="削除">✕</button>
+    <div class="field-card-header">
+      <div class="field-badge" style="background:${color}">${orderNum}</div>
+      <input class="field-card-name-input" type="text" placeholder="圃場名（例：北側の田んぼ）" oninput="updateLegend()">
+      <span class="field-card-pin-status"></span>
+    </div>
+
+    <!-- 住所入力 -->
+    <div class="field" style="margin-bottom:12px;">
+      <label>📍 住所を入力してください（入力すると自動でピンが立ちます）</label>
+      <div style="position:relative;">
+        <input class="addr-input" type="text"
+          placeholder="例：丹波市氷上町本郷123"
+          oninput="onAddressInput(${id})"
+          style="padding-right:44px;">
+        <button type="button"
+          onclick="togglePinning(${id})"
+          title="地図で直接指定する"
+          style="position:absolute;right:6px;top:50%;transform:translateY(-50%);
+            background:none;border:none;font-size:1.2rem;cursor:pointer;
+            padding:4px;color:var(--clay);line-height:1;"
+          id="manualPinBtn-${id}">🗺️</button>
+      </div>
+      <div class="addr-status" style="font-size:0.73rem;margin-top:4px;min-height:16px;color:var(--text-mid);line-height:1.4;"></div>
+    </div>
+
+    <!-- 数量・面積 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="field">
+        <label>数量（トン）<span class="req">*</span></label>
+        <div style="display:flex;align-items:center;gap:0;border:1.5px solid rgba(139,94,60,0.22);border-radius:8px;overflow:hidden;background:var(--white);">
+          <button type="button" onclick="stepQty(${id},-0.5)"
+            style="width:36px;height:40px;border:none;background:#f5f0e8;color:var(--soil);font-size:1.2rem;font-weight:700;cursor:pointer;flex-shrink:0;transition:background 0.1s;"
+            onmouseenter="this.style.background='#ecdfc8'" onmouseleave="this.style.background='#f5f0e8'">−</button>
+          <input class="qty-input" type="number" value="1.5" min="0" step="0.5"
+            style="flex:1;text-align:center;border:none;font-size:1rem;font-weight:700;color:var(--soil);background:transparent;outline:none;padding:8px 4px;"
+            oninput="updateTotal()" onchange="clampQty(${id})">
+          <button type="button" onclick="stepQty(${id},0.5)"
+            style="width:36px;height:40px;border:none;background:#f5f0e8;color:var(--soil);font-size:1.2rem;font-weight:700;cursor:pointer;flex-shrink:0;transition:background 0.1s;"
+            onmouseenter="this.style.background='#ecdfc8'" onmouseleave="this.style.background='#f5f0e8'">＋</button>
+        </div>
+        <div class="field-price-hint" style="font-size:0.72rem;color:var(--text-mid);margin-top:4px;min-height:16px;"></div>
+      </div>
+      <div class="field">
+        <label>散布面積（a）</label>
+        <div style="display:flex;align-items:center;gap:0;border:1.5px solid rgba(139,94,60,0.22);border-radius:8px;overflow:hidden;background:var(--white);">
+          <button type="button" onclick="stepArea(${id},-0.5)"
+            style="width:36px;height:40px;border:none;background:#f5f0e8;color:var(--soil);font-size:1.2rem;font-weight:700;cursor:pointer;flex-shrink:0;transition:background 0.1s;"
+            onmouseenter="this.style.background='#ecdfc8'" onmouseleave="this.style.background='#f5f0e8'">−</button>
+          <input class="area-input" type="number" placeholder="0" min="0" step="0.5"
+            style="flex:1;text-align:center;border:none;font-size:1rem;font-weight:700;color:var(--soil);background:transparent;outline:none;padding:8px 4px;"
+            oninput="roundArea(${id})">
+          <button type="button" onclick="stepArea(${id},0.5)"
+            style="width:36px;height:40px;border:none;background:#f5f0e8;color:var(--soil);font-size:1.2rem;font-weight:700;cursor:pointer;flex-shrink:0;transition:background 0.1s;"
+            onmouseenter="this.style.background='#ecdfc8'" onmouseleave="this.style.background='#f5f0e8'">＋</button>
+        </div>
+        <div style="font-size:0.71rem;color:var(--text-mid);margin-top:4px;">0.5アール単位</div>
+      </div>
+    </div>
+
+    <!-- 作業形態 -->
+    <div class="field">
+      <label>この圃場の作業形態</label>
+      <div class="service-pills">
+        <input type="radio" name="svc-${id}" id="svc-${id}-a" value="フルサービス（運搬＋散布）" checked onchange="updateTotal();updatePriceHint(${id})">
+        <label for="svc-${id}-a">🚜 フルサービス（運搬＋散布）</label>
+        <input type="radio" name="svc-${id}" id="svc-${id}-b" value="ダンプ下ろし（運搬のみ）" onchange="updateTotal();updatePriceHint(${id})">
+        <label for="svc-${id}-b">🚛 ダンプ下ろし（運搬のみ）</label>
+        <input type="radio" name="svc-${id}" id="svc-${id}-c" value="自分で取りに来る" onchange="updateTotal();updatePriceHint(${id})">
+        <label for="svc-${id}-c">🚗 自分で取りに来る</label>
+      </div>
+    </div>
+    <div class="pin-row" id="pinRow-${id}" style="display:none;">
+      <div class="pin-addr"></div>
+    </div>
+  `;
+
+  document.getElementById('fieldCards').appendChild(card);
+  if (fieldIds.length >= 10) document.getElementById('addFieldBtn').style.opacity = '0.45';
+  updateTotal();
+  updatePriceHint(id);
+}
+
+// ＋／－ボタン
+function stepQty(id, delta) {
+  const card = document.getElementById(`fc-${id}`);
+  if (!card) return;
+  const input = card.querySelector('.qty-input');
+  const cur = parseFloat(input.value) || 0;
+  const next = Math.max(0, Math.round((cur + delta) * 10) / 10);
+  input.value = next;
+  updateTotal();
+  updatePriceHint(id);
+}
+
+// 最低1.5tにクランプ（手入力後にフォーカスが外れたとき）
+function clampQty(id) {
+  const card = document.getElementById(`fc-${id}`);
+  if (!card) return;
+  const input = card.querySelector('.qty-input');
+  let v = parseFloat(input.value) || 0;
+  if (v > 0 && v < 1.5) {
+    input.value = 1.5;
+    showToast('💡 1圃場あたりの最低数量は1.5トンです');
+  }
+  updateTotal();
+  updatePriceHint(id);
+}
+
+// 面積 ＋／－ボタン（0.5a単位）
+function stepArea(id, delta) {
+  const card = document.getElementById(`fc-${id}`);
+  if (!card) return;
+  const input = card.querySelector('.area-input');
+  const cur = parseFloat(input.value) || 0;
+  input.value = Math.max(0, Math.round((cur + delta) * 10) / 10);
+}
+
+// 面積を0.5a単位に丸める（手入力時）
+function roundArea(id) {
+  const card = document.getElementById(`fc-${id}`);
+  if (!card) return;
+  const input = card.querySelector('.area-input');
+  if (!input.value) return;
+  const v = parseFloat(input.value) || 0;
+  input.value = Math.round(v / 0.5) * 0.5;
+}
+
+// 1トン単価のヒント表示
+function updatePriceHint(id) {
+  const card = document.getElementById(`fc-${id}`);
+  if (!card) return;
+  const svc = card.querySelector(`input[name="svc-${id}"]:checked`)?.value || '';
+  const unitPrice = PRICES[svc];
+  const hint = card.querySelector('.field-price-hint');
+  if (hint && unitPrice) {
+    hint.textContent = `単価：¥${unitPrice.toLocaleString()}/トン`;
+  }
+}
+
+function removeField(id) {
+  if (fieldData[id] && fieldData[id].marker) fieldData[id].marker.setMap(null);
+  delete fieldData[id];
+  if (activePinIdx === id) { activePinIdx = null; stopPinning(); }
+
+  const idx = fieldIds.indexOf(id);
+  if (idx !== -1) fieldIds.splice(idx, 1);
+
+  document.getElementById(`fc-${id}`)?.remove();
+  document.getElementById('addFieldBtn').style.opacity = '1';
+
+  // バッジ番号と色を振り直す
+  fieldIds.forEach((fid, i) => {
+    const card = document.getElementById(`fc-${fid}`);
+    if (!card) return;
+    const color = PIN_COLORS[i % PIN_COLORS.length];
+    const badge = card.querySelector('.field-badge');
+    if (badge) { badge.textContent = i+1; badge.style.background = color; }
+    // マーカーの番号も更新
+    if (fieldData[fid] && fieldData[fid].marker && fieldData[fid].lat) {
+      const lat = parseFloat(fieldData[fid].lat);
+      const lng = parseFloat(fieldData[fid].lng);
+      fieldData[fid].marker.setMap(null);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
+        <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}" stroke="white" stroke-width="2.5"/>
+        <circle cx="18" cy="18" r="10" fill="white" opacity="0.92"/>
+        <text x="18" y="23" text-anchor="middle" font-size="12" font-weight="bold" font-family="sans-serif" fill="${color}">${i+1}</text>
+      </svg>`;
+      fieldData[fid].marker = new google.maps.Marker({
+        position: { lat, lng }, map,
+        icon: {
+          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+          scaledSize: new google.maps.Size(36, 48),
+          anchor: new google.maps.Point(18, 48),
+        },
+        title: `圃場${i+1}`,
+      });
+    }
+  });
+
+  updateTotal();
+  updateLegend();
+}
+
+// ===== 料金設定 =====
+const PRICES = {
+  'フルサービス（運搬＋散布）': 7500,
+  'ダンプ下ろし（運搬のみ）':   5200,
+  '積込み付き（スタッフ対応）': 4200,
+  '自分で取りに来る':           3000,
+};
+const ASAGO_SURCHARGE = 1000; // 朝来市割増（円/t）
+const ASAGO_KEYWORDS = ['朝来市', '朝来', 'あさご', '生野町', '和田山町', '山東町', '朝倉町'];
+// 拠点座標（兵庫県丹波市市島町上竹田915-5）
+const BASE_LAT = 35.2178;
+const BASE_LNG = 135.0456;
+const MIN_LOT_TON = 4.5;
+const REC_LOT_TON = 5.0;
+const SMALL_LOT_SURCHARGE = 0.20;
+
+// 距離割増（1.5tにつき）
+const DISTANCE_SURCHARGE = [
+  { minKm: 0,  maxKm: 10, surcharge: 0 },
+  { minKm: 10, maxKm: 15, surcharge: 1000 },
+  { minKm: 15, maxKm: 20, surcharge: 2000 },
+  { minKm: 20, maxKm: Infinity, surcharge: null }, // 要相談
+];
+
+// Haversine距離計算（km）
+function calcDistanceKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// 10円切捨て
+function floor10(n) { return Math.floor(n / 10) * 10; }
+
+function updateTotal() {
+  let totalTon = 0;
+  fieldIds.forEach(id => {
+    const card = document.getElementById(`fc-${id}`);
+    if (!card) return;
+    const v = card.querySelector('.qty-input')?.value;
+    if (v) totalTon += parseFloat(v) || 0;
+  });
+  document.getElementById('totalQty').textContent = totalTon.toFixed(1);
+
+  // 最低ロット・推奨量警告
+  const minWarn = document.getElementById('minLotWarning');
+  if (totalTon > 0 && totalTon < MIN_LOT_TON) {
+    minWarn.style.display = 'block';
+    minWarn.innerHTML = `⚠️ 合計${totalTon.toFixed(1)}トンは最低発注量（${MIN_LOT_TON}トン）未満のため、<strong>少量割増料金（＋20%）</strong>が発生します。`;
+  } else if (totalTon >= MIN_LOT_TON && totalTon < REC_LOT_TON) {
+    minWarn.style.display = 'block';
+    minWarn.style.background = '#fffbea';
+    minWarn.style.color = '#7a6020';
+    minWarn.innerHTML = `💡 ${REC_LOT_TON}トン以上のご注文を推奨しています。`;
+  } else {
+    minWarn.style.display = 'none';
+  }
+
+  // 料金内訳計算
+  calcPriceBreakdown(totalTon);
+}
+
+function calcPriceBreakdown(totalTon) {
+  const breakdown = document.getElementById('priceBreakdown');
+  const distWarn = document.getElementById('distanceWarning');
+  if (totalTon <= 0) { breakdown.style.display = 'none'; distWarn.style.display = 'none'; return; }
+
+  let lines = [];
+  let grandTotal = 0;
+  let hasConsult = false;
+  let maxDistKm = 0;
+
+  fieldIds.forEach((id, i) => {
+    const card = document.getElementById(`fc-${id}`);
+    if (!card) return;
+    const qty = parseFloat(card.querySelector('.qty-input')?.value) || 0;
+    if (!qty) return;
+    const svc = card.querySelector(`input[name="svc-${id}"]:checked`)?.value || 'フルサービス（運搬＋散布）';
+    const unitPrice = PRICES[svc] || 0;
+    // 朝来市割増
+    const isAsago = document.getElementById('asagoCheck')?.checked || false;
+    const asagoAdd = (isAsago && svc !== '自分で取りに来る') ? ASAGO_SURCHARGE : 0;
+    const effectivePrice = unitPrice + asagoAdd;
+    const basePrice = floor10(qty * effectivePrice);
+
+    // 少量割増（合計が4.5t未満の場合）
+    const smallLotExtra = totalTon < MIN_LOT_TON ? floor10(basePrice * SMALL_LOT_SURCHARGE) : 0;
+
+    // 距離計算
+    const pin = fieldData[id];
+    let distKm = null;
+    let distSurcharge = 0;
+    let distLabel = '';
+    if (pin && pin.lat && svc !== '自分で取りに来る') {
+      distKm = calcDistanceKm(BASE_LAT, BASE_LNG, parseFloat(pin.lat), parseFloat(pin.lng));
+      maxDistKm = Math.max(maxDistKm, distKm);
+      const rule = DISTANCE_SURCHARGE.find(r => distKm >= r.minKm && distKm < r.maxKm);
+      if (rule) {
+        if (rule.surcharge === null) {
+          hasConsult = true;
+          distLabel = `距離${distKm.toFixed(1)}km（要相談）`;
+        } else {
+          // 1.5tにつきsurcharge円
+          const trips = Math.ceil(qty / 1.5);
+          distSurcharge = rule.surcharge * trips;
+          if (distSurcharge > 0) distLabel = `距離割増 +¥${distSurcharge.toLocaleString()}（${distKm.toFixed(1)}km）`;
+        }
+      }
+    }
+
+    const fieldTotal = basePrice + distSurcharge + smallLotExtra;
+    grandTotal += fieldTotal;
+    const name = card.querySelector('.field-card-name-input')?.value.trim() || `圃場${i+1}`;
+    const smallLabel = smallLotExtra > 0 ? ` <span style="color:var(--accent);">少量割増 +¥${smallLotExtra.toLocaleString()}</span>` : '';
+    const asagoLabel = asagoAdd > 0 ? ` <span style="color:#7a5c00;">朝来市割増 +¥${floor10(qty*asagoAdd).toLocaleString()}</span>` : '';
+    lines.push(`<div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--text-mid);padding:3px 0;">
+      <span>${name}（${qty}t × ${svc.slice(0,6)}…）${distLabel ? ' <span style="color:#1a6b8a;">'+distLabel+'</span>' : ''}${smallLabel}${asagoLabel}</span>
+      <span style="font-weight:600;color:var(--soil);">${hasConsult && rule?.surcharge===null ? '要相談' : '¥'+fieldTotal.toLocaleString()}</span>
+    </div>`);
+  });
+
+  if (lines.length === 0) { breakdown.style.display = 'none'; return; }
+
+  breakdown.style.display = 'block';
+  breakdown.innerHTML = lines.join('') +
+    `<div style="display:flex;justify-content:space-between;font-size:0.88rem;font-weight:700;color:var(--soil);border-top:1px solid rgba(139,94,60,0.15);margin-top:6px;padding-top:6px;">
+      <span>合計金額目安（税込）</span>
+      <span style="color:var(--accent);font-size:1rem;">${hasConsult ? '要相談含む' : '¥'+grandTotal.toLocaleString()}</span>
+    </div>
+    <div style="font-size:0.68rem;color:var(--text-mid);margin-top:4px;">※ 目安金額です。確定金額は担当者よりご連絡いたします。</div>`;
+
+  // 距離注意表示
+  if (maxDistKm > 20) {
+    distWarn.style.display = 'block';
+    distWarn.textContent = `ℹ️ 拠点から${maxDistKm.toFixed(1)}kmの圃場があります。距離割増については担当者よりご連絡いたします。`;
+  } else if (maxDistKm > 10) {
+    distWarn.style.display = 'block';
+    distWarn.textContent = `ℹ️ 拠点から${maxDistKm.toFixed(1)}kmの圃場があります。距離割増が加算されています。`;
+  } else {
+    distWarn.style.display = 'none';
+  }
+}
+
+function getFieldsData() {
+  return fieldIds.map((id, i) => {
+    const card = document.getElementById(`fc-${id}`);
+    if (!card) return null;
+    const name = card.querySelector('.field-card-name-input')?.value.trim() || `圃場${i+1}`;
+    const addr = card.querySelector('.addr-input')?.value.trim() || '';
+    const qty  = card.querySelector('.qty-input')?.value || '';
+    const area = card.querySelector('.area-input')?.value || '';
+    const service = card.querySelector(`input[name="svc-${id}"]:checked`)?.value || 'フルサービス（運搬＋散布）';
+    const pin = fieldData[id] || {};
+    return { num: i+1, name, addr, qty, area, service, lat: pin.lat || '', lng: pin.lng || '', address: pin.address || addr };
+  }).filter(Boolean);
+}
+
+// ===== ステップ制御 =====
+const STEPS = ['基本情報', '圃場・散布計画', '用途・品質', '配送日・備考', '確認・送信'];
+let currentStep = 0;
+
+function initSteps() {
+  const dots = document.getElementById('stepDots');
+  dots.innerHTML = STEPS.map((_, i) =>
+    `<div class="step-dot${i===0?' active':''}" onclick="goStep(${i})" title="${STEPS[i]}"></div>`
+  ).join('');
+  updateStepNav();
+}
+
+function goStep(idx, fromLeft = false) {
+  if (idx === currentStep) return;
+  // バリデーション（前進時のみ）
+  if (idx > currentStep && !validateStep(currentStep)) return;
+
+  const panels = document.querySelectorAll('.step-panel');
+  panels.forEach(p => p.classList.remove('active', 'slide-left'));
+  const going = idx > currentStep;
+  currentStep = idx;
+  panels[currentStep].classList.add('active');
+  if (!going) panels[currentStep].classList.add('slide-left');
+
+  // 確認ステップに入ったら要約を生成
+  if (currentStep === 4) buildConfirmSummary();
+
+  updateStepNav();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function changeStep(delta) {
+  goStep(currentStep + delta, delta < 0);
+}
+
+function updateStepNav() {
+  document.getElementById('stepLabel').textContent = STEPS[currentStep];
+  document.getElementById('prevBtn').disabled = currentStep === 0;
+  const nextBtn = document.getElementById('nextBtn');
+  if (currentStep === STEPS.length - 1) {
+    nextBtn.style.display = 'none';
+  } else {
+    nextBtn.style.display = '';
+    nextBtn.textContent = currentStep === STEPS.length - 2 ? '確認へ →' : '次へ →';
+  }
+  const dots = document.querySelectorAll('.step-dot');
+  dots.forEach((d, i) => {
+    d.classList.remove('active', 'done');
+    if (i === currentStep) d.classList.add('active');
+    else if (i < currentStep) d.classList.add('done');
+  });
+}
+
+function validateStep(step) {
+  if (step === 0) {
+    if (!document.getElementById('name').value.trim()) {
+      showToast('⚠️ お名前を入力してください'); return false;
+    }
+    if (!document.getElementById('email').value.trim()) {
+      showToast('⚠️ メールアドレスを入力してください'); return false;
+    }
+  }
+  if (step === 1) {
+    const totalQty = parseFloat(document.getElementById('totalQty').textContent) || 0;
+    if (totalQty === 0) {
+      showToast('⚠️ 圃場と数量を入力してください'); return false;
+    }
+  }
+  if (step === 3) {
+    if (!document.getElementById('dateFrom').value || !document.getElementById('dateTo').value) {
+      showToast('⚠️ 配送希望期間を入力してください'); return false;
+    }
+  }
+  return true;
+}
+
+function buildConfirmSummary() {
+  const name = document.getElementById('name').value;
+  const phone = document.getElementById('phone').value;
+  const email = document.getElementById('email').value;
+  const totalQty = document.getElementById('totalQty').textContent;
+  const dateFrom = document.getElementById('dateFrom').value;
+  const dateTo = document.getElementById('dateTo').value;
+  const usage = document.querySelector('input[name="usage"]:checked')?.value || '';
+  const fields = getFieldsData();
+
+  const fieldsHtml = fields.map(f =>
+    `<div style="padding:8px 12px;background:#fdfaf5;border-radius:6px;margin-bottom:6px;">
+      <strong>${f.num}. ${f.name}</strong>　${f.qty}トン　${f.service}
+      ${f.address ? `<div style="font-size:0.78rem;color:var(--text-mid);">📍 ${f.address}</div>` : ''}
+    </div>`
+  ).join('');
+
+  // 金額取得（内訳があれば）
+  const breakdown = document.getElementById('priceBreakdown');
+  const priceHtml = breakdown.style.display !== 'none'
+    ? `<div style="margin-top:12px;">${breakdown.innerHTML}</div>` : '';
+
+  document.getElementById('confirmSummary').innerHTML = `
+    <div style="display:grid;gap:6px;margin-bottom:16px;">
+      <div>👤 <strong>${name}</strong>　${phone||''}　${email}</div>
+      <div>🌾 合計 <strong>${totalQty} トン</strong>（${fields.length}か所）　用途：${usage}</div>
+      <div>📅 配送希望：${dateFrom} 〜 ${dateTo}</div>
+    </div>
+    <div style="margin-bottom:12px;"><strong style="font-size:0.82rem;">圃場ごとの詳細：</strong></div>
+    ${fieldsHtml}
+    ${priceHtml}
+  `;
+}
+
+// 初期1行
+addField();
+initSteps();
+
+// 用途切り替え
+document.querySelectorAll('input[name="usage"]').forEach(r => {
+  r.addEventListener('change', () => {
+    document.getElementById('veg-field').style.display = r.value === '野菜' ? 'flex' : 'none';
+  });
+});
+
+// 日付バリデーション
+function checkDateRange() {
+  const from = document.getElementById('dateFrom').value;
+  const to = document.getElementById('dateTo').value;
+  const warn = document.getElementById('date-warning');
+  if (!from || !to) { warn.textContent = ''; return; }
+  const diff = (new Date(to) - new Date(from)) / 86400000;
+  if (diff < 7) warn.textContent = '⚠️ 期間が1週間未満です。余裕をもってご指定ください。';
+  else if (diff > 14) warn.textContent = '⚠️ 期間が2週間を超えています。1〜2週間でご指定ください。';
+  else warn.textContent = '';
+}
+document.getElementById('dateFrom').addEventListener('change', checkDateRange);
+document.getElementById('dateTo').addEventListener('change', checkDateRange);
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('dateFrom').min = today;
+document.getElementById('dateTo').min = today;
+
+// UI
+function showToast(msg, dur = 4000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+function setLoader(s) { document.getElementById('loader').classList.toggle('show', s); }
+
+// ===== 送信 =====
+async function submitOrder() {
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const dateFrom = document.getElementById('dateFrom').value;
+  const dateTo = document.getElementById('dateTo').value;
+  const fields = getFieldsData();
+  const totalQty = parseFloat(document.getElementById('totalQty').textContent) || 0;
+
   if (!name) { showToast('⚠️ お名前を入力してください'); return; }
   if (!email) { showToast('⚠️ メールアドレスを入力してください'); return; }
-  if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) { showToast('⚠️ メールアドレスの形式が正しくありません'); return; }
-  var fields = collectFieldCards();
-  if (fields.length === 0) { showToast('⚠️ 圃場を1つ以上追加してください'); return; }
-  for (var i = 0; i < fields.length; i++) { if (!fields[i].quantity) { showToast('⚠️ 圃場'+(i+1)+'の数量を入力してください'); return; } }
-  if (!dateFrom || !dateTo) { showToast('⚠️ 散布希望期間を入力してください'); return; }
-  if (new Date(dateTo) < new Date(dateFrom)) { showToast('⚠️ 終了日が開始日より前です'); return; }
+  if (!fields.length || totalQty === 0) { showToast('⚠️ 圃場と数量を入力してください'); return; }
+  if (totalQty < MIN_LOT_TON) {
+    if (!confirm(`合計${totalQty.toFixed(1)}トンは最低発注量（${MIN_LOT_TON}トン）未満のため、少量割増料金（+20%）が発生します。このまま発注しますか？`)) return;
+  }
+  if (!dateFrom || !dateTo) { showToast('⚠️ 配送希望期間を入力してください'); return; }
 
-  var pins = [];
-  for (var i = 0; i < pinData.length; i++) pins.push({ lat: pinData[i].lat.toFixed(6), lng: pinData[i].lng.toFixed(6), address: pinData[i].address || '' });
-  var totalQty = 0;
-  for (var i = 0; i < fields.length; i++) totalQty += parseFloat(fields[i].quantity) || 0;
+  // ピン未設定かつ自取りでない圃場があれば確認
+  const noPins = fields.filter(f => f.service !== '自分で取りに来る' && !f.lat);
+  if (noPins.length > 0) {
+    const names = noPins.map(f => `圃場${f.num}`).join('・');
+    if (!confirm(`${names} の地図ピンが未設定です。このまま送信しますか？`)) return;
+  }
 
-  pendingPayload = {
-    action: 'order', name: name, phone: phone, email: email,
-    compostType: '牛ふん堆肥', totalQuantity: totalQty+'トン',
-    fieldCount: fields.length, fields: fields,
-    dateFrom: dateFrom, dateTo: dateTo, pins: pins,
-    addressNote: document.getElementById('addressNote').value.trim(),
+  const payload = {
+    name, phone: document.getElementById('phone').value.trim(), email,
+    compostType: '牛ふん堆肥', fields, totalQty: totalQty.toFixed(1),
+    usage: document.querySelector('input[name="usage"]:checked')?.value,
+    vegType: document.getElementById('vegType').value.trim(),
+    prevCrop: document.getElementById('prevCrop').value.trim(),
+    organicJAS: document.getElementById('organicJAS').checked ? '希望' : 'なし',
+    keical: document.getElementById('keical').checked ? '希望' : 'なし',
+    dateFrom, dateTo,
+    consultSoilDoctor: document.getElementById('consultSoilDoctor').checked ? '希望' : 'なし',
+    consultQty: document.getElementById('consultQty').checked ? '希望' : 'なし',
     remarks: document.getElementById('remarks').value.trim(),
     submittedAt: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }),
   };
 
-  // Build confirmation table
-  var html = '<table class="confirm-table">';
-  html += '<tr><th>お名前</th><td>'+escapeHtml(name)+'</td></tr>';
-  html += '<tr><th>電話番号</th><td>'+escapeHtml(phone || '未入力')+'</td></tr>';
-  html += '<tr><th>メール</th><td>'+escapeHtml(email)+'</td></tr>';
-  html += '<tr><th>圃場数</th><td>'+fields.length+'箇所</td></tr>';
-  html += '<tr><th>合計数量</th><td>'+totalQty+' トン</td></tr>';
-  for (var i = 0; i < fields.length; i++) {
-    var f = fields[i];
-    html += '<tr><th>圃場'+(i+1)+'</th><td>'+f.quantity+'t / '+f.usage+' / '+f.service;
-    if (f.organicJAS === '希望') html += ' / 有機JAS';
-    if (f.keical === '希望') html += ' / 珪カル';
-    html += '</td></tr>';
-  }
-  html += '<tr><th>散布期間</th><td>'+dateFrom+' ～ '+dateTo+'</td></tr>';
-  if (pins.length > 0) html += '<tr><th>ピン</th><td>'+pins.length+'箇所</td></tr>';
-  if (pendingPayload.remarks) html += '<tr><th>備考</th><td>'+escapeHtml(pendingPayload.remarks)+'</td></tr>';
-  html += '</table>';
-  document.getElementById('confirm-body').innerHTML = html;
-  document.getElementById('confirm-overlay').classList.add('show');
-}
+  const body = buildEmailBody(payload);
+  setLoader(true);
 
-function closeConfirm() { document.getElementById('confirm-overlay').classList.remove('show'); }
-
-async function doSubmit() {
-  closeConfirm();
-  if (!pendingPayload) return;
-  var btn = document.getElementById('submit-btn');
-  btn.disabled = true;
-  setLoader(true, '送信中です...');
   try {
-    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(pendingPayload) });
-    var result = await res.json();
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'order',
+        ...payload,
+      }),
+    });
     setLoader(false);
-    btn.disabled = false;
-    if (result.result === 'ok') {
-      showToast('✅ 発注を受け付けました！確認メールをお送りしました。', 5000);
-      setTimeout(function(){ location.reload(); }, 5000);
+    if (res.ok) {
+      showToast('✅ 発注を受け付けました！担当者よりご連絡いたします。', 5000);
+      setTimeout(() => location.reload(), 5000);
     } else {
       showToast('❌ 送信に失敗しました。お電話でご連絡ください。');
     }
   } catch (e) {
     setLoader(false);
-    btn.disabled = false;
     showToast('❌ 通信エラーが発生しました。再度お試しください。');
   }
-  pendingPayload = null;
 }
 
-// Init
-addFieldCard();
+function buildEmailBody(d) {
+  const fText = d.fields.map(f => {
+    let s = `  ${f.num}. 【${f.name}】\n`;
+    s += `     数量：${f.qty ? f.qty+'トン' : '未入力'}`;
+    if (f.area) s += `　面積：${f.area} a`;
+    s += `\n     作業形態：${f.service}`;
+    if (f.address) s += `\n     住所：${f.address}`;
+    if (f.lat) s += `\n     地図：https://maps.google.com/?q=${f.lat},${f.lng}`;
+    return s;
+  }).join('\n\n');
+
+  return `
+【堆肥発注通知】丹波農商
+■ 受付日時：${d.submittedAt}
+
+▼ 発注者情報
+氏名：${d.name}
+電話：${d.phone || '未記入'}
+メール：${d.email}
+
+▼ 堆肥情報
+種類：${d.compostType}
+合計数量：${d.totalQty} トン（${d.fields.length} か所）
+
+▼ 圃場ごとの散布計画
+${fText}
+
+▼ 用途・作物
+用途：${d.usage}
+野菜の種類：${d.vegType || '未記入'}
+前作情報：${d.prevCrop || '未記入'}
+
+▼ 品質オプション
+有機JAS対応：${d.organicJAS}
+珪カル資材：${d.keical}
+
+▼ 配送希望期間
+${d.dateFrom} 〜 ${d.dateTo}
+
+▼ ご相談オプション
+土壌医への相談：${d.consultSoilDoctor}
+相談の上で数量決定：${d.consultQty}
+
+▼ その他備考
+${d.remarks || 'なし'}
+`.trim();
+}
 </script>
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDU1llWB4bNzM_N2ZZE7vWVV5W-2Ag2bfk&callback=initMap&language=ja" onerror="mapError()"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDU1llWB4bNzM_N2ZZE7vWVV5W-2Ag2bfk&callback=initMap&language=ja" async defer onerror="mapError()"></script>
 </body>
 </html>
