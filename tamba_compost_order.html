@@ -591,12 +591,13 @@ textarea { resize: vertical; min-height: 72px; }
 </div>
 </div>
 
-<!-- STEP 4: 配送日・備考 -->
+<!-- STEP 4: 散布希望日・備考 -->
 <div class="step-panel" data-step="3">
 <div class="section">
-  <div class="section-title"><span class="num">5</span> 配送希望期間</div>
+  <div class="section-title"><span class="num">5</span> 散布希望日</div>
   <p style="font-size:0.82rem;color:var(--text-mid);line-height:1.7;margin-bottom:14px;padding:12px 14px;background:#f8f4ee;border-radius:8px;border-left:3px solid var(--straw);">
-    天候の兼ね合いや、堆肥の製造スケジュールの都合により、1週間から2週間ほどの期間をいただけますと幸いです。
+    天候の兼ね合いや、堆肥の製造スケジュールの都合により、2週間の期間をいただきたいです。<br>
+    開始日を選択すると、終了日は2週間後以降が自動的に選択可能になります。
   </p>
   <div class="field">
     <label>希望開始日〜終了日<span class="req">*</span></label>
@@ -747,15 +748,18 @@ function doSetPin(id, lat, lng, resolvedAddress) {
   fieldData[id].lng = lng.toFixed(6);
   fieldData[id].address = resolvedAddress || '';
 
+  // カードUI更新
+  const card = document.getElementById(`fc-${id}`);
+
   // Geocoding
   if (!resolvedAddress) {
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ location: { lat, lng } }, (res, st) => {
       if (st === 'OK' && res[0]) {
         fieldData[id].address = res[0].formatted_address;
-        const addrInput = card.querySelector('.addr-input');
-        if (addrInput && !addrInput.value) addrInput.value = res[0].formatted_address;
-        const addrStatus = card.querySelector('.addr-status');
+        const addrInput = card ? card.querySelector('.addr-input') : null;
+        if (addrInput) addrInput.value = res[0].formatted_address;
+        const addrStatus = card ? card.querySelector('.addr-status') : null;
         if (addrStatus) {
           addrStatus.textContent = '✅ ' + res[0].formatted_address;
           addrStatus.style.color = 'var(--leaf)';
@@ -766,9 +770,6 @@ function doSetPin(id, lat, lng, resolvedAddress) {
   } else {
     checkAsago(resolvedAddress);
   }
-
-  // カードUI更新
-  const card = document.getElementById(`fc-${id}`);
   if (card) {
     card.classList.add('pinned');
     card.querySelector('.field-card-pin-status').textContent = '✅ ピン済み';
@@ -1266,7 +1267,7 @@ function getFieldsData() {
 }
 
 // ===== ステップ制御 =====
-const STEPS = ['基本情報', '圃場・散布計画', '用途・品質', '配送日・備考', '確認・送信'];
+const STEPS = ['基本情報', '圃場・散布計画', '用途・品質', '散布希望日・備考', '確認・送信'];
 let currentStep = 0;
 
 function initSteps() {
@@ -1335,7 +1336,7 @@ function validateStep(step) {
   }
   if (step === 3) {
     if (!document.getElementById('dateFrom').value || !document.getElementById('dateTo').value) {
-      showToast('⚠️ 配送希望期間を入力してください'); return false;
+      showToast('⚠️ 散布希望期間を入力してください'); return false;
     }
   }
   return true;
@@ -1367,7 +1368,7 @@ function buildConfirmSummary() {
     <div style="display:grid;gap:6px;margin-bottom:16px;">
       <div>👤 <strong>${name}</strong>　${phone||''}　${email}</div>
       <div>🌾 合計 <strong>${totalQty} トン</strong>（${fields.length}か所）　用途：${usage}</div>
-      <div>📅 配送希望：${dateFrom} 〜 ${dateTo}</div>
+      <div>📅 散布希望：${dateFrom} 〜 ${dateTo}</div>
     </div>
     <div style="margin-bottom:12px;"><strong style="font-size:0.82rem;">圃場ごとの詳細：</strong></div>
     ${fieldsHtml}
@@ -1386,18 +1387,32 @@ document.querySelectorAll('input[name="usage"]').forEach(r => {
   });
 });
 
-// 日付バリデーション
+// 日付バリデーション（最低2週間）
 function checkDateRange() {
   const from = document.getElementById('dateFrom').value;
   const to = document.getElementById('dateTo').value;
   const warn = document.getElementById('date-warning');
   if (!from || !to) { warn.textContent = ''; return; }
   const diff = (new Date(to) - new Date(from)) / 86400000;
-  if (diff < 7) warn.textContent = '⚠️ 期間が1週間未満です。余裕をもってご指定ください。';
-  else if (diff > 14) warn.textContent = '⚠️ 期間が2週間を超えています。1〜2週間でご指定ください。';
+  if (diff < 14) warn.textContent = '⚠️ 散布期間は最低2週間必要です。終了日を調整してください。';
   else warn.textContent = '';
 }
-document.getElementById('dateFrom').addEventListener('change', checkDateRange);
+function onDateFromChange() {
+  const from = document.getElementById('dateFrom').value;
+  if (from) {
+    const minTo = new Date(from);
+    minTo.setDate(minTo.getDate() + 14);
+    const minToStr = minTo.toISOString().split('T')[0];
+    document.getElementById('dateTo').min = minToStr;
+    // 既に選択済みの終了日が2週間未満なら自動調整
+    const currentTo = document.getElementById('dateTo').value;
+    if (currentTo && currentTo < minToStr) {
+      document.getElementById('dateTo').value = minToStr;
+    }
+  }
+  checkDateRange();
+}
+document.getElementById('dateFrom').addEventListener('change', onDateFromChange);
 document.getElementById('dateTo').addEventListener('change', checkDateRange);
 const today = new Date().toISOString().split('T')[0];
 document.getElementById('dateFrom').min = today;
@@ -1426,7 +1441,7 @@ async function submitOrder() {
   if (totalQty < MIN_LOT_TON) {
     if (!confirm(`合計${totalQty.toFixed(1)}トンは最低発注量（${MIN_LOT_TON}トン）未満のため、少量割増料金（+20%）が発生します。このまま発注しますか？`)) return;
   }
-  if (!dateFrom || !dateTo) { showToast('⚠️ 配送希望期間を入力してください'); return; }
+  if (!dateFrom || !dateTo) { showToast('⚠️ 散布希望期間を入力してください'); return; }
 
   // ピン未設定かつ自取りでない圃場があれば確認
   const noPins = fields.filter(f => f.service !== '自分で取りに来る' && !f.lat);
@@ -1510,7 +1525,7 @@ ${fText}
 有機JAS対応：${d.organicJAS}
 珪カル資材：${d.keical}
 
-▼ 配送希望期間
+▼ 散布希望期間
 ${d.dateFrom} 〜 ${d.dateTo}
 
 ▼ ご相談オプション
