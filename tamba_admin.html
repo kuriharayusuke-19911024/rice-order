@@ -599,7 +599,16 @@ input:focus, select:focus, textarea:focus {
 
   <!-- Orders tab -->
   <div class="admin-tab-content" id="tab-orders">
-    <button class="refresh-btn" onclick="loadOrders()">🔄 最新データを取得</button>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;">
+      <button class="refresh-btn" onclick="loadOrders()">🔄 最新データを取得</button>
+      <select id="orderMonthFilter" onchange="filterOrdersByMonth()" style="padding:6px 12px;border:1.5px solid rgba(139,94,60,0.25);border-radius:8px;font-size:0.82rem;font-family:'Noto Sans JP',sans-serif;color:var(--clay);background:#fff;">
+        <option value="">すべての月</option>
+      </select>
+      <button class="refresh-btn" id="bulkDeleteBtn" onclick="bulkDeleteOrders()" style="background:rgba(180,60,60,0.08);color:#b43c3c;border-color:rgba(180,60,60,0.3);display:none;">🗑️ 選択した発注を削除</button>
+      <label style="font-size:0.78rem;color:var(--text-mid);margin-left:auto;cursor:pointer;">
+        <input type="checkbox" id="selectAllOrders" onchange="toggleSelectAllOrders()" style="margin-right:4px;">すべて選択
+      </label>
+    </div>
     <div id="orders-container" class="orders-wrap">
       <p style="color:var(--text-mid);font-size:0.85rem;">データを読み込み中...</p>
     </div>
@@ -754,6 +763,8 @@ async function updateStock(type) {
 }
 
 // ═══ Orders ═══
+var selectedOrders = {};
+
 async function loadOrders() {
   setLoader(true, '発注データ取得中...');
   try {
@@ -763,22 +774,131 @@ async function loadOrders() {
     if (result.result === 'ok') {
       ordersHeaders = result.headers || [];
       ordersData = result.orders || [];
-      if (ordersData.length === 0) {
-        document.getElementById('orders-container').innerHTML = '<p style="color:var(--text-mid);">発注データがありません</p>';
-        return;
-      }
-      var html = '<table class="data-table"><tr>';
-      for (var i = 0; i < ordersHeaders.length; i++) html += '<th>'+escapeHtml(ordersHeaders[i])+'</th>';
-      html += '<th>操作</th></tr>';
-      for (var r = 0; r < ordersData.length; r++) {
-        html += '<tr>';
-        for (var c = 0; c < ordersData[r].length; c++) html += '<td>'+escapeHtml(ordersData[r][c])+'</td>';
-        html += '<td><button class="quick-btn" onclick="showOrderDetail('+r+')">詳細</button></td>';
-        html += '</tr>';
-      }
-      html += '</table>';
-      document.getElementById('orders-container').innerHTML = html;
+      selectedOrders = {};
+      document.getElementById('selectAllOrders').checked = false;
+      updateBulkDeleteBtn();
+      buildMonthFilter();
+      renderOrders(ordersData);
     } else { showToast('❌ データ取得に失敗しました'); }
+  } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
+}
+
+function buildMonthFilter() {
+  var months = {};
+  // 日付っぽいカラムを探す（最初の列をチェック）
+  for (var r = 0; r < ordersData.length; r++) {
+    for (var c = 0; c < ordersData[r].length; c++) {
+      var val = String(ordersData[r][c] || '');
+      var m = val.match(/(\d{4})[\/\-](\d{1,2})/);
+      if (m) { months[m[1]+'/'+('0'+m[2]).slice(-2)] = true; break; }
+    }
+  }
+  var select = document.getElementById('orderMonthFilter');
+  var current = select.value;
+  select.innerHTML = '<option value="">すべての月</option>';
+  var keys = Object.keys(months).sort().reverse();
+  for (var i = 0; i < keys.length; i++) {
+    var opt = document.createElement('option');
+    opt.value = keys[i]; opt.textContent = keys[i].replace('/',' 年 ')+'月';
+    select.appendChild(opt);
+  }
+  select.value = current;
+}
+
+function filterOrdersByMonth() {
+  var month = document.getElementById('orderMonthFilter').value;
+  if (!month) { renderOrders(ordersData); return; }
+  var filtered = [];
+  for (var r = 0; r < ordersData.length; r++) {
+    var match = false;
+    for (var c = 0; c < ordersData[r].length; c++) {
+      var val = String(ordersData[r][c] || '');
+      if (val.indexOf(month.replace('/','-')) >= 0 || val.indexOf(month) >= 0) { match = true; break; }
+    }
+    if (match) filtered.push({ idx: r, data: ordersData[r] });
+  }
+  renderOrdersFiltered(filtered);
+}
+
+function renderOrders(data) {
+  if (data.length === 0) {
+    document.getElementById('orders-container').innerHTML = '<p style="color:var(--text-mid);">発注データがありません</p>';
+    return;
+  }
+  var items = [];
+  for (var r = 0; r < data.length; r++) items.push({ idx: r, data: data[r] });
+  renderOrdersFiltered(items);
+}
+
+function renderOrdersFiltered(items) {
+  if (items.length === 0) {
+    document.getElementById('orders-container').innerHTML = '<p style="color:var(--text-mid);">該当する発注データがありません</p>';
+    return;
+  }
+  var html = '<table class="data-table"><tr><th style="width:36px;"><input type="checkbox" id="selectAllInTable" onchange="toggleSelectAllOrders()"></th>';
+  for (var i = 0; i < ordersHeaders.length; i++) html += '<th>'+escapeHtml(ordersHeaders[i])+'</th>';
+  html += '<th>操作</th></tr>';
+  for (var r = 0; r < items.length; r++) {
+    var idx = items[r].idx;
+    var row = items[r].data;
+    var checked = selectedOrders[idx] ? ' checked' : '';
+    html += '<tr><td><input type="checkbox" class="order-cb" data-idx="'+idx+'" onchange="toggleOrderSelect('+idx+')"'+checked+'></td>';
+    for (var c = 0; c < row.length; c++) html += '<td>'+escapeHtml(row[c])+'</td>';
+    html += '<td><button class="quick-btn" onclick="showOrderDetail('+idx+')">詳細</button></td>';
+    html += '</tr>';
+  }
+  html += '</table>';
+  document.getElementById('orders-container').innerHTML = html;
+}
+
+function toggleOrderSelect(idx) {
+  if (selectedOrders[idx]) { delete selectedOrders[idx]; } else { selectedOrders[idx] = true; }
+  updateBulkDeleteBtn();
+}
+
+function toggleSelectAllOrders() {
+  var cbs = document.querySelectorAll('.order-cb');
+  var allChecked = document.getElementById('selectAllOrders').checked;
+  // テーブル内のチェックボックスも同期
+  var tableAll = document.getElementById('selectAllInTable');
+  if (tableAll) tableAll.checked = allChecked;
+  for (var i = 0; i < cbs.length; i++) {
+    var idx = parseInt(cbs[i].getAttribute('data-idx'));
+    cbs[i].checked = allChecked;
+    if (allChecked) { selectedOrders[idx] = true; } else { delete selectedOrders[idx]; }
+  }
+  updateBulkDeleteBtn();
+}
+
+function updateBulkDeleteBtn() {
+  var count = Object.keys(selectedOrders).length;
+  var btn = document.getElementById('bulkDeleteBtn');
+  if (count > 0) {
+    btn.style.display = '';
+    btn.textContent = '🗑️ 選択した発注を削除（' + count + '件）';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+async function bulkDeleteOrders() {
+  var indices = Object.keys(selectedOrders).map(Number).sort(function(a,b){ return b - a; });
+  if (indices.length === 0) { showToast('⚠️ 削除する発注を選択してください'); return; }
+  if (!confirm(indices.length + '件の発注データを削除しますか？この操作は取り消せません。')) return;
+  setLoader(true, '削除中...');
+  try {
+    // GASの行番号は+2（ヘッダー行+1始まり）
+    var rowIndices = indices.map(function(i){ return i + 2; });
+    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
+      action: 'bulkDeleteOrders', password: adminToken, rowIndices: rowIndices
+    })});
+    var result = await res.json();
+    setLoader(false);
+    if (result.result === 'ok') {
+      showToast('✅ ' + indices.length + '件の発注を削除しました');
+      selectedOrders = {};
+      loadOrders();
+    } else { showToast('❌ ' + (result.message || '削除に失敗しました')); }
   } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
 }
 
