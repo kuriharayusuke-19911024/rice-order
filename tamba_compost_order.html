@@ -456,11 +456,17 @@ textarea { resize: vertical; min-height: 72px; }
 <div class="step-panel" data-step="1">
 <div class="section">
   <div class="section-title"><span class="num">2</span> 圃場ごとの散布計画（最大10か所）</div>
-  <p style="font-size:0.78rem;color:var(--text-mid);margin-bottom:16px;">
-    圃場ごとに数量・作業形態を入力し、住所を入力すると地図に自動でピンが立ちます。
-  </p>
+  <div style="font-size:0.78rem;color:var(--text-mid);margin-bottom:16px;line-height:1.8;">
+    <p style="margin-bottom:6px;">① 住所を入力してください。入力すると自動でピンが立ちます。</p>
+    <p style="margin-bottom:6px;">② 住所欄の右側にある 📍 ボタンを押すと、地図上で直接圃場にピンを立てることができます。ピンを立てると住所が自動入力されます。</p>
+    <p style="margin-bottom:0;">③ 地番が実際と少し異なる場合がありますので、地番の修正をお願いします。</p>
+  </div>
 
   <div id="fieldCards"></div>
+
+  <button type="button" class="add-field-btn" onclick="addField()">
+    ＋ 圃場を追加する
+  </button>
 
   <!-- 朝来市チェック -->
   <div id="asagoAlert" style="display:none;margin:8px 0;padding:9px 14px;background:#fff8e6;
