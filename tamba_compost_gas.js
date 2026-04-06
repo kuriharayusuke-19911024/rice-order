@@ -11,7 +11,7 @@
 // ※ 更新時は「デプロイを管理」→「新しいバージョン」で再デプロイ
 // ============================================================
 
-const ADMIN_EMAIL         = 'kuribara@tamba-nosho.example.com';
+const ADMIN_EMAIL         = 'tamba.nosho@gmail.com';
 const ADMIN_PASSWORD      = '1108';
 const OVERSTOCK_THRESHOLD = 100;   // トン（この値を超えると在庫過剰アラート）
 const SHEET_ORDERS        = '発注一覧';
