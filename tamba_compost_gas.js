@@ -33,7 +33,7 @@ function doPost(e) {
       // 発注数量を在庫から自動減算
       var fields = data.fields || [];
       var totalQty = 0;
-      for (var i = 0; i < fields.length; i++) totalQty += parseFloat(fields[i].quantity) || 0;
+      for (var i = 0; i < fields.length; i++) totalQty += parseFloat(fields[i].qty || fields[i].quantity) || 0;
       if (totalQty > 0) {
         updateStockData('sub', totalQty, '発注自動出庫', data.name + '様 発注');
       }
@@ -173,21 +173,23 @@ function saveToSheet(d) {
     sheet.setFrozenRows(1);
   }
   var fields = d.fields || [];
-  var pins = d.pins || [];
   var pinText = '';
-  for (var i = 0; i < pins.length; i++) {
-    pinText += 'ピン'+(i+1)+': '+(pins[i].address || (pins[i].lat+','+pins[i].lng));
-    if (i < pins.length-1) pinText += ' ／ ';
+  for (var i = 0; i < fields.length; i++) {
+    if (fields[i].lat) {
+      pinText += (fields[i].name||'圃場'+(i+1))+': '+(fields[i].address||fields[i].addr||'')+' ('+fields[i].lat+','+fields[i].lng+')';
+      if (i < fields.length-1) pinText += ' ／ ';
+    }
   }
   for (var i = 0; i < fields.length; i++) {
     var f = fields[i];
+    var qty = f.qty || f.quantity || '';
     sheet.appendRow([
       d.submittedAt || new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}),
-      d.name, d.phone||'', d.email, f.fieldNum||(i+1), fields.length,
-      d.compostType||'牛ふん堆肥', f.quantity, f.area||'',
-      f.usage||'', f.vegType||'', f.prevCrop||'',
-      f.organicJAS||'なし', f.keical||'なし', f.service||'',
-      d.dateFrom, d.dateTo, pinText, d.addressNote||'', d.totalQuantity||'', d.remarks||''
+      d.name, d.phone||'', d.email, f.num||f.fieldNum||(i+1), fields.length,
+      d.compostType||'牛ふん堆肥', qty, f.area||'',
+      d.usage||'', d.vegType||'', d.prevCrop||'',
+      d.organicJAS||'なし', d.keical||'なし', f.service||'',
+      d.dateFrom, d.dateTo, pinText, f.address||f.addr||'', d.totalQty||d.totalQuantity||'', d.remarks||''
     ]);
   }
 }
@@ -293,24 +295,34 @@ function getSpreadingData() {
 // ══════════════════════════════════════
 function sendAdminEmail(d) {
   var fields = d.fields || [];
-  var pins = d.pins || [];
-  var subject = '【堆肥発注】'+d.name+'様より（合計'+d.totalQuantity+'・'+fields.length+'圃場）';
+  var totalQty = d.totalQty || d.totalQuantity || '';
+  var subject = '【堆肥発注】'+d.name+'様より（合計'+totalQty+'トン・'+fields.length+'圃場）';
   var body = ['【堆肥発注通知】丹波農商','','■ 受付日時：'+(d.submittedAt||''),'',
     '▼ 発注者情報','氏名：'+d.name,'電話：'+(d.phone||'未記入'),'メール：'+d.email,'',
-    '▼ 発注概要','合計数量：'+d.totalQuantity,'圃場数：'+fields.length,''];
+    '▼ 発注概要','堆肥の種類：'+(d.compostType||'牛ふん堆肥'),'合計数量：'+totalQty+' トン','圃場数：'+fields.length,''];
   for (var i = 0; i < fields.length; i++) {
     var f = fields[i];
-    body.push('────────────────','【圃場 '+(i+1)+'】','数量：'+f.quantity+' トン');
+    var qty = f.qty || f.quantity || '';
+    var name = f.name || ('圃場'+(i+1));
+    body.push('────────────────','【'+name+'】','数量：'+qty+' トン');
     if (f.area) body.push('散布面積：'+f.area+' a');
-    body.push('用途：'+f.usage);
-    if (f.vegType) body.push('野菜の種類：'+f.vegType);
-    if (f.prevCrop) body.push('前作情報：'+f.prevCrop);
-    body.push('有機JAS：'+f.organicJAS,'珪カル資材：'+f.keical,'作業形態：'+f.service,'');
+    body.push('作業形態：'+(f.service||''));
+    if (f.address || f.addr) body.push('住所：'+(f.address||f.addr));
+    if (f.lat) body.push('地図：https://maps.google.com/?q='+f.lat+','+f.lng);
+    body.push('');
   }
-  body.push('────────────────','','▼ 散布希望期間',d.dateFrom+' 〜 '+d.dateTo,'','▼ 散布先ピン');
-  if (pins.length > 0) { for (var i = 0; i < pins.length; i++) { body.push('ピン'+(i+1)+'：'+(pins[i].address||''),'  → https://maps.google.com/?q='+pins[i].lat+','+pins[i].lng); } }
-  else body.push('ピン未設定');
-  if (d.addressNote) body.push('住所補足：'+d.addressNote);
+  body.push('────────────────');
+  body.push('','▼ 用途・作物');
+  body.push('用途：'+(d.usage||'未記入'));
+  if (d.vegType) body.push('野菜の種類：'+d.vegType);
+  if (d.prevCrop) body.push('前作情報：'+d.prevCrop);
+  body.push('','▼ 品質オプション');
+  body.push('有機JAS対応：'+(d.organicJAS||'なし'));
+  body.push('珪カル資材：'+(d.keical||'なし'));
+  body.push('','▼ 散布希望期間',d.dateFrom+' 〜 '+d.dateTo);
+  body.push('','▼ ご相談オプション');
+  body.push('土壌医への相談：'+(d.consultSoilDoctor||'なし'));
+  body.push('相談の上で数量決定：'+(d.consultQty||'なし'));
   body.push('','▼ その他備考',d.remarks||'なし');
   GmailApp.sendEmail(ADMIN_EMAIL, subject, body.join('\n'));
 }
@@ -318,17 +330,23 @@ function sendAdminEmail(d) {
 function sendCustomerEmail(d) {
   if (!d.email) return;
   var fields = d.fields || [];
+  var totalQty = d.totalQty || d.totalQuantity || '';
   var subject = '【丹波農商】堆肥のご発注を受け付けました';
   var body = [d.name+' 様','','この度は丹波農商の堆肥をご発注いただき、誠にありがとうございます。','以下の内容でご注文を受け付けました。','',
-    '━━━━━━━━━━━━━━━━━━━━━━','','■ ご注文概要','堆肥の種類：牛ふん堆肥','合計数量：'+d.totalQuantity,'圃場数：'+fields.length,''];
+    '━━━━━━━━━━━━━━━━━━━━━━','','■ ご注文概要','堆肥の種類：'+(d.compostType||'牛ふん堆肥'),'合計数量：'+totalQty+' トン','圃場数：'+fields.length,''];
   for (var i = 0; i < fields.length; i++) {
     var f = fields[i];
-    body.push('── 圃場 '+(i+1)+' ──','数量：'+f.quantity+' トン','用途：'+f.usage+(f.vegType?'（'+f.vegType+'）':''),'作業形態：'+f.service);
-    if (f.organicJAS==='希望') body.push('有機JAS対応：希望');
-    if (f.keical==='希望') body.push('珪カル資材：希望');
+    var qty = f.qty || f.quantity || '';
+    var name = f.name || ('圃場'+(i+1));
+    body.push('── '+name+' ──','数量：'+qty+' トン','作業形態：'+(f.service||''));
+    if (f.address || f.addr) body.push('住所：'+(f.address||f.addr));
+    if (f.lat) body.push('地図：https://maps.google.com/?q='+f.lat+','+f.lng);
     body.push('');
   }
-  body.push('■ 散布希望期間',d.dateFrom+' 〜 '+d.dateTo,'','━━━━━━━━━━━━━━━━━━━━━━','',
+  body.push('■ 用途：'+(d.usage||'未記入'));
+  if (d.organicJAS==='希望') body.push('■ 有機JAS対応：希望');
+  if (d.keical==='希望') body.push('■ 珪カル資材：希望');
+  body.push('','■ 散布希望期間',d.dateFrom+' 〜 '+d.dateTo,'','━━━━━━━━━━━━━━━━━━━━━━','',
     '担当者より改めてご連絡いたします。','通常1〜2営業日以内にお返事いたしますので、','少々お待ちくださいませ。','',
     'ご不明な点がございましたら、お気軽にお問い合わせください。','',
     '─────────────────────','丹波農商','メール：'+ADMIN_EMAIL,'─────────────────────');
