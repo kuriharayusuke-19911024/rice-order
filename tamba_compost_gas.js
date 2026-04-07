@@ -108,6 +108,35 @@ function doPost(e) {
       return jsonOk({ result: 'ok' });
     }
 
+    // ── 在庫直接修正 ──
+    if (action === 'directSetStock') {
+      if (data.password !== ADMIN_PASSWORD) return jsonOk({ result: 'error', message: '認証エラー' });
+      var stockSheet = getStockSheet();
+      var currentStock = getCurrentStock();
+      var newStock = parseFloat(data.newStock);
+      var diff = newStock - currentStock;
+      var type = diff >= 0 ? '入庫' : '出庫';
+      // 履歴に記録
+      var histSheet = getHistorySheet();
+      histSheet.appendRow([
+        new Date().toLocaleString('ja-JP', {timeZone:'Asia/Tokyo'}),
+        type, Math.abs(diff).toFixed(1), '直接修正：' + (data.reason || ''), '', newStock.toFixed(1)
+      ]);
+      // 在庫シート更新
+      if (stockSheet.getLastRow() < 2) stockSheet.appendRow(['現在庫（トン）', newStock]);
+      else stockSheet.getRange(2, 2).setValue(newStock);
+      return jsonOk({ result: 'ok', stock: newStock });
+    }
+
+    // ── 在庫履歴削除 ──
+    if (action === 'deleteHistory') {
+      if (data.password !== ADMIN_PASSWORD) return jsonOk({ result: 'error', message: '認証エラー' });
+      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_HISTORY);
+      var rowIdx = parseInt(data.rowIndex) + 2; // ヘッダー行+1始まり
+      if (rowIdx >= 2 && rowIdx <= sheet.getLastRow()) sheet.deleteRow(rowIdx);
+      return jsonOk({ result: 'ok' });
+    }
+
     return jsonOk({ result: 'error', message: '不明なアクション' });
   } catch (err) {
     return jsonOk({ result: 'error', message: err.toString() });

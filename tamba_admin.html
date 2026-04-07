@@ -525,6 +525,22 @@ input:focus, select:focus, textarea:focus {
         <input type="text" id="stock-memo" placeholder="例：○○農場から仕入れ">
       </div>
     </div>
+
+    <div class="card" style="margin-top:16px;">
+      <h2>✏️ 在庫数を直接修正</h2>
+      <p style="font-size:0.78rem;color:var(--text-mid);margin-bottom:10px;">棚卸しなどで在庫数を直接指定する場合に使います。</p>
+      <div class="stock-actions">
+        <div class="field" style="flex:1;">
+          <label>修正後の在庫数（トン）</label>
+          <input type="number" id="stock-direct" placeholder="例：50.0" min="0" step="0.1">
+        </div>
+        <div class="field" style="flex:1;">
+          <label>理由</label>
+          <input type="text" id="stock-direct-reason" placeholder="例：棚卸し調整">
+        </div>
+        <button class="action-btn btn-add" onclick="directSetStock()">📝 在庫数を設定</button>
+      </div>
+    </div>
   </div>
 
   <!-- Spread tab -->
@@ -925,15 +941,58 @@ async function loadStockHistory() {
     if (result.result === 'ok') {
       var rows = result.history || [];
       if (rows.length === 0) { document.getElementById('history-container').innerHTML = '<p style="color:var(--text-mid);">履歴がありません</p>'; return; }
-      var html = '<table class="data-table"><tr><th>日時</th><th>種別</th><th>数量</th><th>理由</th><th>メモ</th><th>残高</th></tr>';
+      historyData = rows;
+      var html = '<table class="data-table"><tr><th>日時</th><th>種別</th><th>数量</th><th>理由</th><th>メモ</th><th>残高</th><th>操作</th></tr>';
       for (var i = 0; i < rows.length; i++) {
         var r = rows[i];
         var badge = r[1] === '入庫' ? '<span class="badge-in">入庫</span>' : '<span class="badge-out">出庫</span>';
-        html += '<tr><td>'+escapeHtml(r[0])+'</td><td>'+badge+'</td><td>'+escapeHtml(r[2])+' t</td><td>'+escapeHtml(r[3])+'</td><td>'+escapeHtml(r[4])+'</td><td>'+escapeHtml(r[5])+' t</td></tr>';
+        html += '<tr><td>'+escapeHtml(r[0])+'</td><td>'+badge+'</td><td>'+escapeHtml(r[2])+' t</td><td>'+escapeHtml(r[3])+'</td><td>'+escapeHtml(r[4])+'</td><td>'+escapeHtml(r[5])+' t</td>';
+        html += '<td><button class="quick-btn" style="color:#b43c3c;border-color:rgba(180,60,60,0.3);" onclick="deleteHistoryRow('+i+')">🗑️</button></td></tr>';
       }
       html += '</table>';
       document.getElementById('history-container').innerHTML = html;
     } else { showToast('❌ 取得に失敗しました'); }
+  } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
+}
+
+// ═══ Direct Stock Set ═══
+async function directSetStock() {
+  var newVal = parseFloat(document.getElementById('stock-direct').value);
+  if (isNaN(newVal) || newVal < 0) { showToast('⚠️ 正しい在庫数を入力してください'); return; }
+  var reason = document.getElementById('stock-direct-reason').value.trim() || '直接修正';
+  if (!confirm('在庫数を ' + newVal.toFixed(1) + ' トンに設定しますか？')) return;
+  setLoader(true, '在庫修正中...');
+  try {
+    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
+      action: 'directSetStock', password: adminToken, newStock: newVal, reason: reason
+    })});
+    var result = await res.json();
+    setLoader(false);
+    if (result.result === 'ok') {
+      showToast('✅ 在庫数を ' + newVal.toFixed(1) + ' トンに設定しました');
+      document.getElementById('stock-direct').value = '';
+      document.getElementById('stock-direct-reason').value = '';
+      loadStock();
+    } else { showToast('❌ ' + (result.message || '修正に失敗しました')); }
+  } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
+}
+
+// ═══ History Delete ═══
+var historyData = [];
+
+async function deleteHistoryRow(idx) {
+  if (!confirm('この履歴を削除しますか？')) return;
+  setLoader(true, '削除中...');
+  try {
+    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
+      action: 'deleteHistory', password: adminToken, rowIndex: idx
+    })});
+    var result = await res.json();
+    setLoader(false);
+    if (result.result === 'ok') {
+      showToast('✅ 履歴を削除しました');
+      loadStockHistory();
+    } else { showToast('❌ ' + (result.message || '削除に失敗しました')); }
   } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
 }
 
