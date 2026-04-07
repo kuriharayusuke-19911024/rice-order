@@ -50,8 +50,27 @@ function doPost(e) {
     // ── 在庫更新（手動） ──
     if (action === 'updateStock') {
       if (data.password !== ADMIN_PASSWORD) return jsonOk({ result: 'error', message: '認証エラー' });
-      var newStock = updateStockData(data.type, data.quantity, data.reason, data.memo);
+      var loc = data.location || '前山';
+      var newStock = updateStockDataByLocation(loc, data.type, data.quantity, data.reason, data.memo);
       return jsonOk({ result: 'ok', stock: newStock });
+    }
+
+    // ── 拠点間移動 ──
+    if (action === 'transferStock') {
+      if (data.password !== ADMIN_PASSWORD) return jsonOk({ result: 'error', message: '認証エラー' });
+      var fromLoc = data.from;
+      var toLoc = data.to;
+      var qty = parseFloat(data.quantity) || 0;
+      var fromStock = getLocationStock(fromLoc);
+      if (fromStock < qty) return jsonOk({ result: 'error', message: fromLoc + 'の在庫（' + fromStock.toFixed(1) + 'トン）が不足しています' });
+      setLocationStock(fromLoc, fromStock - qty);
+      setLocationStock(toLoc, getLocationStock(toLoc) + qty);
+      var memo = data.memo || '';
+      getHistorySheet().appendRow([
+        new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}),
+        '移動', qty, fromLoc+'→'+toLoc, memo, '前山:'+getLocationStock('前山').toFixed(1)+' / 夜久野:'+getLocationStock('夜久野').toFixed(1)
+      ]);
+      return jsonOk({ result: 'ok' });
     }
 
     // ── 散布計画 登録 ──
@@ -111,20 +130,16 @@ function doPost(e) {
     // ── 在庫直接修正 ──
     if (action === 'directSetStock') {
       if (data.password !== ADMIN_PASSWORD) return jsonOk({ result: 'error', message: '認証エラー' });
-      var stockSheet = getStockSheet();
-      var currentStock = getCurrentStock();
+      var loc = data.location || '前山';
+      var currentStock = getLocationStock(loc);
       var newStock = parseFloat(data.newStock);
       var diff = newStock - currentStock;
       var type = diff >= 0 ? '入庫' : '出庫';
-      // 履歴に記録
-      var histSheet = getHistorySheet();
-      histSheet.appendRow([
+      setLocationStock(loc, newStock);
+      getHistorySheet().appendRow([
         new Date().toLocaleString('ja-JP', {timeZone:'Asia/Tokyo'}),
-        type, Math.abs(diff).toFixed(1), '直接修正：' + (data.reason || ''), '', newStock.toFixed(1)
+        type, Math.abs(diff).toFixed(1), loc+'：直接修正：' + (data.reason || ''), '', '前山:'+getLocationStock('前山').toFixed(1)+' / 夜久野:'+getLocationStock('夜久野').toFixed(1)
       ]);
-      // 在庫シート更新
-      if (stockSheet.getLastRow() < 2) stockSheet.appendRow(['現在庫（トン）', newStock]);
-      else stockSheet.getRange(2, 2).setValue(newStock);
       return jsonOk({ result: 'ok', stock: newStock });
     }
 
@@ -152,8 +167,10 @@ function doGet(e) {
 
   if (action === 'getStock') {
     if (pw !== ADMIN_PASSWORD) return jsonOk({ result: 'error' });
-    var stock = getCurrentStock();
-    return jsonOk({ result: 'ok', stock: stock, overstock: stock > OVERSTOCK_THRESHOLD, threshold: OVERSTOCK_THRESHOLD });
+    var maeyama = getLocationStock('前山');
+    var yakuno = getLocationStock('夜久野');
+    var total = maeyama + yakuno;
+    return jsonOk({ result: 'ok', maeyama: maeyama, yakuno: yakuno, stock: total, overstock: total > OVERSTOCK_THRESHOLD, threshold: OVERSTOCK_THRESHOLD });
   }
   if (action === 'getOrders') {
     if (pw !== ADMIN_PASSWORD) return jsonOk({ result: 'error' });
@@ -231,13 +248,40 @@ function getStockSheet() {
   var sheet = ss.getSheetByName(SHEET_STOCK);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_STOCK);
-    sheet.getRange('A1').setValue('現在庫(トン)').setFontWeight('bold');
-    sheet.getRange('B1').setValue(0);
+    sheet.appendRow(['拠点','在庫(トン)']);
+    sheet.getRange(1,1,1,2).setFontWeight('bold');
+    sheet.appendRow(['前山', 0]);
+    sheet.appendRow(['夜久野', 0]);
+  }
+  // 旧形式からの移行チェック
+  if (sheet.getRange('A1').getValue() === '現在庫(トン)') {
+    var oldStock = parseFloat(sheet.getRange('B1').getValue()) || 0;
+    sheet.clear();
+    sheet.appendRow(['拠点','在庫(トン)']);
+    sheet.getRange(1,1,1,2).setFontWeight('bold');
+    sheet.appendRow(['前山', oldStock]);
+    sheet.appendRow(['夜久野', 0]);
   }
   return sheet;
 }
-function getCurrentStock() { return parseFloat(getStockSheet().getRange('B1').getValue()) || 0; }
-function setCurrentStock(v) { getStockSheet().getRange('B1').setValue(v); }
+function getLocationStock(location) {
+  var sheet = getStockSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === location) return parseFloat(data[i][1]) || 0;
+  }
+  return 0;
+}
+function setLocationStock(location, value) {
+  var sheet = getStockSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === location) { sheet.getRange(i+1, 2).setValue(value); return; }
+  }
+  sheet.appendRow([location, value]);
+}
+function getCurrentStock() { return getLocationStock('前山') + getLocationStock('夜久野'); }
+function setCurrentStock(v) { setLocationStock('前山', v); }
 
 function getHistorySheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -263,15 +307,28 @@ function getSpreadSheet() {
   return sheet;
 }
 
-function updateStockData(type, quantity, reason, memo) {
-  var current = getCurrentStock();
+function updateStockDataByLocation(location, type, quantity, reason, memo) {
+  var current = getLocationStock(location);
   var qty = parseFloat(quantity) || 0;
   current = type === 'add' ? current + qty : current - qty;
-  setCurrentStock(current);
+  setLocationStock(location, current);
 
   getHistorySheet().appendRow([
     new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}),
-    type === 'add' ? '入庫' : '出庫', qty, reason||'', memo||'', current
+    type === 'add' ? '入庫' : '出庫', qty, (location+'：')+(reason||''), memo||'', '前山:'+getLocationStock('前山').toFixed(1)+' / 夜久野:'+getLocationStock('夜久野').toFixed(1)
+  ]);
+  return current;
+}
+
+function updateStockData(type, quantity, reason, memo) {
+  var current = getLocationStock('前山');
+  var qty = parseFloat(quantity) || 0;
+  current = type === 'add' ? current + qty : current - qty;
+  setLocationStock('前山', current);
+
+  getHistorySheet().appendRow([
+    new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}),
+    type === 'add' ? '入庫' : '出庫', qty, reason||'', memo||'', '前山:'+getLocationStock('前山').toFixed(1)+' / 夜久野:'+getLocationStock('夜久野').toFixed(1)
   ]);
 
   // 在庫過剰アラートメール（1回/日制限）

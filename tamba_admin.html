@@ -493,15 +493,37 @@ input:focus, select:focus, textarea:focus {
 
   <!-- Stock tab -->
   <div class="admin-tab-content active" id="tab-stock">
-    <div class="card">
-      <h2>📦 牛ふん堆肥 ─ 現在の在庫</h2>
-      <div class="stock-amount" id="stock-display">
-        <span>読み込み中...</span>
+    <!-- 2拠点の在庫表示 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div class="card" style="margin:0;text-align:center;">
+        <h2 style="font-size:1rem;">🏠 前山堆肥舎</h2>
+        <div class="stock-amount" id="stock-display-maeyama"><span>─</span></div>
       </div>
-      <div class="overstock-alert" id="overstock-warning">
-        ⚠️ 在庫過剰アラート：しきい値を超えています。出庫・販売を検討してください。
+      <div class="card" style="margin:0;text-align:center;">
+        <h2 style="font-size:1rem;">🏔️ 夜久野堆肥舎</h2>
+        <div class="stock-amount" id="stock-display-yakuno"><span>─</span></div>
       </div>
-      <div class="stock-actions">
+    </div>
+    <div class="card" style="text-align:center;padding:10px 16px;">
+      <span style="font-size:0.82rem;color:var(--text-mid);">合計在庫：</span>
+      <span style="font-size:1.4rem;font-weight:700;color:var(--soil);" id="stock-display-total">─</span>
+      <span style="font-size:0.82rem;color:var(--text-mid);"> トン</span>
+    </div>
+    <div class="overstock-alert" id="overstock-warning" style="display:none;">
+      ⚠️ 在庫過剰アラート：しきい値を超えています。出庫・販売を検討してください。
+    </div>
+
+    <!-- 入出庫 -->
+    <div class="card" style="margin-top:14px;">
+      <h2>📦 入庫・出庫</h2>
+      <div class="stock-actions" style="flex-wrap:wrap;">
+        <div class="field" style="min-width:130px;">
+          <label>拠点<span class="req">*</span></label>
+          <select id="stock-location">
+            <option value="前山">🏠 前山堆肥舎</option>
+            <option value="夜久野">🏔️ 夜久野堆肥舎</option>
+          </select>
+        </div>
         <div class="field" style="flex:1;min-width:80px;">
           <label>数量（トン）</label>
           <input type="number" id="stock-qty" placeholder="数量" min="0.1" step="0.1">
@@ -526,10 +548,50 @@ input:focus, select:focus, textarea:focus {
       </div>
     </div>
 
-    <div class="card" style="margin-top:16px;">
+    <!-- 拠点間移動 -->
+    <div class="card" style="margin-top:14px;">
+      <h2>🚛 拠点間の移動</h2>
+      <p style="font-size:0.78rem;color:var(--text-mid);margin-bottom:10px;">一方の拠点から他方へ堆肥を移動する場合に使います。</p>
+      <div class="stock-actions" style="flex-wrap:wrap;">
+        <div class="field" style="min-width:130px;">
+          <label>移動元</label>
+          <select id="transfer-from">
+            <option value="前山">🏠 前山堆肥舎</option>
+            <option value="夜久野">🏔️ 夜久野堆肥舎</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;font-size:1.4rem;color:var(--soil);padding-top:14px;">→</div>
+        <div class="field" style="min-width:130px;">
+          <label>移動先</label>
+          <select id="transfer-to">
+            <option value="夜久野">🏔️ 夜久野堆肥舎</option>
+            <option value="前山">🏠 前山堆肥舎</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1;min-width:80px;">
+          <label>数量（トン）</label>
+          <input type="number" id="transfer-qty" placeholder="数量" min="0.1" step="0.1">
+        </div>
+        <button class="action-btn btn-add" onclick="transferStock()">🚛 移動する</button>
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label>メモ（任意）</label>
+        <input type="text" id="transfer-memo" placeholder="例：夜久野の注文分を移動">
+      </div>
+    </div>
+
+    <!-- 在庫直接修正 -->
+    <div class="card" style="margin-top:14px;">
       <h2>✏️ 在庫数を直接修正</h2>
       <p style="font-size:0.78rem;color:var(--text-mid);margin-bottom:10px;">棚卸しなどで在庫数を直接指定する場合に使います。</p>
-      <div class="stock-actions">
+      <div class="stock-actions" style="flex-wrap:wrap;">
+        <div class="field" style="min-width:130px;">
+          <label>拠点</label>
+          <select id="stock-direct-location">
+            <option value="前山">🏠 前山堆肥舎</option>
+            <option value="夜久野">🏔️ 夜久野堆肥舎</option>
+          </select>
+        </div>
         <div class="field" style="flex:1;">
           <label>修正後の在庫数（トン）</label>
           <input type="number" id="stock-direct" placeholder="例：50.0" min="0" step="0.1">
@@ -734,47 +796,81 @@ function switchTab(tab, btn) {
   if (tab === 'history') { loadStockHistory(); }
 }
 
-// ═══ Stock ═══
+// ═══ Stock（2拠点対応） ═══
 async function loadStock() {
   try {
     var res = await fetch(GAS_URL + '?action=getStock&pw=' + encodeURIComponent(adminToken));
     var result = await res.json();
     if (result.result === 'ok') {
-      var amt = parseFloat(result.stock) || 0;
-      document.getElementById('stock-display').innerHTML = amt.toFixed(1) + '<span> トン</span>';
+      var maeyama = parseFloat(result.maeyama) || 0;
+      var yakuno = parseFloat(result.yakuno) || 0;
+      var total = maeyama + yakuno;
+      // 旧形式の場合（stock のみ返ってくる）
+      if (result.maeyama === undefined) {
+        maeyama = parseFloat(result.stock) || 0;
+        yakuno = 0;
+        total = maeyama;
+      }
+      document.getElementById('stock-display-maeyama').innerHTML = maeyama.toFixed(1) + '<span> トン</span>';
+      document.getElementById('stock-display-yakuno').innerHTML = yakuno.toFixed(1) + '<span> トン</span>';
+      document.getElementById('stock-display-total').textContent = total.toFixed(1);
       var warn = document.getElementById('overstock-warning');
-      if (result.overstock) {
+      if (total > (result.threshold || 100)) {
         warn.style.display = 'block';
-        warn.textContent = '⚠️ 在庫過剰アラート：現在庫が ' + amt.toFixed(1) + ' トン（しきい値 ' + result.threshold + ' トン超）です。出庫・販売を検討してください。';
+        warn.textContent = '⚠️ 在庫過剰アラート：合計在庫が ' + total.toFixed(1) + ' トンです。出庫・販売を検討してください。';
       } else {
         warn.style.display = 'none';
       }
     }
   } catch (e) {
-    document.getElementById('stock-display').innerHTML = '<span style="font-size:1rem;color:var(--accent);">取得エラー</span>';
+    document.getElementById('stock-display-maeyama').innerHTML = '<span style="font-size:1rem;color:var(--accent);">取得エラー</span>';
+    document.getElementById('stock-display-yakuno').innerHTML = '<span style="font-size:1rem;color:var(--accent);">取得エラー</span>';
   }
 }
 
 async function updateStock(type) {
   var qty = parseFloat(document.getElementById('stock-qty').value);
   if (!qty || qty <= 0) { showToast('⚠️ 数量を入力してください'); return; }
+  var location = document.getElementById('stock-location').value;
   var reason = document.getElementById('stock-reason').value;
   var memo = document.getElementById('stock-memo').value.trim();
   setLoader(true, '在庫更新中...');
   try {
     var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
-      action: 'updateStock', password: adminToken, type: type, quantity: qty, reason: reason, memo: memo
+      action: 'updateStock', password: adminToken, type: type, quantity: qty, reason: reason, memo: memo, location: location
     })});
     var result = await res.json();
     setLoader(false);
     if (result.result === 'ok') {
-      var newAmt = parseFloat(result.stock);
-      showToast('✅ 在庫を更新しました（現在: '+newAmt.toFixed(1)+'トン）');
-      document.getElementById('stock-display').innerHTML = newAmt.toFixed(1) + '<span> トン</span>';
+      showToast('✅ ' + location + 'の在庫を更新しました');
       document.getElementById('stock-qty').value = '';
       document.getElementById('stock-memo').value = '';
       loadStock();
     } else { showToast('❌ '+(result.message || '更新に失敗しました')); }
+  } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
+}
+
+async function transferStock() {
+  var from = document.getElementById('transfer-from').value;
+  var to = document.getElementById('transfer-to').value;
+  var qty = parseFloat(document.getElementById('transfer-qty').value);
+  var memo = document.getElementById('transfer-memo').value.trim();
+  if (from === to) { showToast('⚠️ 移動元と移動先が同じです'); return; }
+  if (!qty || qty <= 0) { showToast('⚠️ 数量を入力してください'); return; }
+  if (!confirm(from + ' → ' + to + ' に ' + qty.toFixed(1) + ' トンを移動しますか？')) return;
+  setLoader(true, '移動中...');
+  try {
+    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
+      action: 'transferStock', password: adminToken, from: from, to: to, quantity: qty, memo: memo
+    })});
+    var result = await res.json();
+    setLoader(false);
+    if (result.result === 'ok') {
+      showToast('✅ ' + from + ' → ' + to + ' に ' + qty.toFixed(1) + ' トン移動しました');
+      document.getElementById('transfer-qty').value = '';
+      document.getElementById('transfer-memo').value = '';
+      loadStock();
+    } else { showToast('❌ '+(result.message || '移動に失敗しました')); }
   } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
 }
 
@@ -959,12 +1055,13 @@ async function loadStockHistory() {
 async function directSetStock() {
   var newVal = parseFloat(document.getElementById('stock-direct').value);
   if (isNaN(newVal) || newVal < 0) { showToast('⚠️ 正しい在庫数を入力してください'); return; }
+  var location = document.getElementById('stock-direct-location').value;
   var reason = document.getElementById('stock-direct-reason').value.trim() || '直接修正';
-  if (!confirm('在庫数を ' + newVal.toFixed(1) + ' トンに設定しますか？')) return;
+  if (!confirm(location + 'の在庫数を ' + newVal.toFixed(1) + ' トンに設定しますか？')) return;
   setLoader(true, '在庫修正中...');
   try {
     var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
-      action: 'directSetStock', password: adminToken, newStock: newVal, reason: reason
+      action: 'directSetStock', password: adminToken, newStock: newVal, reason: reason, location: location
     })});
     var result = await res.json();
     setLoader(false);
