@@ -694,7 +694,13 @@ input:focus, select:focus, textarea:focus {
 
   <!-- History tab -->
   <div class="admin-tab-content" id="tab-history">
-    <button class="refresh-btn" onclick="loadStockHistory()">🔄 最新データを取得</button>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;">
+      <button class="refresh-btn" onclick="loadStockHistory()">🔄 最新データを取得</button>
+      <button class="refresh-btn" id="bulkDeleteHistoryBtn" onclick="bulkDeleteHistory()" style="background:rgba(180,60,60,0.08);color:#b43c3c;border-color:rgba(180,60,60,0.3);display:none;">🗑️ 選択した履歴を削除</button>
+      <label style="font-size:0.78rem;color:var(--text-mid);margin-left:auto;cursor:pointer;">
+        <input type="checkbox" id="selectAllHistory" onchange="toggleSelectAllHistory()" style="margin-right:4px;">すべて選択
+      </label>
+    </div>
     <div id="history-container">
       <p style="color:var(--text-mid);font-size:0.85rem;">データを読み込み中...</p>
     </div>
@@ -1038,12 +1044,15 @@ async function loadStockHistory() {
       var rows = result.history || [];
       if (rows.length === 0) { document.getElementById('history-container').innerHTML = '<p style="color:var(--text-mid);">履歴がありません</p>'; return; }
       historyData = rows;
-      var html = '<table class="data-table"><tr><th>日時</th><th>種別</th><th>数量</th><th>理由</th><th>メモ</th><th>残高</th><th>操作</th></tr>';
+      selectedHistory = {};
+      document.getElementById('selectAllHistory').checked = false;
+      updateBulkDeleteHistoryBtn();
+      var html = '<table class="data-table"><tr><th style="width:36px;"><input type="checkbox" onchange="toggleSelectAllHistory()"></th><th>日時</th><th>種別</th><th>数量</th><th>理由</th><th>メモ</th><th>残高</th></tr>';
       for (var i = 0; i < rows.length; i++) {
         var r = rows[i];
-        var badge = r[1] === '入庫' ? '<span class="badge-in">入庫</span>' : '<span class="badge-out">出庫</span>';
-        html += '<tr><td>'+escapeHtml(r[0])+'</td><td>'+badge+'</td><td>'+escapeHtml(r[2])+' t</td><td>'+escapeHtml(r[3])+'</td><td>'+escapeHtml(r[4])+'</td><td>'+escapeHtml(r[5])+' t</td>';
-        html += '<td><button class="quick-btn" style="color:#b43c3c;border-color:rgba(180,60,60,0.3);" onclick="deleteHistoryRow('+i+')">🗑️</button></td></tr>';
+        var badge = r[1] === '入庫' ? '<span class="badge-in">入庫</span>' : (r[1] === '移動' ? '<span style="background:rgba(26,107,138,0.1);color:#1a6b8a;padding:2px 8px;border-radius:4px;font-size:0.75rem;">移動</span>' : '<span class="badge-out">出庫</span>');
+        html += '<tr><td><input type="checkbox" class="history-cb" data-idx="'+i+'" onchange="toggleHistorySelect('+i+')"></td>';
+        html += '<td>'+escapeHtml(r[0])+'</td><td>'+badge+'</td><td>'+escapeHtml(r[2])+' t</td><td>'+escapeHtml(r[3])+'</td><td>'+escapeHtml(r[4])+'</td><td>'+escapeHtml(r[5])+'</td></tr>';
       }
       html += '</table>';
       document.getElementById('history-container').innerHTML = html;
@@ -1074,20 +1083,52 @@ async function directSetStock() {
   } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
 }
 
-// ═══ History Delete ═══
+// ═══ History Select & Delete ═══
 var historyData = [];
+var selectedHistory = {};
 
-async function deleteHistoryRow(idx) {
-  if (!confirm('この履歴を削除しますか？')) return;
+function toggleHistorySelect(idx) {
+  if (selectedHistory[idx]) { delete selectedHistory[idx]; } else { selectedHistory[idx] = true; }
+  updateBulkDeleteHistoryBtn();
+}
+
+function toggleSelectAllHistory() {
+  var cbs = document.querySelectorAll('.history-cb');
+  var allChecked = document.getElementById('selectAllHistory').checked;
+  for (var i = 0; i < cbs.length; i++) {
+    var idx = parseInt(cbs[i].getAttribute('data-idx'));
+    cbs[i].checked = allChecked;
+    if (allChecked) { selectedHistory[idx] = true; } else { delete selectedHistory[idx]; }
+  }
+  updateBulkDeleteHistoryBtn();
+}
+
+function updateBulkDeleteHistoryBtn() {
+  var count = Object.keys(selectedHistory).length;
+  var btn = document.getElementById('bulkDeleteHistoryBtn');
+  if (count > 0) {
+    btn.style.display = '';
+    btn.textContent = '🗑️ 選択した履歴を削除（' + count + '件）';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+async function bulkDeleteHistory() {
+  var indices = Object.keys(selectedHistory).map(Number).sort(function(a,b){ return b - a; });
+  if (indices.length === 0) { showToast('⚠️ 削除する履歴を選択してください'); return; }
+  if (!confirm(indices.length + '件の在庫履歴を削除しますか？この操作は取り消せません。')) return;
   setLoader(true, '削除中...');
   try {
+    var rowIndices = indices.map(function(i){ return i + 2; });
     var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
-      action: 'deleteHistory', password: adminToken, rowIndex: idx
+      action: 'bulkDeleteHistory', password: adminToken, rowIndices: rowIndices
     })});
     var result = await res.json();
     setLoader(false);
     if (result.result === 'ok') {
-      showToast('✅ 履歴を削除しました');
+      showToast('✅ ' + indices.length + '件の履歴を削除しました');
+      selectedHistory = {};
       loadStockHistory();
     } else { showToast('❌ ' + (result.message || '削除に失敗しました')); }
   } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }

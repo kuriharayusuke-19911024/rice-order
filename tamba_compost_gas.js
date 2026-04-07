@@ -147,8 +147,21 @@ function doPost(e) {
     if (action === 'deleteHistory') {
       if (data.password !== ADMIN_PASSWORD) return jsonOk({ result: 'error', message: '認証エラー' });
       var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_HISTORY);
-      var rowIdx = parseInt(data.rowIndex) + 2; // ヘッダー行+1始まり
+      var rowIdx = parseInt(data.rowIndex) + 2;
       if (rowIdx >= 2 && rowIdx <= sheet.getLastRow()) sheet.deleteRow(rowIdx);
+      return jsonOk({ result: 'ok' });
+    }
+
+    // ── 在庫履歴一括削除 ──
+    if (action === 'bulkDeleteHistory') {
+      if (data.password !== ADMIN_PASSWORD) return jsonOk({ result: 'error', message: '認証エラー' });
+      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_HISTORY);
+      var rows = data.rowIndices || [];
+      rows.sort(function(a,b){ return b - a; });
+      for (var i = 0; i < rows.length; i++) {
+        var rowNum = parseInt(rows[i]);
+        if (rowNum >= 2 && rowNum <= sheet.getLastRow()) sheet.deleteRow(rowNum);
+      }
       return jsonOk({ result: 'ok' });
     }
 
