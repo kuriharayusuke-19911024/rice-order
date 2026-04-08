@@ -260,10 +260,7 @@ textarea{resize:vertical;min-height:60px;}
     <div class="tab-panel active" id="tab-orders">
       <div class="stats-grid" id="statsGrid"></div>
       <div class="card">
-        <div class="card-title" style="justify-content:space-between;">
-          <span>📋 発注一覧</span>
-          <button class="btn btn-outline btn-sm" onclick="fetchOrdersFromGAS()" id="refreshBtn">🔄 データ更新</button>
-        </div>
+        <div class="card-title">📋 発注一覧</div>
         <div class="search-bar">
           <input type="text" class="search-input" placeholder="名前・作物・住所で検索" oninput="renderOrders(this.value)">
           <select style="border:1.5px solid rgba(139,94,60,0.22);border-radius:8px;padding:7px 11px;font-size:0.82rem;font-family:'Noto Sans JP',sans-serif;outline:none;" onchange="renderOrders('',this.value)" id="monthFilter">
@@ -493,17 +490,10 @@ textarea{resize:vertical;min-height:60px;}
 </div>
 
 <div class="toast" id="toast"></div>
-<div id="gasLoader" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:900;display:none;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:16px;padding:32px 40px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-    <div style="font-size:2rem;margin-bottom:10px;">🔄</div>
-    <div id="gasLoaderMsg" style="font-size:0.9rem;color:#3d2b1a;font-weight:600;">データ取得中...</div>
-  </div>
-</div>
 
 <script>
 const PASSWORD = '1108';
 const STORAGE_KEY = 'tamba_admin_v2';
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbw2zbXdPQbdJBmvwF4npPdlUVi7PpeQmKWWjlqLeJLPRIdgYWbP6YlULX15mW-aLZDN/exec';
 
 // 単価デフォルト
 const DEFAULT_PRICES = [
@@ -553,59 +543,6 @@ function initAdmin() {
   const store = getStore();
   document.getElementById('inv_number').value = `2026-${String(store.invoiceSeq).padStart(3,'0')}`;
   updateInvoicePreview();
-  // GASからデータ取得
-  fetchOrdersFromGAS();
-}
-
-// ===== GAS連携 =====
-function showGasLoader(msg) {
-  const el = document.getElementById('gasLoader');
-  document.getElementById('gasLoaderMsg').textContent = msg || 'データ取得中...';
-  el.style.display = 'flex';
-}
-function hideGasLoader() { document.getElementById('gasLoader').style.display = 'none'; }
-
-async function fetchOrdersFromGAS() {
-  const btn = document.getElementById('refreshBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ 取得中...'; }
-  showGasLoader('スプレッドシートからデータを取得中...');
-  try {
-    const res = await fetch(GAS_URL + '?action=getOrders&pw=' + encodeURIComponent(PASSWORD));
-    const result = await res.json();
-    hideGasLoader();
-    if (btn) { btn.disabled = false; btn.textContent = '🔄 データ更新'; }
-    if (result.result === 'ok') {
-      const store = getStore();
-      // GASから取得した発注データをマージ（GAS側を優先）
-      const gasOrders = result.orders || [];
-      const localOrders = store.orders || [];
-      // GASのIDセット
-      const gasIds = new Set(gasOrders.map(o => o.id));
-      // ローカルのみの注文（代行入力など）を保持
-      const localOnly = localOrders.filter(o => !gasIds.has(o.id));
-      // マージ: GAS発注 + ローカルのみ発注
-      store.orders = [...gasOrders, ...localOnly];
-      // 顧客データも更新
-      gasOrders.forEach(o => upsertCustomer(store, o));
-      saveStore(store);
-      renderOrders(); renderStats(); initMonthFilter();
-      showToast(`✅ ${gasOrders.length}件の発注データを取得しました`);
-    } else {
-      showToast('❌ データ取得に失敗: ' + (result.message || ''));
-    }
-  } catch (e) {
-    hideGasLoader();
-    if (btn) { btn.disabled = false; btn.textContent = '🔄 データ更新'; }
-    showToast('❌ 通信エラー。ローカルデータを使用します。');
-  }
-}
-
-async function updateOrderStatusOnGAS(orderId, status) {
-  try {
-    await fetch(GAS_URL + '?action=updateOrderStatus&pw=' + encodeURIComponent(PASSWORD)
-      + '&orderId=' + encodeURIComponent(orderId)
-      + '&status=' + encodeURIComponent(status));
-  } catch (e) { /* GAS更新失敗してもローカルは更新済み */ }
 }
 
 // ===== タブ =====
@@ -852,9 +789,6 @@ function confirmOrder(id) {
   renderOrders();
   renderStats();
   showToast(`✅ ${o.name}様の発注を確認しました。在庫：${prev}t → ${store.inventory.current.toFixed(1)}t`, 5000);
-
-  // GASのステータスも更新
-  updateOrderStatusOnGAS(id, '確認済');
 
   // 請求書タブに自動遷移するか確認
   if (confirm('請求書プレビューを開きますか？')) {
