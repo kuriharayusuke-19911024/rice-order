@@ -34,6 +34,30 @@ function doGet(e) {
     ));
   }
 
+  // ===== 在庫管理 =====
+  if (action === 'getStock') {
+    var pw = (e.parameter.pw || '').toString();
+    if (pw !== ADMIN_PW) return jsonResponse({ result: 'error', message: '認証エラー' });
+    return jsonResponse(getStockData());
+  }
+  if (action === 'getStockHistory') {
+    var pw = (e.parameter.pw || '').toString();
+    if (pw !== ADMIN_PW) return jsonResponse({ result: 'error', message: '認証エラー' });
+    return jsonResponse(getStockHistory());
+  }
+  if (action === 'getStockForecast') {
+    var pw = (e.parameter.pw || '').toString();
+    if (pw !== ADMIN_PW) return jsonResponse({ result: 'error', message: '認証エラー' });
+    return jsonResponse(getStockForecast());
+  }
+
+  // ===== 散布計画 =====
+  if (action === 'getSpreading') {
+    var pw = (e.parameter.pw || '').toString();
+    if (pw !== ADMIN_PW) return jsonResponse({ result: 'error', message: '認証エラー' });
+    return jsonResponse(getSpreadingData());
+  }
+
   // ===== kanwaru-app 既存機能 =====
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (action === 'getSchedule') return jsonResponse(getSheetData(ss, 'schedule'));
@@ -48,9 +72,38 @@ function doPost(e) {
   var body = JSON.parse(e.postData.contents);
   var action = body.action;
 
+  // ===== 管理者ログイン =====
+  if (action === 'adminLogin') {
+    if (body.password === ADMIN_PW) {
+      return jsonResponse({ result: 'ok', message: 'ログイン成功' });
+    } else {
+      return jsonResponse({ result: 'error', message: 'パスワードが正しくありません' });
+    }
+  }
+
   // ===== 堆肥発注 =====
   if (action === 'order') {
     return jsonResponse(saveCompostOrder(body));
+  }
+
+  // ===== 在庫管理 =====
+  if (action === 'updateStock') {
+    if (body.password !== ADMIN_PW) return jsonResponse({ result: 'error', message: '認証エラー' });
+    return jsonResponse(updateStock(body));
+  }
+
+  // ===== 散布計画 =====
+  if (action === 'saveSpreading') {
+    if (body.password !== ADMIN_PW) return jsonResponse({ result: 'error', message: '認証エラー' });
+    return jsonResponse(saveSpreading(body));
+  }
+  if (action === 'updateSpreadStatus') {
+    if (body.password !== ADMIN_PW) return jsonResponse({ result: 'error', message: '認証エラー' });
+    return jsonResponse(updateSpreadStatus(body));
+  }
+  if (action === 'deleteSpreading') {
+    if (body.password !== ADMIN_PW) return jsonResponse({ result: 'error', message: '認証エラー' });
+    return jsonResponse(deleteSpreading(body));
   }
 
   // ===== kanwaru-app 既存機能 =====
@@ -201,6 +254,153 @@ function formatDateCell(val) {
   if (!val) return '';
   if (val instanceof Date) return Utilities.formatDate(val, 'Asia/Tokyo', 'yyyy-MM-dd');
   return String(val);
+}
+
+// ─── 在庫管理機能 ───
+
+function getStockData() {
+  try {
+    var ss = SpreadsheetApp.openById(COMPOST_SS_ID);
+    var sheet = ss.getSheetByName('在庫管理');
+    if (!sheet) {
+      sheet = ss.insertSheet('在庫管理');
+      sheet.appendRow(['現在庫(t)']);
+      sheet.getRange(2, 1).setValue(0);
+    }
+    var current = sheet.getRange(2, 1).getValue() || 0;
+    return { result: 'ok', current: current };
+  } catch (err) { return { result: 'error', message: err.toString() }; }
+}
+
+function updateStock(body) {
+  try {
+    var ss = SpreadsheetApp.openById(COMPOST_SS_ID);
+    var sheet = ss.getSheetByName('在庫管理');
+    if (!sheet) {
+      sheet = ss.insertSheet('在庫管理');
+      sheet.appendRow(['現在庫(t)']);
+      sheet.getRange(2, 1).setValue(0);
+    }
+    var current = parseFloat(sheet.getRange(2, 1).getValue()) || 0;
+    var qty = parseFloat(body.quantity) || 0;
+    if (body.type === '入庫') current += qty;
+    else current = Math.max(0, current - qty);
+    sheet.getRange(2, 1).setValue(current);
+
+    // 履歴シート
+    var hist = ss.getSheetByName('在庫履歴');
+    if (!hist) {
+      hist = ss.insertSheet('在庫履歴');
+      hist.appendRow(['日時', '種別', '数量', '理由', 'メモ', '残高']);
+      hist.getRange(1, 1, 1, 6).setFontWeight('bold');
+    }
+    hist.appendRow([
+      Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm'),
+      body.type, qty, body.reason || '', body.memo || '', current
+    ]);
+
+    return { result: 'ok', current: current };
+  } catch (err) { return { result: 'error', message: err.toString() }; }
+}
+
+function getStockHistory() {
+  try {
+    var ss = SpreadsheetApp.openById(COMPOST_SS_ID);
+    var sheet = ss.getSheetByName('在庫履歴');
+    if (!sheet || sheet.getLastRow() < 2) return { result: 'ok', history: [] };
+    var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
+    var history = rows.map(function(r) {
+      return [
+        r[0] instanceof Date ? Utilities.formatDate(r[0], 'Asia/Tokyo', 'yyyy/MM/dd HH:mm') : String(r[0]),
+        String(r[1]), r[2], String(r[3]), String(r[4]), r[5]
+      ];
+    });
+    return { result: 'ok', history: history };
+  } catch (err) { return { result: 'error', message: err.toString() }; }
+}
+
+function getStockForecast() {
+  try {
+    var ss = SpreadsheetApp.openById(COMPOST_SS_ID);
+    var stockSheet = ss.getSheetByName('在庫管理');
+    var current = stockSheet ? (parseFloat(stockSheet.getRange(2, 1).getValue()) || 0) : 0;
+
+    // 未確認発注の合計を計算
+    var orderSheet = ss.getSheetByName(COMPOST_SHEET);
+    var plannedOut = 0;
+    if (orderSheet && orderSheet.getLastRow() >= 2) {
+      var rows = orderSheet.getRange(2, 1, orderSheet.getLastRow() - 1, 15).getValues();
+      for (var i = 0; i < rows.length; i++) {
+        if (String(rows[i][14]) !== '確認済') {
+          plannedOut += parseFloat(String(rows[i][6]).replace('トン','')) || 0;
+        }
+      }
+    }
+    return { result: 'ok', current: current, plannedOut: plannedOut, forecast: current - plannedOut };
+  } catch (err) { return { result: 'error', message: err.toString() }; }
+}
+
+// ─── 散布計画機能 ───
+
+function getSpreadingData() {
+  try {
+    var ss = SpreadsheetApp.openById(COMPOST_SS_ID);
+    var sheet = ss.getSheetByName('散布計画');
+    if (!sheet || sheet.getLastRow() < 2) return { result: 'ok', plans: [] };
+    var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
+    var plans = rows.map(function(r) {
+      return [
+        r[0] instanceof Date ? Utilities.formatDate(r[0], 'Asia/Tokyo', 'yyyy/MM/dd') : String(r[0]),
+        r[1] instanceof Date ? Utilities.formatDate(r[1], 'Asia/Tokyo', 'yyyy-MM-dd') : String(r[1]),
+        r[2] instanceof Date ? Utilities.formatDate(r[2], 'Asia/Tokyo', 'yyyy-MM-dd') : String(r[2]),
+        r[3], String(r[4]), String(r[5]), String(r[6]), String(r[7])
+      ];
+    });
+    return { result: 'ok', plans: plans };
+  } catch (err) { return { result: 'error', message: err.toString() }; }
+}
+
+function saveSpreading(body) {
+  try {
+    var ss = SpreadsheetApp.openById(COMPOST_SS_ID);
+    var sheet = ss.getSheetByName('散布計画');
+    if (!sheet) {
+      sheet = ss.insertSheet('散布計画');
+      sheet.appendRow(['登録日', '開始日', '終了日', '数量', '圃場', '担当', 'メモ', '状態']);
+      sheet.getRange(1, 1, 1, 8).setFontWeight('bold');
+    }
+    sheet.appendRow([
+      Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd'),
+      body.dateFrom || '', body.dateTo || '',
+      parseFloat(body.quantity) || 0,
+      body.location || '', body.person || '', body.memo || '', '予定'
+    ]);
+    return { result: 'ok' };
+  } catch (err) { return { result: 'error', message: err.toString() }; }
+}
+
+function updateSpreadStatus(body) {
+  try {
+    var ss = SpreadsheetApp.openById(COMPOST_SS_ID);
+    var sheet = ss.getSheetByName('散布計画');
+    if (!sheet) return { result: 'error', message: 'シートが見つかりません' };
+    var rowIndex = parseInt(body.rowIndex);
+    if (isNaN(rowIndex)) return { result: 'error', message: '無効な行番号' };
+    sheet.getRange(rowIndex + 2, 8).setValue('完了');
+    return { result: 'ok' };
+  } catch (err) { return { result: 'error', message: err.toString() }; }
+}
+
+function deleteSpreading(body) {
+  try {
+    var ss = SpreadsheetApp.openById(COMPOST_SS_ID);
+    var sheet = ss.getSheetByName('散布計画');
+    if (!sheet) return { result: 'error', message: 'シートが見つかりません' };
+    var rowIndex = parseInt(body.rowIndex);
+    if (isNaN(rowIndex)) return { result: 'error', message: '無効な行番号' };
+    sheet.deleteRow(rowIndex + 2);
+    return { result: 'ok' };
+  } catch (err) { return { result: 'error', message: err.toString() }; }
 }
 
 // ─── kanwaru-app 既存ヘルパー関数 ───
