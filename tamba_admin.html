@@ -462,7 +462,6 @@ input:focus, select:focus, textarea:focus {
       <h1>管理パネル ─ 丹波農商</h1>
       <p>在庫・散布・発注管理</p>
     </div>
-    <a class="header-link" href="tamba_soil_tool.html">土壌ツール</a>
     <a class="header-link" href="tamba_compost_order.html">発注フォームへ</a>
   </div>
 </header>
@@ -493,37 +492,15 @@ input:focus, select:focus, textarea:focus {
 
   <!-- Stock tab -->
   <div class="admin-tab-content active" id="tab-stock">
-    <!-- 2拠点の在庫表示 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
-      <div class="card" style="margin:0;text-align:center;">
-        <h2 style="font-size:1rem;">🏠 前山堆肥舎</h2>
-        <div class="stock-amount" id="stock-display-maeyama"><span>─</span></div>
+    <div class="card">
+      <h2>📦 牛ふん堆肥 ─ 現在の在庫</h2>
+      <div class="stock-amount" id="stock-display">
+        <span>読み込み中...</span>
       </div>
-      <div class="card" style="margin:0;text-align:center;">
-        <h2 style="font-size:1rem;">🏔️ 夜久野堆肥舎</h2>
-        <div class="stock-amount" id="stock-display-yakuno"><span>─</span></div>
+      <div class="overstock-alert" id="overstock-warning">
+        ⚠️ 在庫過剰アラート：しきい値を超えています。出庫・販売を検討してください。
       </div>
-    </div>
-    <div class="card" style="text-align:center;padding:10px 16px;">
-      <span style="font-size:0.82rem;color:var(--text-mid);">合計在庫：</span>
-      <span style="font-size:1.4rem;font-weight:700;color:var(--soil);" id="stock-display-total">─</span>
-      <span style="font-size:0.82rem;color:var(--text-mid);"> トン</span>
-    </div>
-    <div class="overstock-alert" id="overstock-warning" style="display:none;">
-      ⚠️ 在庫過剰アラート：しきい値を超えています。出庫・販売を検討してください。
-    </div>
-
-    <!-- 入出庫 -->
-    <div class="card" style="margin-top:14px;">
-      <h2>📦 入庫・出庫</h2>
-      <div class="stock-actions" style="flex-wrap:wrap;">
-        <div class="field" style="min-width:130px;">
-          <label>拠点<span class="req">*</span></label>
-          <select id="stock-location">
-            <option value="前山">🏠 前山堆肥舎</option>
-            <option value="夜久野">🏔️ 夜久野堆肥舎</option>
-          </select>
-        </div>
+      <div class="stock-actions">
         <div class="field" style="flex:1;min-width:80px;">
           <label>数量（トン）</label>
           <input type="number" id="stock-qty" placeholder="数量" min="0.1" step="0.1">
@@ -545,62 +522,6 @@ input:focus, select:focus, textarea:focus {
       <div class="field" style="margin-top:10px;">
         <label>メモ（任意）</label>
         <input type="text" id="stock-memo" placeholder="例：○○農場から仕入れ">
-      </div>
-    </div>
-
-    <!-- 拠点間移動 -->
-    <div class="card" style="margin-top:14px;">
-      <h2>🚛 拠点間の移動</h2>
-      <p style="font-size:0.78rem;color:var(--text-mid);margin-bottom:10px;">一方の拠点から他方へ堆肥を移動する場合に使います。</p>
-      <div class="stock-actions" style="flex-wrap:wrap;">
-        <div class="field" style="min-width:130px;">
-          <label>移動元</label>
-          <select id="transfer-from">
-            <option value="前山">🏠 前山堆肥舎</option>
-            <option value="夜久野">🏔️ 夜久野堆肥舎</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:center;font-size:1.4rem;color:var(--soil);padding-top:14px;">→</div>
-        <div class="field" style="min-width:130px;">
-          <label>移動先</label>
-          <select id="transfer-to">
-            <option value="夜久野">🏔️ 夜久野堆肥舎</option>
-            <option value="前山">🏠 前山堆肥舎</option>
-          </select>
-        </div>
-        <div class="field" style="flex:1;min-width:80px;">
-          <label>数量（トン）</label>
-          <input type="number" id="transfer-qty" placeholder="数量" min="0.1" step="0.1">
-        </div>
-        <button class="action-btn btn-add" onclick="transferStock()">🚛 移動する</button>
-      </div>
-      <div class="field" style="margin-top:10px;">
-        <label>メモ（任意）</label>
-        <input type="text" id="transfer-memo" placeholder="例：夜久野の注文分を移動">
-      </div>
-    </div>
-
-    <!-- 在庫直接修正 -->
-    <div class="card" style="margin-top:14px;">
-      <h2>✏️ 在庫数を直接修正</h2>
-      <p style="font-size:0.78rem;color:var(--text-mid);margin-bottom:10px;">棚卸しなどで在庫数を直接指定する場合に使います。</p>
-      <div class="stock-actions" style="flex-wrap:wrap;">
-        <div class="field" style="min-width:130px;">
-          <label>拠点</label>
-          <select id="stock-direct-location">
-            <option value="前山">🏠 前山堆肥舎</option>
-            <option value="夜久野">🏔️ 夜久野堆肥舎</option>
-          </select>
-        </div>
-        <div class="field" style="flex:1;">
-          <label>修正後の在庫数（トン）</label>
-          <input type="number" id="stock-direct" placeholder="例：50.0" min="0" step="0.1">
-        </div>
-        <div class="field" style="flex:1;">
-          <label>理由</label>
-          <input type="text" id="stock-direct-reason" placeholder="例：棚卸し調整">
-        </div>
-        <button class="action-btn btn-add" onclick="directSetStock()">📝 在庫数を設定</button>
       </div>
     </div>
   </div>
@@ -677,16 +598,7 @@ input:focus, select:focus, textarea:focus {
 
   <!-- Orders tab -->
   <div class="admin-tab-content" id="tab-orders">
-    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;">
-      <button class="refresh-btn" onclick="loadOrders()">🔄 最新データを取得</button>
-      <select id="orderMonthFilter" onchange="filterOrdersByMonth()" style="padding:6px 12px;border:1.5px solid rgba(139,94,60,0.25);border-radius:8px;font-size:0.82rem;font-family:'Noto Sans JP',sans-serif;color:var(--clay);background:#fff;">
-        <option value="">すべての月</option>
-      </select>
-      <button class="refresh-btn" id="bulkDeleteBtn" onclick="bulkDeleteOrders()" style="background:rgba(180,60,60,0.08);color:#b43c3c;border-color:rgba(180,60,60,0.3);display:none;">🗑️ 選択した発注を削除</button>
-      <label style="font-size:0.78rem;color:var(--text-mid);margin-left:auto;cursor:pointer;">
-        <input type="checkbox" id="selectAllOrders" onchange="toggleSelectAllOrders()" style="margin-right:4px;">すべて選択
-      </label>
-    </div>
+    <button class="refresh-btn" onclick="loadOrders()">🔄 最新データを取得</button>
     <div id="orders-container" class="orders-wrap">
       <p style="color:var(--text-mid);font-size:0.85rem;">データを読み込み中...</p>
     </div>
@@ -694,13 +606,7 @@ input:focus, select:focus, textarea:focus {
 
   <!-- History tab -->
   <div class="admin-tab-content" id="tab-history">
-    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;">
-      <button class="refresh-btn" onclick="loadStockHistory()">🔄 最新データを取得</button>
-      <button class="refresh-btn" id="bulkDeleteHistoryBtn" onclick="bulkDeleteHistory()" style="background:rgba(180,60,60,0.08);color:#b43c3c;border-color:rgba(180,60,60,0.3);display:none;">🗑️ 選択した履歴を削除</button>
-      <label style="font-size:0.78rem;color:var(--text-mid);margin-left:auto;cursor:pointer;">
-        <input type="checkbox" id="selectAllHistory" onchange="toggleSelectAllHistory()" style="margin-right:4px;">すべて選択
-      </label>
-    </div>
+    <button class="refresh-btn" onclick="loadStockHistory()">🔄 最新データを取得</button>
     <div id="history-container">
       <p style="color:var(--text-mid);font-size:0.85rem;">データを読み込み中...</p>
     </div>
@@ -780,14 +686,20 @@ function escapeHtml(str) {
 async function adminLogin() {
   var pw = document.getElementById('admin-pw').value;
   if (!pw) { document.getElementById('login-error').textContent = 'パスワードを入力してください'; return; }
-  if (pw === '1108') {
-    adminToken = pw;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('admin-main').classList.add('show');
-    loadStock();
-  } else {
-    document.getElementById('login-error').textContent = 'パスワードが正しくありません';
-  }
+  setLoader(true, '認証中...');
+  try {
+    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'adminLogin', password: pw }) });
+    var result = await res.json();
+    setLoader(false);
+    if (result.result === 'ok') {
+      adminToken = pw;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('admin-main').classList.add('show');
+      loadStock();
+    } else {
+      document.getElementById('login-error').textContent = 'パスワードが正しくありません';
+    }
+  } catch (e) { setLoader(false); document.getElementById('login-error').textContent = '通信エラーが発生しました'; }
 }
 
 // ═══ Tabs ═══
@@ -802,53 +714,43 @@ function switchTab(tab, btn) {
   if (tab === 'history') { loadStockHistory(); }
 }
 
-// ═══ Stock（2拠点対応） ═══
+// ═══ Stock ═══
 async function loadStock() {
   try {
     var res = await fetch(GAS_URL + '?action=getStock&pw=' + encodeURIComponent(adminToken));
     var result = await res.json();
     if (result.result === 'ok') {
-      var maeyama = parseFloat(result.maeyama) || 0;
-      var yakuno = parseFloat(result.yakuno) || 0;
-      var total = maeyama + yakuno;
-      // 旧形式の場合（stock のみ返ってくる）
-      if (result.maeyama === undefined) {
-        maeyama = parseFloat(result.stock) || 0;
-        yakuno = 0;
-        total = maeyama;
-      }
-      document.getElementById('stock-display-maeyama').innerHTML = maeyama.toFixed(1) + '<span> トン</span>';
-      document.getElementById('stock-display-yakuno').innerHTML = yakuno.toFixed(1) + '<span> トン</span>';
-      document.getElementById('stock-display-total').textContent = total.toFixed(1);
+      var amt = parseFloat(result.stock) || 0;
+      document.getElementById('stock-display').innerHTML = amt.toFixed(1) + '<span> トン</span>';
       var warn = document.getElementById('overstock-warning');
-      if (total > (result.threshold || 100)) {
+      if (result.overstock) {
         warn.style.display = 'block';
-        warn.textContent = '⚠️ 在庫過剰アラート：合計在庫が ' + total.toFixed(1) + ' トンです。出庫・販売を検討してください。';
+        warn.textContent = '⚠️ 在庫過剰アラート：現在庫が ' + amt.toFixed(1) + ' トン（しきい値 ' + result.threshold + ' トン超）です。出庫・販売を検討してください。';
       } else {
         warn.style.display = 'none';
       }
     }
   } catch (e) {
-    document.getElementById('stock-display-maeyama').innerHTML = '<span style="font-size:1rem;color:var(--accent);">取得エラー</span>';
-    document.getElementById('stock-display-yakuno').innerHTML = '<span style="font-size:1rem;color:var(--accent);">取得エラー</span>';
+    document.getElementById('stock-display').innerHTML = '<span style="font-size:1rem;color:var(--accent);">取得エラー</span>';
   }
 }
 
 async function updateStock(type) {
   var qty = parseFloat(document.getElementById('stock-qty').value);
   if (!qty || qty <= 0) { showToast('⚠️ 数量を入力してください'); return; }
-  var location = document.getElementById('stock-location').value;
   var reason = document.getElementById('stock-reason').value;
   var memo = document.getElementById('stock-memo').value.trim();
   setLoader(true, '在庫更新中...');
   try {
     var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
-      action: 'updateStock', password: adminToken, type: type, quantity: qty, reason: reason, memo: memo, location: location
+      action: 'updateStock', password: adminToken, type: type, quantity: qty, reason: reason, memo: memo
     })});
     var result = await res.json();
     setLoader(false);
     if (result.result === 'ok') {
-      showToast('✅ ' + location + 'の在庫を更新しました');
+      var newAmt = parseFloat(result.stock);
+      showToast('✅ 在庫を更新しました（現在: '+newAmt.toFixed(1)+'トン）');
+      document.getElementById('stock-display').innerHTML = newAmt.toFixed(1) + '<span> トン</span>';
       document.getElementById('stock-qty').value = '';
       document.getElementById('stock-memo').value = '';
       loadStock();
@@ -856,33 +758,7 @@ async function updateStock(type) {
   } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
 }
 
-async function transferStock() {
-  var from = document.getElementById('transfer-from').value;
-  var to = document.getElementById('transfer-to').value;
-  var qty = parseFloat(document.getElementById('transfer-qty').value);
-  var memo = document.getElementById('transfer-memo').value.trim();
-  if (from === to) { showToast('⚠️ 移動元と移動先が同じです'); return; }
-  if (!qty || qty <= 0) { showToast('⚠️ 数量を入力してください'); return; }
-  if (!confirm(from + ' → ' + to + ' に ' + qty.toFixed(1) + ' トンを移動しますか？')) return;
-  setLoader(true, '移動中...');
-  try {
-    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
-      action: 'transferStock', password: adminToken, from: from, to: to, quantity: qty, memo: memo
-    })});
-    var result = await res.json();
-    setLoader(false);
-    if (result.result === 'ok') {
-      showToast('✅ ' + from + ' → ' + to + ' に ' + qty.toFixed(1) + ' トン移動しました');
-      document.getElementById('transfer-qty').value = '';
-      document.getElementById('transfer-memo').value = '';
-      loadStock();
-    } else { showToast('❌ '+(result.message || '移動に失敗しました')); }
-  } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
-}
-
 // ═══ Orders ═══
-var selectedOrders = {};
-
 async function loadOrders() {
   setLoader(true, '発注データ取得中...');
   try {
@@ -892,131 +768,22 @@ async function loadOrders() {
     if (result.result === 'ok') {
       ordersHeaders = result.headers || [];
       ordersData = result.orders || [];
-      selectedOrders = {};
-      document.getElementById('selectAllOrders').checked = false;
-      updateBulkDeleteBtn();
-      buildMonthFilter();
-      renderOrders(ordersData);
+      if (ordersData.length === 0) {
+        document.getElementById('orders-container').innerHTML = '<p style="color:var(--text-mid);">発注データがありません</p>';
+        return;
+      }
+      var html = '<table class="data-table"><tr>';
+      for (var i = 0; i < ordersHeaders.length; i++) html += '<th>'+escapeHtml(ordersHeaders[i])+'</th>';
+      html += '<th>操作</th></tr>';
+      for (var r = 0; r < ordersData.length; r++) {
+        html += '<tr>';
+        for (var c = 0; c < ordersData[r].length; c++) html += '<td>'+escapeHtml(ordersData[r][c])+'</td>';
+        html += '<td><button class="quick-btn" onclick="showOrderDetail('+r+')">詳細</button></td>';
+        html += '</tr>';
+      }
+      html += '</table>';
+      document.getElementById('orders-container').innerHTML = html;
     } else { showToast('❌ データ取得に失敗しました'); }
-  } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
-}
-
-function buildMonthFilter() {
-  var months = {};
-  // 日付っぽいカラムを探す（最初の列をチェック）
-  for (var r = 0; r < ordersData.length; r++) {
-    for (var c = 0; c < ordersData[r].length; c++) {
-      var val = String(ordersData[r][c] || '');
-      var m = val.match(/(\d{4})[\/\-](\d{1,2})/);
-      if (m) { months[m[1]+'/'+('0'+m[2]).slice(-2)] = true; break; }
-    }
-  }
-  var select = document.getElementById('orderMonthFilter');
-  var current = select.value;
-  select.innerHTML = '<option value="">すべての月</option>';
-  var keys = Object.keys(months).sort().reverse();
-  for (var i = 0; i < keys.length; i++) {
-    var opt = document.createElement('option');
-    opt.value = keys[i]; opt.textContent = keys[i].replace('/',' 年 ')+'月';
-    select.appendChild(opt);
-  }
-  select.value = current;
-}
-
-function filterOrdersByMonth() {
-  var month = document.getElementById('orderMonthFilter').value;
-  if (!month) { renderOrders(ordersData); return; }
-  var filtered = [];
-  for (var r = 0; r < ordersData.length; r++) {
-    var match = false;
-    for (var c = 0; c < ordersData[r].length; c++) {
-      var val = String(ordersData[r][c] || '');
-      if (val.indexOf(month.replace('/','-')) >= 0 || val.indexOf(month) >= 0) { match = true; break; }
-    }
-    if (match) filtered.push({ idx: r, data: ordersData[r] });
-  }
-  renderOrdersFiltered(filtered);
-}
-
-function renderOrders(data) {
-  if (data.length === 0) {
-    document.getElementById('orders-container').innerHTML = '<p style="color:var(--text-mid);">発注データがありません</p>';
-    return;
-  }
-  var items = [];
-  for (var r = 0; r < data.length; r++) items.push({ idx: r, data: data[r] });
-  renderOrdersFiltered(items);
-}
-
-function renderOrdersFiltered(items) {
-  if (items.length === 0) {
-    document.getElementById('orders-container').innerHTML = '<p style="color:var(--text-mid);">該当する発注データがありません</p>';
-    return;
-  }
-  var html = '<table class="data-table"><tr><th style="width:36px;"><input type="checkbox" id="selectAllInTable" onchange="toggleSelectAllOrders()"></th>';
-  for (var i = 0; i < ordersHeaders.length; i++) html += '<th>'+escapeHtml(ordersHeaders[i])+'</th>';
-  html += '<th>操作</th></tr>';
-  for (var r = 0; r < items.length; r++) {
-    var idx = items[r].idx;
-    var row = items[r].data;
-    var checked = selectedOrders[idx] ? ' checked' : '';
-    html += '<tr><td><input type="checkbox" class="order-cb" data-idx="'+idx+'" onchange="toggleOrderSelect('+idx+')"'+checked+'></td>';
-    for (var c = 0; c < row.length; c++) html += '<td>'+escapeHtml(row[c])+'</td>';
-    html += '<td><button class="quick-btn" onclick="showOrderDetail('+idx+')">詳細</button></td>';
-    html += '</tr>';
-  }
-  html += '</table>';
-  document.getElementById('orders-container').innerHTML = html;
-}
-
-function toggleOrderSelect(idx) {
-  if (selectedOrders[idx]) { delete selectedOrders[idx]; } else { selectedOrders[idx] = true; }
-  updateBulkDeleteBtn();
-}
-
-function toggleSelectAllOrders() {
-  var cbs = document.querySelectorAll('.order-cb');
-  var allChecked = document.getElementById('selectAllOrders').checked;
-  // テーブル内のチェックボックスも同期
-  var tableAll = document.getElementById('selectAllInTable');
-  if (tableAll) tableAll.checked = allChecked;
-  for (var i = 0; i < cbs.length; i++) {
-    var idx = parseInt(cbs[i].getAttribute('data-idx'));
-    cbs[i].checked = allChecked;
-    if (allChecked) { selectedOrders[idx] = true; } else { delete selectedOrders[idx]; }
-  }
-  updateBulkDeleteBtn();
-}
-
-function updateBulkDeleteBtn() {
-  var count = Object.keys(selectedOrders).length;
-  var btn = document.getElementById('bulkDeleteBtn');
-  if (count > 0) {
-    btn.style.display = '';
-    btn.textContent = '🗑️ 選択した発注を削除（' + count + '件）';
-  } else {
-    btn.style.display = 'none';
-  }
-}
-
-async function bulkDeleteOrders() {
-  var indices = Object.keys(selectedOrders).map(Number).sort(function(a,b){ return b - a; });
-  if (indices.length === 0) { showToast('⚠️ 削除する発注を選択してください'); return; }
-  if (!confirm(indices.length + '件の発注データを削除しますか？この操作は取り消せません。')) return;
-  setLoader(true, '削除中...');
-  try {
-    // GASの行番号は+2（ヘッダー行+1始まり）
-    var rowIndices = indices.map(function(i){ return i + 2; });
-    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
-      action: 'bulkDeleteOrders', password: adminToken, rowIndices: rowIndices
-    })});
-    var result = await res.json();
-    setLoader(false);
-    if (result.result === 'ok') {
-      showToast('✅ ' + indices.length + '件の発注を削除しました');
-      selectedOrders = {};
-      loadOrders();
-    } else { showToast('❌ ' + (result.message || '削除に失敗しました')); }
   } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
 }
 
@@ -1043,94 +810,15 @@ async function loadStockHistory() {
     if (result.result === 'ok') {
       var rows = result.history || [];
       if (rows.length === 0) { document.getElementById('history-container').innerHTML = '<p style="color:var(--text-mid);">履歴がありません</p>'; return; }
-      historyData = rows;
-      selectedHistory = {};
-      document.getElementById('selectAllHistory').checked = false;
-      updateBulkDeleteHistoryBtn();
-      var html = '<table class="data-table"><tr><th style="width:36px;"><input type="checkbox" onchange="toggleSelectAllHistory()"></th><th>日時</th><th>種別</th><th>数量</th><th>理由</th><th>メモ</th><th>残高</th></tr>';
+      var html = '<table class="data-table"><tr><th>日時</th><th>種別</th><th>数量</th><th>理由</th><th>メモ</th><th>残高</th></tr>';
       for (var i = 0; i < rows.length; i++) {
         var r = rows[i];
-        var badge = r[1] === '入庫' ? '<span class="badge-in">入庫</span>' : (r[1] === '移動' ? '<span style="background:rgba(26,107,138,0.1);color:#1a6b8a;padding:2px 8px;border-radius:4px;font-size:0.75rem;">移動</span>' : '<span class="badge-out">出庫</span>');
-        html += '<tr><td><input type="checkbox" class="history-cb" data-idx="'+i+'" onchange="toggleHistorySelect('+i+')"></td>';
-        html += '<td>'+escapeHtml(r[0])+'</td><td>'+badge+'</td><td>'+escapeHtml(r[2])+' t</td><td>'+escapeHtml(r[3])+'</td><td>'+escapeHtml(r[4])+'</td><td>'+escapeHtml(r[5])+'</td></tr>';
+        var badge = r[1] === '入庫' ? '<span class="badge-in">入庫</span>' : '<span class="badge-out">出庫</span>';
+        html += '<tr><td>'+escapeHtml(r[0])+'</td><td>'+badge+'</td><td>'+escapeHtml(r[2])+' t</td><td>'+escapeHtml(r[3])+'</td><td>'+escapeHtml(r[4])+'</td><td>'+escapeHtml(r[5])+' t</td></tr>';
       }
       html += '</table>';
       document.getElementById('history-container').innerHTML = html;
     } else { showToast('❌ 取得に失敗しました'); }
-  } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
-}
-
-// ═══ Direct Stock Set ═══
-async function directSetStock() {
-  var newVal = parseFloat(document.getElementById('stock-direct').value);
-  if (isNaN(newVal) || newVal < 0) { showToast('⚠️ 正しい在庫数を入力してください'); return; }
-  var location = document.getElementById('stock-direct-location').value;
-  var reason = document.getElementById('stock-direct-reason').value.trim() || '直接修正';
-  if (!confirm(location + 'の在庫数を ' + newVal.toFixed(1) + ' トンに設定しますか？')) return;
-  setLoader(true, '在庫修正中...');
-  try {
-    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
-      action: 'directSetStock', password: adminToken, newStock: newVal, reason: reason, location: location
-    })});
-    var result = await res.json();
-    setLoader(false);
-    if (result.result === 'ok') {
-      showToast('✅ 在庫数を ' + newVal.toFixed(1) + ' トンに設定しました');
-      document.getElementById('stock-direct').value = '';
-      document.getElementById('stock-direct-reason').value = '';
-      loadStock();
-    } else { showToast('❌ ' + (result.message || '修正に失敗しました')); }
-  } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
-}
-
-// ═══ History Select & Delete ═══
-var historyData = [];
-var selectedHistory = {};
-
-function toggleHistorySelect(idx) {
-  if (selectedHistory[idx]) { delete selectedHistory[idx]; } else { selectedHistory[idx] = true; }
-  updateBulkDeleteHistoryBtn();
-}
-
-function toggleSelectAllHistory() {
-  var cbs = document.querySelectorAll('.history-cb');
-  var allChecked = document.getElementById('selectAllHistory').checked;
-  for (var i = 0; i < cbs.length; i++) {
-    var idx = parseInt(cbs[i].getAttribute('data-idx'));
-    cbs[i].checked = allChecked;
-    if (allChecked) { selectedHistory[idx] = true; } else { delete selectedHistory[idx]; }
-  }
-  updateBulkDeleteHistoryBtn();
-}
-
-function updateBulkDeleteHistoryBtn() {
-  var count = Object.keys(selectedHistory).length;
-  var btn = document.getElementById('bulkDeleteHistoryBtn');
-  if (count > 0) {
-    btn.style.display = '';
-    btn.textContent = '🗑️ 選択した履歴を削除（' + count + '件）';
-  } else {
-    btn.style.display = 'none';
-  }
-}
-
-async function bulkDeleteHistory() {
-  var indices = Object.keys(selectedHistory).map(Number).sort(function(a,b){ return b - a; });
-  if (indices.length === 0) { showToast('⚠️ 削除する履歴を選択してください'); return; }
-  if (!confirm(indices.length + '件の在庫履歴を削除しますか？この操作は取り消せません。')) return;
-  setLoader(true, '削除中...');
-  try {
-    var rowIndices = indices.map(function(i){ return i + 2; });
-    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
-      action: 'bulkDeleteHistory', password: adminToken, rowIndices: rowIndices
-    })});
-    var result = await res.json();
-    setLoader(false);
-    if (result.result === 'ok') {
-      showToast('✅ ' + indices.length + '件の履歴を削除しました');
-      selectedHistory = {};
-      loadStockHistory();
-    } else { showToast('❌ ' + (result.message || '削除に失敗しました')); }
   } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
 }
 
