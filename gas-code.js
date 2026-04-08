@@ -2,13 +2,16 @@
 // kanwaru-app + 堆肥発注 共有バックエンド（Google Apps Script）
 // ============================================
 
-// ★ 権限承認用テスト関数（実行後に削除してOK）
-function testMailPermission() {
-  MailApp.sendEmail({
-    to: 'tamba.nosho@gmail.com',
-    subject: '【テスト】GASメール送信テスト',
-    body: 'このメールはGASの権限テストです。正常に届いていれば成功です。'
-  });
+// ★ テストデータ削除用（実行後に削除してOK）
+function deleteTestOrders() {
+  var ss = SpreadsheetApp.openById(COMPOST_SS_ID);
+  var sheet = ss.getSheetByName(COMPOST_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return;
+  var testIds = ['1236aa0d','c00bb4fc','c8d3ce1e','25f1700c','a640cd0d','7cb46127'];
+  for (var i = sheet.getLastRow(); i >= 2; i--) {
+    var id = String(sheet.getRange(i, 2).getValue());
+    if (testIds.indexOf(id) >= 0) sheet.deleteRow(i);
+  }
 }
 
 const COMPOST_SS_ID = '1J8UWMAzxztYBCxayXRg3fAKrtaf6CfMInJJqQ2bFTQA';
@@ -56,6 +59,14 @@ function doGet(e) {
     var pw = (e.parameter.pw || '').toString();
     if (pw !== ADMIN_PW) return jsonResponse({ result: 'error', message: '認証エラー' });
     return jsonResponse(getSpreadingData());
+  }
+
+  // ★ テストデータ削除用（一時的）
+  if (action === 'deleteTestOrders') {
+    var pw = (e.parameter.pw || '').toString();
+    if (pw !== ADMIN_PW) return jsonResponse({ result: 'error', message: '認証エラー' });
+    deleteTestOrders();
+    return jsonResponse({ result: 'ok', message: 'テストデータを削除しました' });
   }
 
   // ===== kanwaru-app 既存機能 =====
@@ -163,30 +174,18 @@ function getCompostOrders() {
   try {
     var ss = SpreadsheetApp.openById(COMPOST_SS_ID);
     var sheet = ss.getSheetByName(COMPOST_SHEET);
-    if (!sheet || sheet.getLastRow() < 2) return { result: 'ok', orders: [] };
+    if (!sheet || sheet.getLastRow() < 2) return { result: 'ok', headers: [], orders: [] };
 
+    var headers = sheet.getRange(1, 1, 1, 15).getValues()[0].map(String);
     var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 15).getValues();
     var orders = rows.map(function(r) {
-      return {
-        submittedAt: r[0] instanceof Date ? Utilities.formatDate(r[0], 'Asia/Tokyo', 'yyyy/MM/dd HH:mm') : String(r[0]),
-        id: String(r[1]),
-        name: String(r[2]),
-        phone: String(r[3]),
-        email: String(r[4]),
-        compostType: String(r[5]),
-        totalQty: String(r[6]).replace('トン',''),
-        fieldCount: r[7],
-        fields: safeParseJSON(r[8], []),
-        dateFrom: formatDateCell(r[9]),
-        dateTo: formatDateCell(r[10]),
-        pins: safeParseJSON(r[11], []),
-        addressNote: String(r[12]),
-        remarks: String(r[13]),
-        status: String(r[14]) || '未確認'
-      };
+      return r.map(function(cell, i) {
+        if (cell instanceof Date) return Utilities.formatDate(cell, 'Asia/Tokyo', i === 0 ? 'yyyy/MM/dd HH:mm' : 'yyyy-MM-dd');
+        return String(cell);
+      });
     });
 
-    return { result: 'ok', orders: orders.reverse() };
+    return { result: 'ok', headers: headers, orders: orders.reverse() };
   } catch (err) {
     return { result: 'error', message: err.toString() };
   }
