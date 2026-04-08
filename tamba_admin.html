@@ -561,14 +561,16 @@ async function fetchOrdersFromGAS() {
         try { fields = JSON.parse(row[8] || '[]'); } catch(e) {}
         var pins = [];
         try { pins = JSON.parse(row[11] || '[]'); } catch(e) {}
-        // fieldsの各項目にqty,name,serviceを確保
+        // fieldsの各項目にqty,name,serviceを確保、pinsからlat/lngをマージ
         fields = fields.map(function(f, i) {
+          var pin = pins[i] || {};
           return {
             num: f.num || (i+1), name: f.name || ('圃場'+(i+1)),
             qty: f.quantity || f.qty || '', service: f.service || '',
-            usage: f.usage || '', address: f.address || '',
+            usage: f.usage || '', address: f.address || pin.address || '',
             organicJAS: f.organicJAS || '', keical: f.keical || '',
-            area: f.area || '', lat: f.lat || '', lng: f.lng || ''
+            area: f.area || '',
+            lat: f.lat || pin.lat || '', lng: f.lng || pin.lng || ''
           };
         });
         var totalQty = String(row[6] || '').replace('トン','');
