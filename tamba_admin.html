@@ -489,6 +489,24 @@ textarea{resize:vertical;min-height:60px;}
   </div>
 </div>
 
+<!-- 請求書編集モーダル -->
+<div class="modal-overlay" id="invoiceEditModal">
+  <div class="modal-box" style="max-width:720px;">
+    <div class="modal-title" id="invEditTitle">請求書 編集</div>
+    <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:14px;">✏️ 今回請求しない圃場はチェックを外してください。数量・単価も変更できます。</div>
+    <div id="invEditItems"></div>
+    <div style="margin-top:16px;padding:14px;background:#f8f4ee;border-radius:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:0.9rem;font-weight:700;color:var(--soil);">
+        <span>合計（税込）</span><span id="invEditTotal">¥0</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-green" onclick="printEditedInvoice()">🖨 印刷する</button>
+      <button class="btn btn-outline" onclick="closeInvoiceEdit()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1051,26 +1069,97 @@ const COMPANY_INFO = {
   bank: '丹波ひかみ農業協同組合 市島支店（019）\n　口座種別：普通\n　口座番号：0091205\n　口座名義：カ）タンバノウショウ',
 };
 
+// 請求書編集用グローバル変数
+let _invEditOrderId = null;
+let _invEditType = '請求書';
+
 function invoiceFromOrder(id, type='請求書') {
   const store = getStore();
   const o = store.orders.find(x => x.id === id);
   if (!o) return;
 
-  // 明細を計算
+  _invEditOrderId = id;
+  _invEditType = type;
+
+  // 明細を編集モーダルに表示
   const items = (o.fields||[]).filter(f=>f.qty).map(f=>{
     const pi = store.prices.find(p=>p.label===f.service);
     const price = pi ? pi.price : 0;
-    return { desc:`牛ふん堆肥 ${f.service}（${f.name}）`, qty: parseFloat(f.qty)||0, unit:'t', price };
+    return { desc:`牛ふん堆肥 ${f.service}（${f.name}）`, qty: parseFloat(f.qty)||0, unit:'t', price, checked: true };
   });
-  const subtotal = items.reduce((s,i)=>s+i.qty*i.price,0);
-  const tax = 0; // 単価は税込のため消費税なし
+
+  document.getElementById('invEditTitle').textContent = `${type} 編集 ─ ${o.name}様`;
+  let html = '';
+  items.forEach((item, i) => {
+    html += `<div style="display:flex;gap:8px;align-items:center;padding:10px;background:${i%2===0?'#fdfaf5':'#fff'};border-radius:8px;margin-bottom:6px;flex-wrap:wrap;" id="invEditRow-${i}">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;min-width:40px;">
+        <input type="checkbox" checked onchange="updateInvEditTotal()" style="width:18px;height:18px;accent-color:var(--leaf);">
+      </label>
+      <input type="text" value="${item.desc}" style="flex:2;min-width:200px;border:1.5px solid rgba(139,94,60,0.22);border-radius:6px;padding:7px 10px;font-size:0.82rem;">
+      <input type="number" value="${item.qty}" step="0.1" min="0" onchange="updateInvEditTotal()" style="width:70px;border:1.5px solid rgba(139,94,60,0.22);border-radius:6px;padding:7px 10px;font-size:0.82rem;text-align:right;">
+      <span style="font-size:0.78rem;color:var(--text-mid);">${item.unit}</span>
+      <span style="font-size:0.78rem;color:var(--text-mid);">×</span>
+      <input type="number" value="${item.price}" step="100" min="0" onchange="updateInvEditTotal()" style="width:90px;border:1.5px solid rgba(139,94,60,0.22);border-radius:6px;padding:7px 10px;font-size:0.82rem;text-align:right;">
+      <span style="font-size:0.78rem;color:var(--text-mid);">円</span>
+      <span style="font-size:0.82rem;font-weight:600;color:var(--soil);min-width:80px;text-align:right;" class="invEditRowAmt">¥${(item.qty*item.price).toLocaleString()}</span>
+    </div>`;
+  });
+  document.getElementById('invEditItems').innerHTML = html;
+  updateInvEditTotal();
+  document.getElementById('invoiceEditModal').classList.add('show');
+}
+
+function updateInvEditTotal() {
+  let total = 0;
+  document.querySelectorAll('#invEditItems > div').forEach(row => {
+    const cb = row.querySelector('input[type="checkbox"]');
+    const qty = parseFloat(row.querySelectorAll('input')[2]?.value) || 0;
+    const price = parseFloat(row.querySelectorAll('input')[3]?.value) || 0;
+    const amt = row.querySelector('.invEditRowAmt');
+    if (cb && cb.checked) {
+      total += qty * price;
+      if (amt) amt.textContent = `¥${(qty*price).toLocaleString()}`;
+      row.style.opacity = '1';
+    } else {
+      if (amt) amt.textContent = '−';
+      row.style.opacity = '0.4';
+    }
+  });
+  document.getElementById('invEditTotal').textContent = `¥${total.toLocaleString()}`;
+}
+
+function closeInvoiceEdit() {
+  document.getElementById('invoiceEditModal').classList.remove('show');
+}
+
+function printEditedInvoice() {
+  const store = getStore();
+  const o = store.orders.find(x => x.id === _invEditOrderId);
+  if (!o) return;
+  const type = _invEditType;
+
+  // 編集後の明細を収集
+  const items = [];
+  document.querySelectorAll('#invEditItems > div').forEach(row => {
+    const cb = row.querySelector('input[type="checkbox"]');
+    if (!cb || !cb.checked) return;
+    const inputs = row.querySelectorAll('input');
+    const desc = inputs[1]?.value || '';
+    const qty = parseFloat(inputs[2]?.value) || 0;
+    const price = parseFloat(inputs[3]?.value) || 0;
+    if (qty > 0) items.push({ desc, qty, unit: 't', price });
+  });
+
+  const subtotal = items.reduce((s,i) => s + i.qty * i.price, 0);
   const total = subtotal;
 
   // 書類番号
   const today = new Date().toISOString().split('T')[0];
   const docNo = `${today.replace(/-/g,'')}-${o.id.slice(-4)}`;
 
-  // 印刷用ウィンドウを直接開く
+  closeInvoiceEdit();
+
+  // 印刷用ウィンドウを開く
   const win = window.open('', '_blank');
   const itemsHtml = items.map(i=>`
     <tr>
