@@ -260,7 +260,10 @@ textarea{resize:vertical;min-height:60px;}
     <div class="tab-panel active" id="tab-orders">
       <div class="stats-grid" id="statsGrid"></div>
       <div class="card">
-        <div class="card-title">📋 発注一覧</div>
+        <div class="card-title" style="display:flex;align-items:center;gap:12px;">📋 発注一覧
+          <button class="btn btn-outline btn-sm" onclick="fetchOrdersFromGAS()" id="gasRefreshBtn">🔄 最新データを取得</button>
+          <span id="gasLoadingIndicator" style="display:none;font-size:0.78rem;color:var(--leaf);">⏳ データ取得中...</span>
+        </div>
         <div class="search-bar">
           <input type="text" class="search-input" placeholder="名前・作物・住所で検索" oninput="renderOrders(this.value)">
           <select style="border:1.5px solid rgba(139,94,60,0.22);border-radius:8px;padding:7px 11px;font-size:0.82rem;font-family:'Noto Sans JP',sans-serif;outline:none;" onchange="renderOrders('',this.value)" id="monthFilter">
@@ -512,7 +515,7 @@ textarea{resize:vertical;min-height:60px;}
 <script>
 const PASSWORD = '1108';
 const STORAGE_KEY = 'tamba_admin_v2';
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbw2zbXdPQbdJBmvwF4npPdlUVi7PpeQmKWWjlqLeJLPRIdgYWbP6YlULX15mW-aLZDN/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjf4FYGdfLbmuGIhgFVOMZDylT0w7ws_vPIYYKJLWZJR_IWZPlTXHo2p2l6SH9FmGdkw/exec';
 
 // 単価デフォルト
 const DEFAULT_PRICES = [
@@ -568,6 +571,10 @@ function initAdmin() {
 
 // ===== GAS連携 =====
 async function fetchOrdersFromGAS() {
+  const loader = document.getElementById('gasLoadingIndicator');
+  const btn = document.getElementById('gasRefreshBtn');
+  if (loader) loader.style.display = 'inline';
+  if (btn) btn.disabled = true;
   try {
     const res = await fetch(GAS_URL + '?action=getOrders&pw=' + encodeURIComponent(PASSWORD));
     const result = await res.json();
@@ -617,6 +624,9 @@ async function fetchOrdersFromGAS() {
     }
   } catch (e) {
     showToast('⚠️ GAS通信エラー。ローカルデータを使用します。');
+  } finally {
+    if (loader) loader.style.display = 'none';
+    if (btn) btn.disabled = false;
   }
 }
 
