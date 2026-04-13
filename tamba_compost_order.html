@@ -451,13 +451,13 @@ textarea { resize: vertical; min-height: 72px; }
   <!-- 朝来市チェック -->
   <div id="asagoAlert" style="display:none;margin:8px 0;padding:9px 14px;background:#fff8e6;
     border:1.5px solid #e8c84a;border-radius:8px;font-size:0.78rem;color:#7a5c00;display:none;">
-    🏔️ 朝来市エリアを検出しました。配送割増（＋¥1,000/t）が自動適用されます。
+    🏔️ 朝来市エリアを検出しました。朝来市料金（＋¥1,500/t）が自動適用されます（距離割増なし）。
   </div>
   <div style="margin:10px 0 4px;display:flex;align-items:center;gap:8px;">
     <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:0.82rem;color:var(--text-mid);">
       <input type="checkbox" id="asagoCheck" style="width:16px;height:16px;accent-color:var(--leaf);"
         onchange="updateTotal()">
-      <span>🏔️ 朝来市エリアへの配送（＋¥1,000/t）</span>
+      <span>🏔️ 朝来市エリアへの配送（＋¥1,500/t・距離割増なし）</span>
     </label>
     <span style="font-size:0.7rem;color:var(--text-mid);">※住所から自動判別されます</span>
   </div>
@@ -788,7 +788,7 @@ function checkAsago(address) {
   if (isAsago) {
     if (check) check.checked = true;
     if (alert) alert.style.display = 'block';
-    showToast('🏔️ 朝来市エリアを検出しました（＋¥1,000/t）', 3000);
+    showToast('🏔️ 朝来市エリアを検出しました（＋¥1,500/t・距離割増なし）', 3000);
   }
   updateTotal();
 }
@@ -1109,7 +1109,7 @@ const PRICES = {
   '積込み付き（スタッフ対応）': 4200,
   '自分で取りに来る':           3000,
 };
-const ASAGO_SURCHARGE = 1000; // 朝来市割増（円/t）
+const ASAGO_SURCHARGE = 1500; // 朝来市料金（円/t）※距離割増なし
 const ASAGO_KEYWORDS = ['朝来市', '朝来', 'あさご', '生野町', '和田山町', '山東町', '朝倉町'];
 // 拠点座標（兵庫県丹波市市島町上竹田915-5）
 const BASE_LAT = 35.2178;
@@ -1193,12 +1193,12 @@ function calcPriceBreakdown(totalTon) {
     // 少量割増（合計が4.5t未満の場合）
     const smallLotExtra = totalTon < MIN_LOT_TON ? floor10(basePrice * SMALL_LOT_SURCHARGE) : 0;
 
-    // 距離計算
+    // 距離計算（朝来市は朝来市料金に含むため距離割増なし）
     const pin = fieldData[id];
     let distKm = null;
     let distSurcharge = 0;
     let distLabel = '';
-    if (pin && pin.lat && svc !== '自分で取りに来る') {
+    if (pin && pin.lat && svc !== '自分で取りに来る' && !isAsago) {
       distKm = calcDistanceKm(BASE_LAT, BASE_LNG, parseFloat(pin.lat), parseFloat(pin.lng));
       maxDistKm = Math.max(maxDistKm, distKm);
       const rule = DISTANCE_SURCHARGE.find(r => distKm >= r.minKm && distKm < r.maxKm);
