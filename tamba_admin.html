@@ -570,6 +570,9 @@ function initAdmin() {
 }
 
 // ===== GAS連携 =====
+// GASスプレッドシート列: 受付日時(0),氏名(1),電話(2),メール(3),圃場番号(4),圃場数(5),
+//   堆肥種類(6),数量(7),面積(8),用途(9),野菜種類(10),前作(11),有機JAS(12),珪カル(13),
+//   作業形態(14),散布開始(15),散布終了(16),ピン情報(17),住所備考(18),合計数量(19),備考(20)
 async function fetchOrdersFromGAS() {
   const loader = document.getElementById('gasLoadingIndicator');
   const btn = document.getElementById('gasRefreshBtn');
@@ -580,38 +583,53 @@ async function fetchOrdersFromGAS() {
     const result = await res.json();
     if (result.result === 'ok' && result.orders) {
       const store = getStore();
-      const gasOrders = (result.orders || []).map(function(row) {
-        // スプレッドシートの行データをオブジェクトに変換
-        var fields = [];
-        try { fields = JSON.parse(row[8] || '[]'); } catch(e) {}
-        var pins = [];
-        try { pins = JSON.parse(row[11] || '[]'); } catch(e) {}
-        // fieldsの各項目にqty,name,serviceを確保、pinsからlat/lngをマージ
-        fields = fields.map(function(f, i) {
-          var pin = pins[i] || {};
-          return {
-            num: f.num || (i+1), name: f.name || ('圃場'+(i+1)),
-            qty: f.quantity || f.qty || '', service: f.service || '',
-            usage: f.usage || '', address: f.address || pin.address || '',
-            organicJAS: f.organicJAS || '', keical: f.keical || '',
-            area: f.area || '',
-            lat: f.lat || pin.lat || '', lng: f.lng || pin.lng || ''
+      // GASは1圃場1行なので、同じ注文（受付日時+氏名+メール）をグループ化
+      const grouped = {};
+      (result.orders || []).forEach(function(row) {
+        var key = String(row[0]||'') + '|' + String(row[1]||'') + '|' + String(row[3]||'');
+        if (!grouped[key]) {
+          // ピン情報をパース（テキスト形式: "圃場1: 住所 (lat,lng) ／ ..."）
+          var pinText = String(row[17] || '');
+          var pins = [];
+          if (pinText) {
+            pinText.split('／').forEach(function(p) {
+              var m = p.match(/\(([0-9.]+),\s*([0-9.]+)\)/);
+              var addrM = p.match(/:\s*(.+?)\s*\(/);
+              pins.push({ lat: m ? m[1] : '', lng: m ? m[2] : '', address: addrM ? addrM[1].trim() : '' });
+            });
+          }
+          grouped[key] = {
+            id: 'GAS-' + String(row[0]||'').replace(/[\/\s:]/g,''),
+            submittedAt: row[0] || '',
+            name: row[1] || '', phone: row[2] || '', email: row[3] || '',
+            compostType: row[6] || '牛ふん堆肥',
+            totalQty: String(row[19] || '').replace('トン',''),
+            fieldCount: parseInt(row[5]) || 1,
+            fields: [], pins: pins,
+            usage: row[9] || '', vegType: row[10] || '',
+            organicJAS: row[12] || '', keical: row[13] || '',
+            dateFrom: row[15] || '', dateTo: row[16] || '',
+            addressNote: row[18] || '', remarks: row[20] || '',
+            status: '未確認', source: 'GAS'
           };
+        }
+        // 圃場データを追加
+        grouped[key].fields.push({
+          num: parseInt(row[4]) || grouped[key].fields.length + 1,
+          name: '圃場' + (parseInt(row[4]) || grouped[key].fields.length + 1),
+          qty: row[7] || '', area: row[8] || '',
+          service: row[14] || '', usage: row[9] || '',
+          address: row[18] || '', organicJAS: row[12] || '',
+          keical: row[13] || '',
+          lat: '', lng: ''
         });
-        var totalQty = String(row[6] || '').replace('トン','');
-        return {
-          id: row[1] || '', submittedAt: row[0] || '',
-          name: row[2] || '', phone: row[3] || '', email: row[4] || '',
-          compostType: row[5] || '牛ふん堆肥',
-          totalQty: totalQty, fieldCount: row[7] || fields.length,
-          fields: fields, pins: pins,
-          usage: (fields[0] || {}).usage || '',
-          vegType: (fields[0] || {}).vegType || '',
-          organicJAS: (fields[0] || {}).organicJAS || '',
-          dateFrom: row[9] || '', dateTo: row[10] || '',
-          addressNote: row[12] || '', remarks: row[13] || '',
-          status: row[14] || '未確認', source: 'GAS'
-        };
+      });
+      // ピンデータを圃場にマージ
+      var gasOrders = Object.values(grouped);
+      gasOrders.forEach(function(o) {
+        o.fields.forEach(function(f, i) {
+          if (o.pins[i]) { f.lat = o.pins[i].lat; f.lng = o.pins[i].lng; if (!f.address) f.address = o.pins[i].address; }
+        });
       });
       // ローカルのみの注文を保持（代行入力など）
       const gasIds = new Set(gasOrders.map(o => o.id));
@@ -623,6 +641,7 @@ async function fetchOrdersFromGAS() {
       showToast('✅ ' + gasOrders.length + '件の発注データを取得しました');
     }
   } catch (e) {
+    console.error('GAS通信エラー:', e);
     showToast('⚠️ GAS通信エラー。ローカルデータを使用します。');
   } finally {
     if (loader) loader.style.display = 'none';
