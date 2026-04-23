@@ -114,6 +114,22 @@ function doPost(e) {
       return jsonOk({ result: 'ok' });
     }
 
+    // ── 発注 個別削除 ──
+    if (action === 'deleteOrder') {
+      if (data.password !== ADMIN_PASSWORD) return jsonOk({ result: 'error', message: '認証エラー' });
+      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_ORDERS);
+      if (!sheet) return jsonOk({ result: 'error', message: 'シートが見つかりません' });
+      var totalDataRows = sheet.getLastRow() - 1; // ヘッダー除く
+      // フロント側は reverse() 済みなので、実際の行番号に変換
+      var frontIdx = parseInt(data.rowIndex);
+      var sheetRow = totalDataRows - frontIdx + 1; // 1-based, +1 for header
+      if (sheetRow >= 2 && sheetRow <= sheet.getLastRow()) {
+        sheet.deleteRow(sheetRow);
+        return jsonOk({ result: 'ok' });
+      }
+      return jsonOk({ result: 'error', message: '行が見つかりません' });
+    }
+
     // ── 発注一括削除 ──
     if (action === 'bulkDeleteOrders') {
       if (data.password !== ADMIN_PASSWORD) return jsonOk({ result: 'error', message: '認証エラー' });

@@ -778,7 +778,7 @@ async function loadOrders() {
       for (var r = 0; r < ordersData.length; r++) {
         html += '<tr>';
         for (var c = 0; c < ordersData[r].length; c++) html += '<td>'+escapeHtml(ordersData[r][c])+'</td>';
-        html += '<td><button class="quick-btn" onclick="showOrderDetail('+r+')">詳細</button></td>';
+        html += '<td><button class="quick-btn" onclick="showOrderDetail('+r+')" style="margin-right:4px;">詳細</button><button class="quick-btn" onclick="deleteOrder('+r+')" style="color:var(--accent);border-color:rgba(200,90,42,0.3);">削除</button></td>';
         html += '</tr>';
       }
       html += '</table>';
@@ -799,6 +799,23 @@ function showOrderDetail(rowIdx) {
   document.getElementById('detail-overlay').classList.add('show');
 }
 function closeDetail() { document.getElementById('detail-overlay').classList.remove('show'); }
+
+async function deleteOrder(rowIdx) {
+  if (!ordersData || !ordersHeaders) return;
+  var row = ordersData[rowIdx];
+  var label = (row[0] || '') + ' ' + (row[1] || '');
+  if (!confirm('この発注を削除しますか？\n' + label)) return;
+  setLoader(true, '削除中...');
+  try {
+    var res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
+      action: 'deleteOrder', password: adminToken, rowIndex: rowIdx
+    })});
+    var result = await res.json();
+    setLoader(false);
+    if (result.result === 'ok') { showToast('✅ 発注を削除しました'); loadOrders(); }
+    else showToast('❌ ' + (result.message || '削除に失敗しました'));
+  } catch (e) { setLoader(false); showToast('❌ 通信エラーが発生しました'); }
+}
 
 // ═══ Stock History ═══
 async function loadStockHistory() {
