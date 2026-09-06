@@ -893,10 +893,16 @@ function renderDash(){
 /* ======================= 作業入力 ======================= */
 let editingRec=null;
 function fillCustSelects(){
+  /* 作り直すと選択が先頭に戻るので、いま選んでいるお客様を覚えておく */
+  const keep={f:$('#f_cust').value, l:$('#l_cust').value, b:$('#b_cust').value};
   const opts=DB.customers.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
   $('#f_cust').innerHTML = DB.customers.length?opts:'<option value="">先に「お客様」を登録してください</option>';
   $('#l_cust').innerHTML = '<option value="">すべて</option>'+opts;
   $('#b_cust').innerHTML = DB.customers.length?opts:'<option value="">お客様が未登録です</option>';
+  const has=id=>DB.customers.some(c=>c.id===id);
+  if(has(keep.f)) $('#f_cust').value=keep.f;
+  if(keep.l==='' || has(keep.l)) $('#l_cust').value=keep.l;
+  if(has(keep.b)) $('#b_cust').value=keep.b;
 }
 function readForm(){
   return {
@@ -1072,6 +1078,7 @@ function renderList(){
   }).join('');
   $$('[data-edit]').forEach(b=>b.addEventListener('click',()=>{
     const r=DB.records.find(x=>x.id===b.dataset.edit); if(!r)return;
+    $$('.tab').find(t=>t.dataset.view==='record').click();  // 先に画面を切り替える
     editingRec=r;
     $('#f_cust').value=r.customerId; $('#f_date').value=r.date; $('#f_field').value=r.field||'';
     $('#f_variety').value=r.variety||''; $('#f_harvest').checked=!!r.doHarvest; $('#f_dry').checked=!!r.doDry;
@@ -1086,7 +1093,8 @@ function renderList(){
     $('#f_memo').value=r.memo||'';
     $('#f_editing').textContent='編集中'; $('#f_save').textContent='変更を保存';
     $('#f_clear').textContent='編集をやめる'; $('#f_del').hidden=false;
-    $$('.tab').find(t=>t.dataset.view==='record').click();
+    renderPreview();
+    window.scrollTo(0,0);
   }));
   $$('[data-del]').forEach(b=>b.addEventListener('click',async()=>{
     const r=DB.records.find(x=>x.id===b.dataset.del); if(!r)return;
