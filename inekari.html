@@ -21,6 +21,7 @@
   --mono:"SFMono-Regular",Menlo,Consolas,"Courier New",monospace;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;padding:0}
 body{
   background:var(--paper);color:var(--ink);
@@ -283,12 +284,16 @@ table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
       <button type="button" class="btn -ghost -sm" data-preset="all">一式</button>
       <button type="button" class="btn -ghost -sm" data-preset="harvest">稲刈りだけ</button>
       <button type="button" class="btn -ghost -sm" data-preset="dry">乾燥・籾摺りだけ</button>
+      <button type="button" class="btn -ghost -sm" data-preset="sort">色選別だけ</button>
     </div>
     <div class="checks">
       <label class="chip"><input type="checkbox" id="f_harvest" checked>稲刈り</label>
-      <label class="chip"><input type="checkbox" id="f_dry" checked>乾燥・籾摺り調製</label>
+      <label class="chip"><input type="checkbox" id="f_dry" checked>乾燥・籾摺り調製（色選別込み）</label>
+      <label class="chip"><input type="checkbox" id="f_sort">色選別だけ</label>
       <label class="chip"><input type="checkbox" id="f_bagfee" checked>米袋代</label>
+      <label class="chip"><input type="checkbox" id="f_haul">玄米運搬</label>
     </div>
+    <div style="font-size:12px;color:var(--ink-2);margin-top:6px" id="f_haulnote"></div>
 
     <h3 class="sub">面積</h3>
     <div class="grid">
@@ -350,6 +355,28 @@ table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
         <div class="suffix"><input type="number" id="f_kuzu" min="0" step="0.1" placeholder="0"><i>kg</i></div>
         <div class="hint" id="f_kuzuhint"></div>
       </div>
+    </div>
+
+    <h3 class="sub">運搬・その他の作業</h3>
+    <div class="grid">
+      <div class="field">
+        <label for="f_haulbags">玄米運搬の袋数</label>
+        <div class="suffix"><input type="number" id="f_haulbags" min="0" step="1" placeholder="自動"><i>袋</i></div>
+        <div class="hint" id="f_haulbagshint">空欄なら調製した袋数と同じになります</div>
+      </div>
+      <div class="field">
+        <label for="f_container">コンテナ賃借料</label>
+        <div class="suffix"><input type="number" id="f_container" min="0" step="1" placeholder="0"><i>個</i></div>
+        <div class="hint" id="f_containerhint"></div>
+      </div>
+      <div class="field">
+        <label for="f_mower">モア作業</label>
+        <div class="suffix"><input type="number" id="f_mower" min="0" step="1" placeholder="0"><i>回</i></div>
+        <div class="hint" id="f_mowerhint"></div>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:12px">
       <div class="field -full">
         <label for="f_memo">備考</label>
         <input type="text" id="f_memo" placeholder="例）圃場の一部が水没、翌日に再乾燥">
@@ -399,6 +426,9 @@ table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
         <div class="hint">このお客様から買い取るときの単価</div></div>
       <div class="field"><label for="c_kuzu">くず米 買取単価（1kg・税込）</label>
         <div class="suffix"><input type="number" id="c_kuzu" step="1" placeholder="未定"><i>円</i></div></div>
+      <div class="field"><label for="c_haul">玄米運搬費（1袋・税込）</label>
+        <div class="suffix"><input type="number" id="c_haul" step="10" placeholder="なし"><i>円</i></div>
+        <div class="hint">入れた方だけ請求書に運搬費が出ます</div></div>
       <div class="field -full"><label for="c_bank">お客様の振込先口座（支払通知書に印字）</label>
         <input type="text" id="c_bank" placeholder="例）〇〇農協 〇〇支店 普通 1234567 イノウエ タロウ"></div>
       <div class="field -full"><label for="c_memo">メモ</label><input type="text" id="c_memo" placeholder="例）籾摺りは自宅で受け取り希望"></div>
@@ -447,9 +477,19 @@ table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
         <div class="suffix"><input type="number" id="s_lodge" step="0.1"><i>倍</i></div></div>
       <div class="field"><label for="s_dry">乾燥・籾摺り調製（1袋）</label>
         <div class="suffix"><input type="number" id="s_dry" step="100"><i>円</i></div>
-        <div class="hint">昨年度は2,000円</div></div>
+        <div class="hint">色選別費込み。昨年度は2,000円</div></div>
+      <div class="field"><label for="s_sort">色選別だけの場合（1袋）</label>
+        <div class="suffix"><input type="number" id="s_sort" step="100"><i>円</i></div>
+        <div class="hint">乾燥・籾摺り調製の2,300円には色選別費が含まれます</div></div>
       <div class="field"><label for="s_bag">米袋代（1枚）</label>
         <div class="suffix"><input type="number" id="s_bag" step="5"><i>円</i></div></div>
+      <div class="field"><label for="s_haul">玄米運搬費の既定値（1袋）</label>
+        <div class="suffix"><input type="number" id="s_haul" step="10"><i>円</i></div>
+        <div class="hint">お客様ごとの登録が優先されます</div></div>
+      <div class="field"><label for="s_container">コンテナ賃借料（1個）</label>
+        <div class="suffix"><input type="number" id="s_container" step="1000"><i>円</i></div></div>
+      <div class="field"><label for="s_mower">モア作業（1回）</label>
+        <div class="suffix"><input type="number" id="s_mower" step="1000"><i>円</i></div></div>
       <div class="field"><label for="s_round">フレコンの袋換算の端数</label>
         <select id="s_round">
           <option value="round">四捨五入（おすすめ）</option>
@@ -529,6 +569,7 @@ const KEY='tamba_juttaku_v1';
 const GAS_URL='https://script.google.com/macros/s/AKfycbxq-c_7QbzFMUHWrcah8Ckqp_xAJ2OxX43YmecxXygRy_cutm5DbgSO55zhE4DAJGgA/exec';
 const DEFAULT_SETTINGS={
   harvestPer10a:27000, lodgeRate:1.5, dryPerBag:2300, bagPrice:75,
+  sortPerBag:700, haulPerBag:120, containerFee:30000, mowerFee:10000,
   kuzuPrice:25, riceBuyPrice:9000, roundMode:'round', taxRate:10, taxIncluded:true, offsetKuzu:true,
   co:'丹波農場', addr:'', tel:'', invoiceNo:'', bank:'', terms:'翌月末日までにお振込みください',
   payTerms:'翌月末日までにお振込みいたします', gasUrl:GAS_URL, _deleted:'{}'
@@ -692,7 +733,8 @@ function buyUnits(r){
   const c=DB.customers.find(x=>x.id===r.customerId)||{}, s=DB.settings;
   const pick=(...v)=>{ for(const x of v){ const n=numOrNull(x); if(n!=null) return n; } return null; };
   return { rice:pick(r.buyUnit, c.riceBuyPrice, s.riceBuyPrice),
-           kuzu:pick(r.kuzuUnit, c.kuzuBuyPrice, s.kuzuPrice) };
+           kuzu:pick(r.kuzuUnit, c.kuzuBuyPrice, s.kuzuPrice),
+           haul:pick(c.haulPrice, s.haulPerBag) };
 }
 const KG_PER_BAG=30;
 /* フレコンは重量を30kgで割って袋数に換算する。端数の扱いは設定で変えられる */
@@ -716,13 +758,22 @@ function calc(r){
   const harvestLodged = r.doHarvest ? lodged*per_a*(s.lodgeRate||1) : 0;
   const eq=eqOf(r);
   const dry = r.doDry ? eq.bags*(s.dryPerBag||0) : 0;
+  /* 乾燥・籾摺り調製の2,300円に色選別費が含まれるため、同時のときは色選別を課金しない */
+  const sort = (r.doSort && !r.doDry) ? eq.bags*(s.sortPerBag||0) : 0;
   const bagFee = r.doBagFee ? (r.bagCount||0)*(s.bagPrice||0) : 0;
-  const t=splitTax(harvestNormal+harvestLodged+dry+bagFee);
   const u=buyUnits(r);
+  const haulUnit = u.haul;
+  const haulBags = numOrNull(r.haulBags)!=null ? Number(r.haulBags) : eq.bags;
+  const haul = (r.doHaul && haulUnit!=null) ? haulBags*haulUnit : 0;
+  const containerQty=Number(r.containerQty)||0, mowerQty=Number(r.mowerQty)||0;
+  const container = containerQty*(s.containerFee||0);
+  const mower = mowerQty*(s.mowerFee||0);
+  const t=splitTax(harvestNormal+harvestLodged+dry+sort+bagFee+haul+container+mower);
   const buyBags=Math.min(eq.buyBags, eq.bags);
   const buyAmt = u.rice!=null ? buyBags*u.rice : 0;
   const kuzuAmt = (s.offsetKuzu && u.kuzu!=null) ? (r.kuzu||0)*u.kuzu : 0;
-  return {per_a,normal,lodged,harvestNormal,harvestLodged,dry,bagFee,
+  return {per_a,normal,lodged,harvestNormal,harvestLodged,dry,sort,bagFee,haul,haulUnit,haulBags,
+          container,containerQty,mower,mowerQty,
           eqBags:eq.bags, subtotal:t.net, tax:t.tax, gross:t.gross,
           buyBags, buyUnit:u.rice, buyAmt,
           kuzuUnit:u.kuzu, kuzuAmt,
@@ -738,7 +789,8 @@ const recsOf=(custId,from,to,season)=>DB.records.filter(r=>
 function aggregate(list){
   const s=DB.settings, per_a=(s.harvestPer10a||0)/10;
   const a={normalA:0,lodgedA:0,area:0,bags:0,buyBags:0,bagCount:0,kuzu:0,flecoKg:0,
-           harvestNormal:0,harvestLodged:0,dry:0,bagFee:0,
+           harvestNormal:0,harvestLodged:0,dry:0,sort:0,bagFee:0,haul:0,sortBags:0,haulBags:0,haulLines:{},
+           container:0,containerQty:0,mower:0,mowerQty:0,
            buyAmt:0,kuzuAmt:0,buyLines:{},kuzuLines:{},kuzuNoPrice:0};
   list.forEach(r=>{
     const c=calc(r);
@@ -746,12 +798,16 @@ function aggregate(list){
     a.bags+=r.doDry?c.eqBags:0; a.bagCount+=r.doBagFee?(r.bagCount||0):0; a.kuzu+=r.kuzu||0;
     if(r.unit==='fleco') a.flecoKg+=Number(r.flecoKg)||0;
     a.harvestNormal+=c.harvestNormal; a.harvestLodged+=c.harvestLodged; a.dry+=c.dry; a.bagFee+=c.bagFee;
+    a.sort+=c.sort; if(r.doSort) a.sortBags+=c.eqBags;
+    a.haul+=c.haul; if(c.haul>0){ a.haulBags+=c.haulBags; a.haulLines[c.haulUnit]=(a.haulLines[c.haulUnit]||0)+c.haulBags; }
+    a.container+=c.container; a.containerQty+=c.containerQty;
+    a.mower+=c.mower; a.mowerQty+=c.mowerQty;
     a.buyBags+=c.buyBags;
     if(c.buyUnit!=null && c.buyBags>0){ a.buyLines[c.buyUnit]=(a.buyLines[c.buyUnit]||0)+c.buyBags; a.buyAmt+=c.buyAmt; }
     if(c.kuzuAmt>0){ a.kuzuLines[c.kuzuUnit]=(a.kuzuLines[c.kuzuUnit]||0)+(r.kuzu||0); a.kuzuAmt+=c.kuzuAmt; }
     else a.kuzuNoPrice+=r.kuzu||0;
   });
-  const t=splitTax(a.harvestNormal+a.harvestLodged+a.dry+a.bagFee);
+  const t=splitTax(a.harvestNormal+a.harvestLodged+a.dry+a.sort+a.bagFee+a.haul+a.container+a.mower);
   a.subtotal=t.net; a.tax=t.tax; a.gross=t.gross;
   a.deduction=a.buyAmt+a.kuzuAmt;
   a.total=t.gross-a.deduction;
@@ -789,6 +845,7 @@ function renderDash(){
   $('#dashStats').innerHTML=`
     <div class="stat"><div class="label">受託面積</div><div class="value">${nf(a.area)}<em>a</em></div><div class="foot">${nf(a.area/10,2)}反／うち倒伏 ${nf(a.lodgedA)}a</div></div>
     <div class="stat"><div class="label">30kg 袋数</div><div class="value">${nf(a.bags,1)}<em>袋</em></div><div class="foot">${a.flecoKg>0?`うちフレコン ${nf(a.flecoKg,0)}kg`:`約${nf(a.bags*30,0)}kg`}</div></div>
+    <div class="stat"><div class="label">作業受託費（差引前・税込）</div><div class="value" style="font-size:21px">${yen(a.gross)}</div><div class="foot">うち消費税 ${yen(a.tax)}</div></div>
     <div class="stat -seal"><div class="label">お買取分（差引額）</div><div class="value" style="font-size:21px">${yen(a.deduction)}</div><div class="foot">玄米${nf(a.buyBags,0)}袋・くず米${nf(a.kuzu)}kg</div></div>
     <div class="stat -money"><div class="label">差引請求見込み（税込）</div><div class="value" style="font-size:21px">${yen(a.total)}</div><div class="foot">未請求 ${yen(ua.total)}／${unbilled.length}件</div></div>`;
 
@@ -827,13 +884,16 @@ function readForm(){
   return {
     customerId:$('#f_cust').value, date:$('#f_date').value, field:$('#f_field').value.trim(),
     variety:$('#f_variety').value.trim(),
-    doHarvest:$('#f_harvest').checked, doDry:$('#f_dry').checked, doBagFee:$('#f_bagfee').checked,
+    doHarvest:$('#f_harvest').checked, doDry:$('#f_dry').checked, doSort:$('#f_sort').checked,
+    doBagFee:$('#f_bagfee').checked, doHaul:$('#f_haul').checked,
     area:num($('#f_area')), lodgedArea:num($('#f_lodged')),
     unit:$('#f_unit_fleco').checked?'fleco':'bag',
     bags:num($('#f_bags')), buyBags:num($('#f_buybags')),
     flecoKg:num($('#f_flecokg')), buyKg:num($('#f_buykg')),
     buyUnit:$('#f_buyunit').value.trim(),
     bagCount:num($('#f_bagcnt')), kuzu:num($('#f_kuzu')),
+    haulBags:$('#f_haulbags').value.trim(),
+    containerQty:num($('#f_container')), mowerQty:num($('#f_mower')),
     memo:$('#f_memo').value.trim()
   };
 }
@@ -845,7 +905,11 @@ function renderPreview(){
   if(r.doHarvest&&c.lodged>0) L.push([`稲刈り（倒伏 ${s.lodgeRate}倍）`,`${nf(c.lodged)}a × ${yen(c.per_a*s.lodgeRate)}`,c.harvestLodged]);
   if(r.doDry&&c.eqBags>0) L.push(['乾燥・籾摺り調製',
     (r.unit==='fleco'?`${nf(r.flecoKg,0)}kg → ${nf(c.eqBags,2)}袋換算 × `:`${nf(c.eqBags,2)}袋 × `)+yen(s.dryPerBag), c.dry]);
+  if(r.doSort&&c.sort>0) L.push(['色選別',`${nf(c.eqBags,2)}袋 × ${yen(s.sortPerBag)}`,c.sort]);
   if(r.doBagFee&&r.bagCount>0) L.push(['米袋代',`${nf(r.bagCount,0)}枚 × ${yen(s.bagPrice)}`,c.bagFee]);
+  if(c.haul>0) L.push(['玄米運搬費',`${nf(c.haulBags,2)}袋 × ${yen(c.haulUnit)}`,c.haul]);
+  if(c.container>0) L.push(['コンテナ賃借料',`${nf(c.containerQty,0)}個 × ${yen(s.containerFee)}`,c.container]);
+  if(c.mower>0) L.push(['モア作業',`${nf(c.mowerQty,0)}回 × ${yen(s.mowerFee)}`,c.mower]);
   let html = L.length? L.map(([a,b,v])=>`<div class="pv-line"><span>${a}<span style="color:var(--ink-2);font-size:11.5px"> ${b}</span></span><span class="n">${yen(v)}</span></div>`).join('')
     : '<div class="pv-line -mute"><span>面積や袋数を入れると、ここに金額が出ます</span><span></span></div>';
   if(L.length){
@@ -866,6 +930,15 @@ function renderPreview(){
   $('#f_buykghint').textContent = r.buyKg? `${nf(toBags(r.buyKg),2)}袋換算・単価 ${u.rice!=null?yen(u.rice):'未設定'}` : (u.rice!=null?`登録単価 ${yen(u.rice)}／袋`:'買取単価が未設定です');
   $('#f_bagcnthint').textContent = r.unit==='fleco' ? '30kgで割り戻した枚数が自動で入ります' : '袋数を入れると自動で同じ枚数が入ります';
   $('#f_kuzuhint').textContent = u.kuzu!=null ? `買取 ${yen(u.kuzu)}／kg` : '買取単価は未設定（数量のみ報告）';
+  const cu=DB.customers.find(x=>x.id===r.customerId)||{};
+  $('#f_haulbagshint').textContent = numOrNull(r.haulBags)!=null
+    ? `${nf(Number(r.haulBags),0)}袋で計算します`
+    : `空欄なので調製した ${nf(c.eqBags,2)}袋 で計算します`;
+  $('#f_containerhint').textContent = `1個 ${yen(DB.settings.containerFee||0)}`;
+  $('#f_mowerhint').textContent = `1回 ${yen(DB.settings.mowerFee||0)}`;
+  $('#f_haulnote').textContent = numOrNull(cu.haulPrice)!=null
+    ? `${cu.name}さんは玄米運搬費 ${yen(numOrNull(cu.haulPrice))}／袋 が登録されています`
+    : (r.doHaul ? `運搬費の登録がないため、既定の ${yen(DB.settings.haulPerBag||0)}／袋 で計算します` : '');
   $('#f_preview').innerHTML=html;
 }
 function applyUnitMode(){
@@ -873,8 +946,18 @@ function applyUnitMode(){
   $('#grp_bag').hidden=fleco; $('#grp_fleco').hidden=!fleco;
 }
 ['#f_unit_bag','#f_unit_fleco'].forEach(s=>$(s).addEventListener('change',()=>{applyUnitMode();autoBagCount();renderPreview();}));
-['#f_area','#f_lodged','#f_buyunit','#f_bagcnt','#f_kuzu','#f_harvest','#f_dry','#f_bagfee','#f_cust']
+['#f_area','#f_lodged','#f_buyunit','#f_bagcnt','#f_kuzu','#f_haulbags','#f_container','#f_mower','#f_harvest','#f_dry','#f_sort','#f_bagfee','#f_haul','#f_cust']
   .forEach(s=>$(s).addEventListener('input',renderPreview));
+/* 乾燥・籾摺り調製と色選別は同時に請求しない（2,300円に含まれるため） */
+$('#f_dry').addEventListener('change',()=>{ if($('#f_dry').checked) $('#f_sort').checked=false; renderPreview(); });
+$('#f_sort').addEventListener('change',()=>{ if($('#f_sort').checked) $('#f_dry').checked=false; renderPreview(); });
+/* 運搬費が登録されているお客様は、運搬を自動でオンにする */
+$('#f_cust').addEventListener('change',()=>{
+  if(editingRec) return;
+  const c=DB.customers.find(x=>x.id===$('#f_cust').value)||{};
+  $('#f_haul').checked = numOrNull(c.haulPrice)!=null;
+  renderPreview();
+});
 /* 米袋の枚数は、袋数またはフレコンの換算袋数から自動で入れる */
 function autoBagCount(){
   const bc=$('#f_bagcnt');
@@ -888,17 +971,21 @@ $('#f_cust').addEventListener('change',renderPreview);
 $('#f_bagcnt').addEventListener('input',e=>{e.target.dataset.touched='1';});
 $$('[data-preset]').forEach(b=>b.addEventListener('click',()=>{
   const p=b.dataset.preset;
-  $('#f_harvest').checked = p!=='dry';
-  $('#f_dry').checked = p!=='harvest';
-  $('#f_bagfee').checked = p!=='harvest';
+  $('#f_harvest').checked = (p==='all'||p==='harvest');
+  $('#f_dry').checked     = (p==='all'||p==='dry');
+  $('#f_sort').checked    = (p==='sort');
+  $('#f_bagfee').checked  = (p==='all'||p==='dry'||p==='sort');
   renderPreview();
 }));
 $('#f_allLodged').addEventListener('click',()=>{$('#f_lodged').value=$('#f_area').value;renderPreview();});
 
 function clearForm(){
-  ['#f_field','#f_variety','#f_area','#f_lodged','#f_bags','#f_buybags','#f_flecokg','#f_buykg','#f_buyunit','#f_bagcnt','#f_kuzu','#f_memo'].forEach(s=>$(s).value='');
+  ['#f_field','#f_variety','#f_area','#f_lodged','#f_bags','#f_buybags','#f_flecokg','#f_buykg','#f_buyunit','#f_bagcnt','#f_kuzu','#f_haulbags','#f_container','#f_mower','#f_memo'].forEach(s=>$(s).value='');
   $('#f_unit_bag').checked=true; applyUnitMode();
   $('#f_harvest').checked=$('#f_dry').checked=$('#f_bagfee').checked=true;
+  $('#f_sort').checked=false; $('#f_dry').checked=true;
+  const _c=DB.customers.find(x=>x.id===$('#f_cust').value)||{};
+  $('#f_haul').checked = numOrNull(_c.haulPrice)!=null;
   $('#f_date').value=new Date().toISOString().slice(0,10);
   $('#f_bagcnt').dataset.touched='';
   editingRec=null; $('#f_editing').textContent=''; $('#f_save').textContent='この内容で登録';
@@ -968,13 +1055,15 @@ function renderList(){
     editingRec=r;
     $('#f_cust').value=r.customerId; $('#f_date').value=r.date; $('#f_field').value=r.field||'';
     $('#f_variety').value=r.variety||''; $('#f_harvest').checked=!!r.doHarvest; $('#f_dry').checked=!!r.doDry;
-    $('#f_bagfee').checked=!!r.doBagFee; $('#f_area').value=r.area||''; $('#f_lodged').value=r.lodgedArea||'';
+    $('#f_sort').checked=!!r.doSort; $('#f_haul').checked=!!r.doHaul; $('#f_bagfee').checked=!!r.doBagFee; $('#f_area').value=r.area||''; $('#f_lodged').value=r.lodgedArea||'';
     (r.unit==='fleco'?$('#f_unit_fleco'):$('#f_unit_bag')).checked=true; applyUnitMode();
     $('#f_bags').value=r.bags||''; $('#f_buybags').value=r.buyBags||'';
     $('#f_flecokg').value=r.flecoKg||''; $('#f_buykg').value=r.buyKg||'';
     $('#f_buyunit').value=r.buyUnit||'';
     $('#f_bagcnt').value=r.bagCount||''; $('#f_bagcnt').dataset.touched='1';
-    $('#f_kuzu').value=r.kuzu||''; $('#f_memo').value=r.memo||'';
+    $('#f_kuzu').value=r.kuzu||''; $('#f_haulbags').value=r.haulBags||'';
+    $('#f_container').value=r.containerQty||''; $('#f_mower').value=r.mowerQty||'';
+    $('#f_memo').value=r.memo||'';
     $('#f_editing').textContent='編集中'; $('#f_save').textContent='変更を保存';
     $('#f_clear').textContent='編集をやめる'; $('#f_del').hidden=false;
     $$('.tab').find(t=>t.dataset.view==='record').click();
@@ -995,7 +1084,7 @@ $('#l_status').addEventListener('change',renderList);
 /* ======================== お客様 ======================== */
 let editingCust=null;
 function clearCust(){
-  ['#c_name','#c_addr','#c_tel','#c_rice','#c_kuzu','#c_bank','#c_memo'].forEach(s=>$(s).value='');
+  ['#c_name','#c_addr','#c_tel','#c_rice','#c_kuzu','#c_haul','#c_bank','#c_memo'].forEach(s=>$(s).value='');
   $('#c_honor').value='様'; editingCust=null; $('#c_editing').textContent='';
   $('#c_save').textContent='お客様を登録';
 }
@@ -1005,6 +1094,7 @@ $('#c_save').addEventListener('click',()=>{
   if(!name){toast('お名前を入れてください。','warn');return;}
   const o={name,honor:$('#c_honor').value,addr:$('#c_addr').value.trim(),tel:$('#c_tel').value.trim(),
            riceBuyPrice:$('#c_rice').value.trim(), kuzuBuyPrice:$('#c_kuzu').value.trim(),
+           haulPrice:$('#c_haul').value.trim(),
            bank:$('#c_bank').value.trim(), memo:$('#c_memo').value.trim()};
   const wasEdit=!!editingCust;
   if(editingCust){ Object.assign(editingCust,o); stamp(editingCust); }
@@ -1021,7 +1111,7 @@ function renderCust(){
       return `<tr><td><strong>${esc(c.name)}</strong> ${esc(c.honor||'')}
         <div style="font-size:11.5px;color:var(--ink-2)">${esc(c.addr||'')} ${esc(c.tel||'')}</div>
         ${c.memo?`<div style="font-size:11.5px;color:var(--ink-2)">${esc(c.memo)}</div>`:''}</td>
-      <td style="font-size:12px;color:var(--ink-2)">玄米 ${rp!=null?yen(rp)+'/袋':'<span style="color:var(--seal)">未設定</span>'}<br>くず米 ${kp!=null?yen(kp)+'/kg':'未設定'}</td>
+      <td style="font-size:12px;color:var(--ink-2)">玄米 ${rp!=null?yen(rp)+'/袋':'<span style="color:var(--seal)">未設定</span>'}<br>くず米 ${kp!=null?yen(kp)+'/kg':'未設定'}${numOrNull(c.haulPrice)!=null?`<br>運搬 ${yen(numOrNull(c.haulPrice))}/袋`:''}</td>
       <td class="r">${nf(x.area)}a／${nf(x.bags,1)}袋${x.buyBags?`（買取${nf(x.buyBags,1)}）`:''}<br><span style="color:var(--grain)">${yen(x.total)}</span></td>
       <td class="r"><button class="btn -ghost -sm" data-ce="${c.id}">編集</button>
         <button class="btn -danger -sm" data-cd="${c.id}">削除</button></td></tr>`}).join('')}
@@ -1030,7 +1120,7 @@ function renderCust(){
     const c=DB.customers.find(x=>x.id===b.dataset.ce); editingCust=c;
     $('#c_name').value=c.name; $('#c_honor').value=c.honor||'様'; $('#c_addr').value=c.addr||'';
     $('#c_tel').value=c.tel||''; $('#c_rice').value=c.riceBuyPrice||''; $('#c_kuzu').value=c.kuzuBuyPrice||'';
-    $('#c_bank').value=c.bank||''; $('#c_memo').value=c.memo||'';
+    $('#c_haul').value=c.haulPrice||''; $('#c_bank').value=c.bank||''; $('#c_memo').value=c.memo||'';
     $('#c_editing').textContent='編集中'; $('#c_save').textContent='変更を保存';
     window.scrollTo(0,0);
   }));
@@ -1071,7 +1161,11 @@ function buildBill(){
   if(a.harvestNormal>0) rows.push(['稲刈り作業受託',`${nf(a.normalA)} a`,yen(a.per_a),yen(a.harvestNormal)]);
   if(a.harvestLodged>0) rows.push([`稲刈り作業受託（倒伏 ${s.lodgeRate}倍）`,`${nf(a.lodgedA)} a`,yen(a.per_a*s.lodgeRate),yen(a.harvestLodged)]);
   if(a.dry>0) rows.push(['乾燥・籾摺り調製',`${nf(a.bags,2)} 袋`,yen(s.dryPerBag),yen(a.dry)]);
+  if(a.sort>0) rows.push(['色選別',`${nf(a.sortBags,2)} 袋`,yen(s.sortPerBag),yen(a.sort)]);
   if(a.bagFee>0) rows.push(['米袋代',`${nf(a.bagCount,0)} 枚`,yen(s.bagPrice),yen(a.bagFee)]);
+  Object.entries(a.haulLines).forEach(([u,bags])=>rows.push(['玄米運搬',`${nf(bags,2)} 袋`,yen(Number(u)),yen(bags*Number(u))]));
+  if(a.container>0) rows.push(['コンテナ賃借料',`${nf(a.containerQty,0)} 個`,yen(s.containerFee),yen(a.container)]);
+  if(a.mower>0) rows.push(['モア作業',`${nf(a.mowerQty,0)} 回`,yen(s.mowerFee),yen(a.mower)]);
 
   const ded=[];
   Object.entries(a.buyLines).forEach(([u,bags])=>ded.push([`玄米 買取（当社買取分）`,`${nf(bags,2)} 袋`,yen(Number(u)),yen(bags*Number(u))]));
@@ -1186,7 +1280,8 @@ function buildBill(){
 function loadSettings(){
   const s=DB.settings;
   $('#s_harvest').value=s.harvestPer10a; $('#s_lodge').value=s.lodgeRate; $('#s_dry').value=s.dryPerBag;
-  $('#s_bag').value=s.bagPrice; $('#s_kuzu').value=s.kuzuPrice; $('#s_rice').value=s.riceBuyPrice||'';
+  $('#s_bag').value=s.bagPrice; $('#s_sort').value=s.sortPerBag; $('#s_haul').value=s.haulPerBag;
+  $('#s_container').value=s.containerFee; $('#s_mower').value=s.mowerFee; $('#s_kuzu').value=s.kuzuPrice; $('#s_rice').value=s.riceBuyPrice||'';
   $('#s_tax').value=s.taxRate;
   $('#s_incl').value=(s.taxIncluded===false)?'0':'1'; $('#s_round').value=s.roundMode||'none';
   $('#s_h_hint').textContent=`10a単価 ${nf(s.harvestPer10a,0)}円 → 1aあたり ${nf(s.harvestPer10a/10,0)}円`;
@@ -1198,7 +1293,8 @@ function loadSettings(){
 $('#s_save').addEventListener('click',()=>{
   Object.assign(DB.settings,{
     harvestPer10a:num($('#s_harvest')), lodgeRate:num($('#s_lodge')), dryPerBag:num($('#s_dry')),
-    bagPrice:num($('#s_bag')), kuzuPrice:$('#s_kuzu').value.trim(), riceBuyPrice:$('#s_rice').value.trim(),
+    bagPrice:num($('#s_bag')), sortPerBag:num($('#s_sort')), haulPerBag:num($('#s_haul')),
+    containerFee:num($('#s_container')), mowerFee:num($('#s_mower')), kuzuPrice:$('#s_kuzu').value.trim(), riceBuyPrice:$('#s_rice').value.trim(),
     taxRate:num($('#s_tax')),
     taxIncluded:$('#s_incl').value==='1', roundMode:$('#s_round').value, offsetKuzu:true, co:$('#s_co').value.trim(), addr:$('#s_addr').value.trim(),
     tel:$('#s_tel').value.trim(), invoiceNo:$('#s_inv').value.trim(), bank:$('#s_bank').value.trim(),
