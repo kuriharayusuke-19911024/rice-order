@@ -1,227 +1,1402 @@
-/**
- * 稲刈り受託管理アプリ バックエンド
- * スプレッドシート「稲刈り受託管理」に紐づけて使う
- */
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>水稲作業受託 管理｜株式会社丹波農商</title>
+<style>
+:root{
+  --ink:#16324F;        /* 墨藍 */
+  --ink-2:#41586F;
+  --paper:#FAFAF8;
+  --card:#FFFFFF;
+  --rule:#D9E1E8;
+  --tint:#EEF3F7;
+  --grain:#B8860B;      /* 籾 */
+  --seal:#B33A25;       /* 朱印 */
+  --sprout:#4F7A52;
+  --shadow:0 1px 2px rgba(22,50,79,.06),0 6px 18px rgba(22,50,79,.05);
+  --mincho:"Yu Mincho","YuMincho","Hiragino Mincho ProN","MS PMincho",serif;
+  --gothic:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Meiryo",sans-serif;
+  --mono:"SFMono-Regular",Menlo,Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:var(--gothic);font-size:15px;line-height:1.7;
+  -webkit-text-size-adjust:100%;
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
 
-const SHEET_CUST = '顧客';
-const SHEET_REC  = '作業記録';
-const SHEET_SET  = '設定';
+/* ---------- masthead ---------- */
+.masthead{
+  background:var(--ink);color:#fff;padding:14px 16px 0;
+  position:sticky;top:0;z-index:50;
+}
+.masthead-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand{font-family:var(--mincho);font-size:20px;letter-spacing:.14em;font-weight:600}
+.brand small{display:block;font-family:var(--gothic);font-size:11px;letter-spacing:.2em;opacity:.6;font-weight:400}
+.season{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;opacity:.85}
+.season select{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:5px;padding:3px 6px}
+.sync{font-size:11px;letter-spacing:.06em;padding:2px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.3);white-space:nowrap}
+.sync.-idle{background:rgba(79,122,82,.4)}
+.sync.-busy{background:rgba(255,255,255,.14)}
+.sync.-err,.sync.-off{background:rgba(179,58,37,.55);border-color:rgba(255,255,255,.45)}
+.tabs{display:flex;gap:2px;margin-top:12px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  background:none;border:0;border-bottom:3px solid transparent;color:rgba(255,255,255,.6);
+  padding:9px 13px;white-space:nowrap;cursor:pointer;font-size:13.5px;letter-spacing:.04em;
+}
+.tab[aria-selected="true"]{color:#fff;border-bottom-color:var(--grain);font-weight:600}
+.tab:focus-visible{outline:2px solid var(--grain);outline-offset:-3px}
 
-// [アプリ側のキー, スプレッドシートの見出し]
-const CUST_MAP = [
-  ['id',           'ID'],
-  ['name',         '名前'],
-  ['honor',        '敬称'],
-  ['addr',         '住所'],
-  ['tel',          '電話'],
-  ['riceBuyPrice', '玄米買取単価'],
-  ['kuzuBuyPrice', 'くず米買取単価'],
-  ['haulPrice',    '玄米運搬費'],
-  ['bank',         '振込先'],
-  ['memo',         'メモ'],
-  ['updatedAt',    '更新日時']
-];
+main{max-width:960px;margin:0 auto;padding:18px 14px 80px}
+section[hidden]{display:none}
 
-const REC_MAP = [
-  ['id',         'ID'],
-  ['customerId', '顧客ID'],
-  ['date',       '作業日'],
-  ['field',      '圃場名'],
-  ['variety',    '品種'],
-  ['doHarvest',  '稲刈り'],
-  ['doDry',      '乾燥籾摺り'],
-  ['doSort',     '色選別'],
-  ['doBagFee',   '米袋代'],
-  ['doHaul',     '玄米運搬'],
-  ['area',       '総面積a'],
-  ['lodgedArea', '倒伏面積a'],
-  ['weedArea',   '草多い面積a'],
-  ['unit',       '調製方法'],
-  ['bags',       '30kg袋数'],
-  ['buyBags',    '買取袋数'],
-  ['flecoKg',    'フレコンkg'],
-  ['buyKg',      '買取kg'],
-  ['buyUnit',    '買取単価'],
-  ['bagCount',   '米袋枚数'],
-  ['kuzu',       'くず米kg'],
-  ['haulBags',   '運搬袋数'],
-  ['containerQty','コンテナ個数'],
-  ['mowerQty',   'モア回数'],
-  ['memo',       '備考'],
-  ['billed',     '発行済み'],
-  ['updatedAt',  '更新日時']
-];
+h2.head{
+  font-family:var(--mincho);font-size:17px;font-weight:600;letter-spacing:.1em;
+  margin:0 0 12px;padding-bottom:7px;border-bottom:1px solid var(--rule);
+  display:flex;align-items:baseline;gap:8px;
+}
+h2.head span{font-family:var(--gothic);font-size:11px;letter-spacing:.16em;color:var(--ink-2);opacity:.8}
+h3.sub{font-size:13px;letter-spacing:.08em;color:var(--ink-2);margin:22px 0 8px;font-weight:600}
 
-const BOOL_KEYS = ['doHarvest', 'doDry', 'doSort', 'doBagFee', 'doHaul', 'billed'];
-const NUM_KEYS  = ['area', 'lodgedArea', 'weedArea', 'bags', 'buyBags', 'flecoKg', 'buyKg', 'bagCount', 'kuzu',
-                   'containerQty', 'mowerQty'];
+.card{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:16px;box-shadow:var(--shadow)}
+.card+.card{margin-top:12px}
 
-/* ================= エントリポイント ================= */
+/* ---------- dashboard ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:13px 14px;box-shadow:var(--shadow)}
+.stat .label{font-size:11px;letter-spacing:.14em;color:var(--ink-2)}
+.stat .value{font-family:var(--mono);font-size:25px;font-weight:600;line-height:1.25;margin-top:3px}
+.stat .value em{font-family:var(--gothic);font-style:normal;font-size:12px;font-weight:400;margin-left:3px;color:var(--ink-2)}
+.stat .foot{font-size:11px;color:var(--ink-2);margin-top:2px}
+.stat.-money .value{color:var(--grain)}
+.stat.-seal .value{color:var(--seal)}
 
-function doGet(e) {
-  const action = (e && e.parameter && e.parameter.action) || 'load';
-  return respond(run(action, null));
+.bars{margin-top:6px}
+.bar-row{display:grid;grid-template-columns:minmax(84px,1.1fr) 1fr auto;gap:9px;align-items:center;padding:5px 0}
+.bar-row .nm{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{background:var(--tint);border-radius:3px;height:11px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--ink),var(--ink-2));border-radius:3px}
+.bar-row .amt{font-family:var(--mono);font-size:12.5px;color:var(--ink-2)}
+
+/* ---------- forms ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11.5px;letter-spacing:.1em;color:var(--ink-2);font-weight:600}
+.field input,.field select,.field textarea{
+  border:1px solid var(--rule);border-radius:7px;padding:9px 10px;background:#fff;width:100%;
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--ink);outline-offset:0;border-color:var(--ink)}
+.field .hint{font-size:11px;color:var(--ink-2)}
+.field.-full{grid-column:1/-1}
+.suffix{position:relative}
+.suffix input{padding-right:38px}
+.suffix i{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-style:normal;font-size:12px;color:var(--ink-2)}
+
+.checks{display:flex;gap:8px;flex-wrap:wrap}
+.chip{
+  border:1px solid var(--rule);border-radius:999px;padding:7px 15px;cursor:pointer;
+  background:#fff;font-size:13.5px;user-select:none;display:inline-flex;align-items:center;gap:6px;
+}
+.chip input{display:none}
+.chip:has(input:checked){background:var(--ink);color:#fff;border-color:var(--ink)}
+.chip.-seal:has(input:checked){background:var(--seal);border-color:var(--seal)}
+.chip:focus-within{outline:2px solid var(--ink);outline-offset:2px}
+
+.btn{
+  border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:8px;
+  padding:10px 18px;cursor:pointer;letter-spacing:.06em;font-weight:600;font-size:14px;
+}
+.btn:hover{opacity:.88}
+.btn.-ghost{background:#fff;color:var(--ink)}
+.btn.-danger{background:#fff;color:var(--seal);border-color:var(--seal)}
+.btn.-sm{padding:6px 12px;font-size:12.5px;font-weight:400}
+.btn:focus-visible{outline:2px solid var(--grain);outline-offset:2px}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+
+/* ---------- 集計プレビュー ---------- */
+.preview{background:var(--tint);border-radius:9px;padding:12px 14px;margin-top:14px}
+.pv-line{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0}
+.pv-line .n{font-family:var(--mono)}
+.pv-line.-total{border-top:1px solid var(--rule);margin-top:6px;padding-top:8px;font-weight:700;font-size:15px}
+.pv-line.-total .n{color:var(--grain)}
+.pv-line.-mute{color:var(--ink-2)}
+
+/* ---------- 伝票カード（署名的要素） ---------- */
+.slip{
+  background:var(--card);border:1px solid var(--rule);border-left:4px solid var(--ink);
+  border-radius:8px;padding:12px 14px;margin-bottom:9px;position:relative;box-shadow:var(--shadow);
+}
+.slip.-lodged{border-left-color:var(--seal)}
+.slip.-billed{opacity:.62;border-left-color:var(--sprout)}
+.slip-hd{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.slip-hd .cust{font-family:var(--mincho);font-size:16px;font-weight:600}
+.slip-hd .fld{font-size:12.5px;color:var(--ink-2)}
+.slip-hd .date{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+.slip-body{display:flex;gap:14px;flex-wrap:wrap;margin-top:7px;font-size:12.5px;color:var(--ink-2)}
+.slip-body b{font-family:var(--mono);font-size:14px;color:var(--ink);font-weight:600}
+.slip-foot{display:flex;align-items:center;gap:10px;margin-top:9px;padding-top:8px;border-top:1px dotted var(--rule)}
+.slip-foot .sum{margin-right:auto;font-family:var(--mono);font-weight:700;color:var(--grain)}
+.seal{
+  position:absolute;top:10px;right:12px;color:var(--seal);border:2px solid var(--seal);
+  border-radius:5px;padding:2px 6px;font-family:var(--mincho);font-size:12px;font-weight:700;
+  letter-spacing:.1em;transform:rotate(-7deg);opacity:.85;
+}
+.seal.-done{color:var(--sprout);border-color:var(--sprout);transform:rotate(-4deg)}
+
+.empty{text-align:center;padding:34px 16px;color:var(--ink-2)}
+.empty .big{font-family:var(--mincho);font-size:16px;color:var(--ink);margin-bottom:5px}
+
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
+.toolbar .field{flex:1;min-width:130px}
+
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+table.tbl th{text-align:left;font-size:11px;letter-spacing:.1em;color:var(--ink-2);border-bottom:1px solid var(--rule);padding:6px 5px;font-weight:600}
+table.tbl td{border-bottom:1px solid var(--rule);padding:8px 5px;vertical-align:top}
+table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
+
+.notice{background:#FFF8E8;border:1px solid #E8D9A8;border-radius:8px;padding:10px 13px;font-size:12.5px;color:#6B5518;margin-bottom:12px}
+
+/* ---------- 帳票 ---------- */
+.sheet{
+  background:#fff;border:1px solid var(--rule);border-radius:6px;padding:26px 24px;
+  box-shadow:var(--shadow);margin-top:14px;
+}
+.sheet-title{font-family:var(--mincho);font-size:24px;letter-spacing:.5em;text-align:center;margin:0 0 4px;text-indent:.5em}
+.sheet-no{text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink-2);margin-bottom:20px}
+.sheet-parties{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+.party{flex:1;min-width:220px}
+.party .to{font-family:var(--mincho);font-size:19px;border-bottom:2px solid var(--ink);padding-bottom:5px;display:inline-block;min-width:60%}
+.party .to small{font-size:13px;margin-left:4px}
+.party.-from{text-align:right;font-size:12.5px;line-height:1.85;color:var(--ink-2)}
+.party.-from strong{display:block;font-family:var(--mincho);font-size:16px;color:var(--ink);letter-spacing:.06em}
+.grand{background:var(--tint);border-radius:8px;padding:11px 16px;display:flex;align-items:baseline;gap:12px;margin-bottom:18px}
+.grand .lb{font-family:var(--mincho);font-size:14px;letter-spacing:.16em}
+.grand .vl{margin-left:auto;font-family:var(--mono);font-size:26px;font-weight:700}
+.sheet-note{font-size:12px;color:var(--ink-2);margin-top:16px;line-height:1.9}
+.sheet-note dt{float:left;clear:left;width:6em;font-weight:600}
+.pagebreak{border:0;border-top:1px dashed var(--rule);margin:26px 0}
+
+/* ---------- お知らせ・確認 ---------- */
+.toast{
+  position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:200;
+  background:var(--ink);color:#fff;padding:12px 18px;border-radius:9px;max-width:min(92vw,460px);
+  box-shadow:0 8px 28px rgba(22,50,79,.28);font-size:13.5px;line-height:1.6;
+}
+.toast.-warn{background:var(--seal)}
+.toast[hidden]{display:none}
+.modal{position:fixed;inset:0;z-index:210;background:rgba(22,50,79,.45);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal[hidden]{display:none}
+.modal-box{background:#fff;border-radius:12px;padding:22px;max-width:400px;width:100%;box-shadow:0 18px 50px rgba(22,50,79,.3)}
+.modal-box p{margin:0 0 18px;font-size:14px;line-height:1.75}
+.modal-btns{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+
+@media print{
+  .masthead,.toolbar,.actions,.notice,.no-print{display:none!important}
+  body{background:#fff;font-size:12px}
+  main{padding:0;max-width:none}
+  .sheet{border:0;box-shadow:none;border-radius:0;padding:0;margin:0}
+  .pagebreak{page-break-after:always;border:0;margin:0}
+  h2.head{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:520px){
+  main{padding:14px 11px 70px}
+  .sheet{padding:18px 14px}
+  .sheet-title{font-size:20px}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-top">
+    <div class="brand">水稲作業受託<small>TAMBA NOSHO / 稲刈・乾燥調製 受託管理</small></div>
+    <div class="season"><span id="syncBadge" class="sync -busy">同期中…</span>年度<select id="seasonSel"></select></div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-view="dash" aria-selected="true">ダッシュボード</button>
+    <button class="tab" role="tab" data-view="record" aria-selected="false">作業入力</button>
+    <button class="tab" role="tab" data-view="list" aria-selected="false">作業一覧</button>
+    <button class="tab" role="tab" data-view="cust" aria-selected="false">お客様</button>
+    <button class="tab" role="tab" data-view="bill" aria-selected="false">請求・報告</button>
+    <button class="tab" role="tab" data-view="set" aria-selected="false">単価設定</button>
+  </nav>
+</header>
+
+<main>
+
+<div id="storeWarn" class="notice" style="background:#FDEEEA;border-color:#E8BDB2;color:#8A2E1B" hidden>
+  <strong>このデバイスに保存できていません。</strong>画面を閉じたり再読み込みすると入力内容が消えます。
+  作業が終わったら「単価設定」→「JSONで書き出す」でバックアップを取ってください。
+</div>
+
+<!-- ===== ダッシュボード ===== -->
+<section id="view-dash">
+  <h2 class="head">今年度の受託状況 <span id="dashSeason"></span></h2>
+  <div id="dashNote" class="notice" hidden></div>
+  <div class="stats" id="dashStats"></div>
+
+  <div class="card" style="margin-top:14px">
+    <h3 class="sub" style="margin-top:0">お客様別 請求見込み</h3>
+    <div class="bars" id="dashBars"></div>
+  </div>
+
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">お客様別 収量報告サマリー</h3>
+    <div style="overflow-x:auto">
+      <table class="tbl" id="dashTbl"></table>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 作業入力 ===== -->
+<section id="view-record" hidden>
+  <h2 class="head">作業を記録する <span>1圃場ごとに1件</span></h2>
+  <div class="card">
+    <div class="grid">
+      <div class="field">
+        <label for="f_cust">お客様</label>
+        <select id="f_cust"></select>
+      </div>
+      <div class="field">
+        <label for="f_date">作業日</label>
+        <input type="date" id="f_date">
+      </div>
+      <div class="field">
+        <label for="f_field">圃場名</label>
+        <input type="text" id="f_field" placeholder="例）中村上の田">
+      </div>
+      <div class="field">
+        <label for="f_variety">品種</label>
+        <input type="text" id="f_variety" placeholder="例）コシヒカリ">
+      </div>
+    </div>
+
+    <h3 class="sub">請け負った作業</h3>
+    <div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">同じお客様でも、作業内容が違う圃場は分けて登録してください（例：刈取のみ1ha／一式1.5ha → 2件）</div>
+    <div class="checks" style="margin-bottom:9px">
+      <button type="button" class="btn -ghost -sm" data-preset="all">一式</button>
+      <button type="button" class="btn -ghost -sm" data-preset="harvest">稲刈りだけ</button>
+      <button type="button" class="btn -ghost -sm" data-preset="dry">乾燥・籾摺りだけ</button>
+      <button type="button" class="btn -ghost -sm" data-preset="sort">色選別だけ</button>
+    </div>
+    <div class="checks">
+      <label class="chip"><input type="checkbox" id="f_harvest" checked>稲刈り</label>
+      <label class="chip"><input type="checkbox" id="f_dry" checked>乾燥・籾摺り調製（色選別込み）</label>
+      <label class="chip"><input type="checkbox" id="f_sort">色選別だけ</label>
+      <label class="chip"><input type="checkbox" id="f_bagfee" checked>米袋代</label>
+      <label class="chip"><input type="checkbox" id="f_haul">玄米運搬</label>
+    </div>
+    <div style="font-size:12px;color:var(--ink-2);margin-top:6px" id="f_haulnote"></div>
+
+    <h3 class="sub">面積</h3>
+    <div class="grid">
+      <div class="field">
+        <label for="f_area">総面積</label>
+        <div class="suffix"><input type="number" id="f_area" min="0" step="0.1" placeholder="0"><i>a</i></div>
+        <div class="hint" id="f_areaTan">1反＝10a</div>
+      </div>
+      <div class="field">
+        <label for="f_lodged">うち倒伏面積（<span id="f_lodgeRateLb">1.5</span>倍請求）</label>
+        <div class="suffix"><input type="number" id="f_lodged" min="0" step="0.1" placeholder="0"><i>a</i></div>
+        <div class="hint"><button class="btn -ghost -sm" type="button" id="f_allLodged">全面が倒伏</button></div>
+      </div>
+      <div class="field">
+        <label for="f_weed">うち草が多い面積（<span id="f_weedRateLb">1.5</span>倍請求）</label>
+        <div class="suffix"><input type="number" id="f_weed" min="0" step="0.1" placeholder="0"><i>a</i></div>
+        <div class="hint"><button class="btn -ghost -sm" type="button" id="f_allWeed">全面が草多い</button></div>
+      </div>
+    </div>
+
+    <h3 class="sub">収穫結果</h3>
+    <div class="checks" style="margin-bottom:10px">
+      <label class="chip"><input type="radio" name="unitmode" id="f_unit_bag" value="bag" checked>30kg袋で調製</label>
+      <label class="chip"><input type="radio" name="unitmode" id="f_unit_fleco" value="fleco">フレコンで調製</label>
+    </div>
+
+    <div class="grid" id="grp_bag">
+      <div class="field">
+        <label for="f_bags">30kg袋数（総量）</label>
+        <div class="suffix"><input type="number" id="f_bags" min="0" step="1" placeholder="0"><i>袋</i></div>
+      </div>
+      <div class="field">
+        <label for="f_buybags">うち当社が買い取る袋数</label>
+        <div class="suffix"><input type="number" id="f_buybags" min="0" step="1" placeholder="0"><i>袋</i></div>
+      </div>
+    </div>
+
+    <div class="grid" id="grp_fleco" hidden>
+      <div class="field">
+        <label for="f_flecokg">フレコン重量（総量）</label>
+        <div class="suffix"><input type="number" id="f_flecokg" min="0" step="1" placeholder="0"><i>kg</i></div>
+        <div class="hint" id="f_flecohint">30kgで割って袋数に換算します</div>
+      </div>
+      <div class="field">
+        <label for="f_buykg">うち当社が買い取る重量</label>
+        <div class="suffix"><input type="number" id="f_buykg" min="0" step="1" placeholder="0"><i>kg</i></div>
+        <div class="hint" id="f_buykghint"></div>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:12px">
+      <div class="field">
+        <label for="f_buyunit">買取単価（1袋・税込）</label>
+        <div class="suffix"><input type="number" id="f_buyunit" min="0" step="100" placeholder=""><i>円</i></div>
+        <div class="hint">空欄ならお客様の登録単価を使います</div>
+      </div>
+      <div class="field">
+        <label for="f_bagcnt">米袋 使用枚数</label>
+        <div class="suffix"><input type="number" id="f_bagcnt" min="0" step="1" placeholder="0"><i>枚</i></div>
+        <div class="hint" id="f_bagcnthint">袋数を入れると自動で同じ枚数が入ります</div>
+      </div>
+      <div class="field">
+        <label for="f_kuzu">くず米</label>
+        <div class="suffix"><input type="number" id="f_kuzu" min="0" step="0.1" placeholder="0"><i>kg</i></div>
+        <div class="hint" id="f_kuzuhint"></div>
+      </div>
+    </div>
+
+    <h3 class="sub">運搬・その他の作業</h3>
+    <div class="grid">
+      <div class="field">
+        <label for="f_haulbags">玄米運搬の袋数</label>
+        <div class="suffix"><input type="number" id="f_haulbags" min="0" step="1" placeholder="自動"><i>袋</i></div>
+        <div class="hint" id="f_haulbagshint">空欄なら調製した袋数と同じになります</div>
+      </div>
+      <div class="field">
+        <label for="f_container">コンテナ賃借料</label>
+        <div class="suffix"><input type="number" id="f_container" min="0" step="1" placeholder="0"><i>個</i></div>
+        <div class="hint" id="f_containerhint"></div>
+      </div>
+      <div class="field">
+        <label for="f_mower">モア作業</label>
+        <div class="suffix"><input type="number" id="f_mower" min="0" step="1" placeholder="0"><i>回</i></div>
+        <div class="hint" id="f_mowerhint"></div>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:12px">
+      <div class="field -full">
+        <label for="f_memo">備考</label>
+        <input type="text" id="f_memo" placeholder="例）圃場の一部が水没、翌日に再乾燥">
+      </div>
+    </div>
+
+    <div class="preview" id="f_preview"></div>
+
+    <div class="actions">
+      <button class="btn" id="f_save">この内容で登録</button>
+      <button class="btn -ghost" id="f_clear">入力をクリア</button>
+      <button class="btn -danger" id="f_del" hidden>この記録を削除</button>
+      <span id="f_editing" style="align-self:center;font-size:12.5px;color:var(--seal)"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 作業一覧 ===== -->
+<section id="view-list" hidden>
+  <h2 class="head">作業一覧 <span id="listCount"></span></h2>
+  <div class="toolbar">
+    <div class="field"><label for="l_cust">お客様で絞る</label><select id="l_cust"></select></div>
+    <div class="field"><label for="l_season">年度</label>
+      <select id="l_season">
+        <option value="season">表示中の年度のみ</option>
+        <option value="all">すべての年度</option>
+      </select></div>
+    <div class="field"><label for="l_status">状態</label>
+      <select id="l_status">
+        <option value="all">すべて</option>
+        <option value="unbilled">未請求のみ</option>
+        <option value="billed">請求済みのみ</option>
+      </select>
+    </div>
+  </div>
+  <div id="listBody"></div>
+</section>
+
+<!-- ===== お客様 ===== -->
+<section id="view-cust" hidden>
+  <h2 class="head">お客様の登録 <span>請求書の宛名になります</span></h2>
+  <div class="card">
+    <div class="grid">
+      <div class="field"><label for="c_name">お名前・法人名</label><input type="text" id="c_name" placeholder="例）田中 一郎"></div>
+      <div class="field"><label for="c_honor">敬称</label>
+        <select id="c_honor"><option>様</option><option>御中</option></select>
+      </div>
+      <div class="field -full"><label for="c_addr">住所</label><input type="text" id="c_addr" placeholder="例）兵庫県丹波市〇〇町..."></div>
+      <div class="field"><label for="c_tel">電話番号</label><input type="tel" id="c_tel" placeholder="0795-00-0000"></div>
+      <div class="field"><label for="c_rice">玄米 買取単価（30kg 1袋・税込）</label>
+        <div class="suffix"><input type="number" id="c_rice" step="100" placeholder="未定"><i>円</i></div>
+        <div class="hint">このお客様から買い取るときの単価</div></div>
+      <div class="field"><label for="c_kuzu">くず米 買取単価（1kg・税込）</label>
+        <div class="suffix"><input type="number" id="c_kuzu" step="1" placeholder="未定"><i>円</i></div></div>
+      <div class="field"><label for="c_haul">玄米運搬費（1袋・税込）</label>
+        <div class="suffix"><input type="number" id="c_haul" step="10" placeholder="なし"><i>円</i></div>
+        <div class="hint">入れた方だけ請求書に運搬費が出ます</div></div>
+      <div class="field -full"><label for="c_bank">お客様の振込先口座（支払通知書に印字）</label>
+        <input type="text" id="c_bank" placeholder="例）〇〇農協 〇〇支店 普通 1234567 イノウエ タロウ"></div>
+      <div class="field -full"><label for="c_memo">メモ</label><input type="text" id="c_memo" placeholder="例）籾摺りは自宅で受け取り希望"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="c_save">お客様を登録</button>
+      <button class="btn -ghost" id="c_clear">入力をクリア</button>
+      <span id="c_editing" style="align-self:center;font-size:12.5px;color:var(--seal)"></span>
+    </div>
+  </div>
+  <div class="card" id="custList"></div>
+</section>
+
+<!-- ===== 請求・報告 ===== -->
+<section id="view-bill" hidden>
+  <h2 class="head">請求書・作業報告書 <span>印刷またはPDF保存</span></h2>
+  <div class="toolbar no-print">
+    <div class="field"><label for="b_cust">お客様</label><select id="b_cust"></select></div>
+    <div class="field"><label for="b_from">対象期間（開始）</label><input type="date" id="b_from"></div>
+    <div class="field"><label for="b_to">対象期間（終了）</label><input type="date" id="b_to"></div>
+    <div class="field"><label for="b_issue">発行日</label><input type="date" id="b_issue"></div>
+  </div>
+  <div class="actions no-print" style="margin-top:0">
+    <button class="btn" id="b_make">帳票をつくる</button>
+    <button class="btn -ghost" id="b_print">印刷 / PDF保存</button>
+    <button class="btn -ghost" id="b_mark">この期間を発行済みにする</button>
+  </div>
+  <div id="billOut"></div>
+</section>
+
+<!-- ===== 単価設定 ===== -->
+<section id="view-set" hidden>
+  <h2 class="head">単価と自社情報 <span>年度が変わったらここを直す</span></h2>
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">単価</h3>
+    <div class="grid">
+      <div class="field"><label for="s_incl">下の単価の税区分</label>
+        <select id="s_incl"><option value="1">税込</option><option value="0">税別</option></select>
+        <div class="hint">税込なら請求書に内消費税額を表示します</div></div>
+      <div class="field"><label for="s_tax">消費税率</label>
+        <div class="suffix"><input type="number" id="s_tax" step="1"><i>%</i></div></div>
+      <div class="field"><label for="s_harvest">稲刈り作業受託（10aあたり）</label>
+        <div class="suffix"><input type="number" id="s_harvest" step="100"><i>円</i></div>
+        <div class="hint" id="s_h_hint"></div></div>
+      <div class="field"><label for="s_lodge">倒伏の割増率</label>
+        <div class="suffix"><input type="number" id="s_lodge" step="0.1"><i>倍</i></div></div>
+      <div class="field"><label for="s_weed">草が多い場合の割増率</label>
+        <div class="suffix"><input type="number" id="s_weed" step="0.1"><i>倍</i></div>
+        <div class="hint">倒伏と重なる場合は、どちらか一方に入れてください</div></div>
+      <div class="field"><label for="s_dry">乾燥・籾摺り調製（1袋）</label>
+        <div class="suffix"><input type="number" id="s_dry" step="100"><i>円</i></div>
+        <div class="hint">色選別費込み。昨年度は2,000円</div></div>
+      <div class="field"><label for="s_sort">色選別だけの場合（1袋）</label>
+        <div class="suffix"><input type="number" id="s_sort" step="100"><i>円</i></div>
+        <div class="hint">乾燥・籾摺り調製の2,300円には色選別費が含まれます</div></div>
+      <div class="field"><label for="s_bag">米袋代（1枚）</label>
+        <div class="suffix"><input type="number" id="s_bag" step="5"><i>円</i></div></div>
+      <div class="field"><label for="s_haul">玄米運搬費の既定値（1袋）</label>
+        <div class="suffix"><input type="number" id="s_haul" step="10"><i>円</i></div>
+        <div class="hint">お客様ごとの登録が優先されます</div></div>
+      <div class="field"><label for="s_container">コンテナ賃借料（1個）</label>
+        <div class="suffix"><input type="number" id="s_container" step="1000"><i>円</i></div></div>
+      <div class="field"><label for="s_mower">モア作業（1回）</label>
+        <div class="suffix"><input type="number" id="s_mower" step="1000"><i>円</i></div></div>
+      <div class="field"><label for="s_round">フレコンの袋換算の端数</label>
+        <select id="s_round">
+          <option value="round">四捨五入（おすすめ）</option>
+          <option value="ceil">切り上げ</option>
+          <option value="floor">切り捨て</option>
+          <option value="none">そのまま（小数）</option>
+        </select>
+        <div class="hint">例）1,000kg → 四捨五入33袋／切り上げ34袋</div></div>
+      <div class="field"><label for="s_rice">玄米 買取単価の既定値（1袋・税込）</label>
+        <div class="suffix"><input type="number" id="s_rice" step="100" placeholder="未定"><i>円</i></div>
+        <div class="hint">お客様ごとの単価が優先されます</div></div>
+      <div class="field"><label for="s_kuzu">くず米 買取単価の既定値（1kg・税込）</label>
+        <div class="suffix"><input type="number" id="s_kuzu" step="1" placeholder="未定"><i>円</i></div>
+        <div class="hint">空欄なら報告書に数量だけ載せます</div></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-2);margin:12px 0 0">玄米・くず米の買取代金は、すべて請求から相殺します。</p>
+
+    <h3 class="sub">請求会社の情報（請求書に印字）</h3>
+    <div class="grid">
+      <div class="field -full"><label for="s_co">会社名</label><input type="text" id="s_co"></div>
+      <div class="field -full"><label for="s_addr">住所</label><input type="text" id="s_addr" placeholder="未入力"></div>
+      <div class="field"><label for="s_tel">電話番号</label><input type="tel" id="s_tel" placeholder="未入力"></div>
+      <div class="field"><label for="s_inv">インボイス登録番号</label><input type="text" id="s_inv" placeholder="T0000000000000"></div>
+      <div class="field -full"><label for="s_bank">振込先</label><input type="text" id="s_bank" placeholder="例）〇〇銀行 〇〇支店 普通 1234567 カ）タンバノウショウ"></div>
+      <div class="field -full"><label for="s_terms">支払期限の文言（請求書）</label><input type="text" id="s_terms" placeholder="例）翌月末日までにお振込みください"></div>
+      <div class="field -full"><label for="s_payterms">支払日の文言（支払通知書）</label><input type="text" id="s_payterms" placeholder="例）翌月末日までにお振込みいたします"></div>
+    </div>
+    <div class="actions"><button class="btn" id="s_save">設定を保存</button></div>
+  </div>
+
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">スプレッドシート接続</h3>
+    <div class="field -full"><label for="s_gas">接続先URL（GASのウェブアプリ）</label>
+      <input type="text" id="s_gas" placeholder="https://script.google.com/macros/s/.../exec">
+      <div class="hint">空欄にすると、この端末の中だけで動きます</div></div>
+    <div class="actions">
+      <button class="btn" id="d_pull">スプレッドシートから読み込む</button>
+      <button class="btn -ghost" id="d_push">いますぐ送信する</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="sub" style="margin-top:0">データの持ち出し</h3>
+    <p style="font-size:12.5px;color:var(--ink-2);margin:0">入力はスプレッドシートに保存されます。JSONの書き出しは、念のためのバックアップ用です。</p>
+    <div class="actions">
+      <button class="btn -ghost" id="d_export">JSONで書き出す</button>
+      <label class="btn -ghost" style="display:inline-block">JSONを読み込む<input type="file" id="d_import" accept="application/json" hidden></label>
+      <button class="btn -danger" id="d_reset">全データを消す</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div id="toast" class="toast no-print" hidden></div>
+<div id="modal" class="modal no-print" hidden>
+  <div class="modal-box">
+    <p id="modalMsg"></p>
+    <div class="modal-btns">
+      <button class="btn -ghost" id="modalNo">キャンセル</button>
+      <button class="btn -danger" id="modalYes">実行する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   保存レイヤー（あとでGAS/Supabaseに差し替える箇所はここだけ）
+   ========================================================= */
+/* =========================================================
+   保存レイヤー
+   ・入力はまず端末内に控える（電波が悪くても消えない）
+   ・そのあとスプレッドシートへ送る
+   ・他の端末の変更はID＋更新日時で突き合わせて残す
+   ========================================================= */
+const KEY='tamba_juttaku_v1';
+const GAS_URL='https://script.google.com/macros/s/AKfycbxq-c_7QbzFMUHWrcah8Ckqp_xAJ2OxX43YmecxXygRy_cutm5DbgSO55zhE4DAJGgA/exec';
+const DEFAULT_SETTINGS={
+  harvestPer10a:27000, lodgeRate:1.5, dryPerBag:2300, bagPrice:75,
+  weedRate:1.5, sortPerBag:700, haulPerBag:120, containerFee:30000, mowerFee:10000,
+  kuzuPrice:25, riceBuyPrice:9000, roundMode:'round', taxRate:10, taxIncluded:true, offsetKuzu:true,
+  co:'丹波農場', addr:'', tel:'', invoiceNo:'', bank:'', terms:'翌月末日までにお振込みください',
+  payTerms:'翌月末日までにお振込みいたします', gasUrl:GAS_URL, _deleted:'{}'
+};
+let DB = loadDB();
+function loadDB(){
+  try{
+    const d=JSON.parse(localStorage.getItem(KEY));
+    if(!d) throw 0;
+    d.settings=Object.assign({},DEFAULT_SETTINGS,d.settings||{});
+    if(d.settings.riceBuyPrice===''||d.settings.riceBuyPrice==null) d.settings.riceBuyPrice=9000;
+    if(d.settings.kuzuPrice===''||d.settings.kuzuPrice==null) d.settings.kuzuPrice=25;
+    d.settings.offsetKuzu=true;   // 買取はすべて請求から相殺する運用
+    d.customers=d.customers||[]; d.records=d.records||[];
+    return d;
+  }catch(e){ return {settings:{...DEFAULT_SETTINGS}, customers:[], records:[], seq:0}; }
+}
+let storageOK=true;
+function saveDB(){
+  try{ localStorage.setItem(KEY,JSON.stringify(DB)); storageOK=true; }
+  catch(e){ storageOK=false; }
+  const w=document.getElementById('storeWarn'); if(w) w.hidden=storageOK;
+  queuePush();
+}
+function checkStorage(){
+  try{ localStorage.setItem(KEY+'_t','1'); localStorage.removeItem(KEY+'_t'); storageOK=true; }
+  catch(e){ storageOK=false; }
+  const w=document.getElementById('storeWarn'); if(w) w.hidden=storageOK;
+  return storageOK;
 }
 
-function doPost(e) {
-  let body = {};
-  try { body = JSON.parse(e.postData.contents); } catch (err) {}
-  return respond(run(body.action || 'save', body.data));
+/* ---------- スプレッドシート同期 ---------- */
+const nowISO=()=>new Date().toISOString();
+const stamp=o=>{ o.updatedAt=nowISO(); return o; };
+const gasUrl=()=>String((DB.settings&&DB.settings.gasUrl)||'').trim();
+
+function tombs(){ try{ return JSON.parse(DB.settings._deleted||'{}'); }catch(e){ return {}; } }
+function markDeleted(id){
+  const t=tombs(); t[id]=nowISO();
+  const cut=Date.now()-90*864e5;
+  Object.keys(t).forEach(k=>{ if(new Date(t[k]).getTime()<cut) delete t[k]; });
+  DB.settings._deleted=JSON.stringify(t);
+}
+function mergeList(remote,local){
+  const t=tombs(), out={};
+  (remote||[]).concat(local||[]).forEach(o=>{
+    if(!o||!o.id||t[o.id]) return;
+    if('date' in o) o.date=normDate(o.date);
+    const ex=out[o.id];
+    if(!ex||String(o.updatedAt||'')>=String(ex.updatedAt||'')) out[o.id]=o;
+  });
+  return Object.values(out);
 }
 
-function run(action, data) {
-  try {
-    if (action === 'load') return { ok: true, data: loadAll() };
-    if (action === 'save') return { ok: true, data: saveAll(data) };
-    if (action === 'ping') return { ok: true, data: { message: '接続できています' } };
-    return { ok: false, error: '不明な操作です: ' + action };
-  } catch (err) {
-    return { ok: false, error: String(err) };
+let syncState='idle';
+function setSync(state,msg){
+  syncState=state;
+  const el=document.getElementById('syncBadge'); if(!el)return;
+  const label={idle:'保存済み',busy:'同期中…',err:'同期できていません',off:'未接続'}[state]||'';
+  el.textContent=msg||label;
+  el.className='sync -'+state;
+}
+
+let pushTimer=null, pushing=false, pushAgain=false;
+function queuePush(){
+  if(!gasUrl()){ setSync('off','端末内のみ'); return; }
+  setSync('busy');
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(pushNow,1200);
+}
+async function pushNow(){
+  if(!gasUrl()) return;
+  if(pushing){ pushAgain=true; return; }
+  pushing=true; setSync('busy');
+  try{
+    // 先に最新を取り込んでから、まとめて書き戻す
+    const remote=await gasCall('load');
+    DB.customers=mergeList(remote.customers,DB.customers);
+    DB.records  =mergeList(remote.records,  DB.records);
+    try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){}
+    await gasCall('save',{customers:DB.customers,records:DB.records,settings:DB.settings});
+    setSync('idle');
+    if(typeof renderAll==='function') renderAll();
+  }catch(e){
+    setSync('err');
+  }finally{
+    pushing=false;
+    if(pushAgain){ pushAgain=false; setTimeout(pushNow,300); }
   }
 }
+async function gasCall(action,data){
+  const url=gasUrl();
+  const res = action==='save'
+    ? await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({action,data})})
+    : await fetch(url+'?action='+encodeURIComponent(action));
+  const j=await res.json();
+  if(!j.ok) throw new Error(j.error||'不明なエラー');
+  return j.data;
+}
+async function pullNow(){
+  if(!gasUrl()){ toast('接続先URLが未設定です。','warn'); return; }
+  setSync('busy');
+  try{
+    const remote=await gasCall('load');
+    if(remote.settings&&remote.settings._deleted) DB.settings._deleted=remote.settings._deleted;
+    DB.customers=mergeList(remote.customers,DB.customers);
+    DB.records  =mergeList(remote.records,  DB.records);
+    if(remote.settings) DB.settings=Object.assign({},DB.settings,remote.settings,{gasUrl:gasUrl()});
+    try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){}
+    loadSettings(); renderAll(); setSync('idle');
+    toast(`スプレッドシートから読み込みました（お客様${DB.customers.length}件・作業${DB.records.length}件）`);
+  }catch(e){
+    setSync('err'); toast('読み込めませんでした：'+e.message,'warn');
+  }
+}
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
-function respond(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+/* ========================= 共通 ========================= */
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const yen=n=>'¥'+Math.round(n||0).toLocaleString('ja-JP');
+const nf=(n,d=1)=>Number(n||0).toLocaleString('ja-JP',{maximumFractionDigits:d});
+const num=el=>{const v=parseFloat(el.value);return isNaN(v)?0:v;};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* この画面はブラウザ標準のalert/confirmが使えないため、自前の通知と確認を使う */
+let toastTimer;
+function toast(msg,type='ok'){
+  const t=$('#toast'); t.textContent=msg; t.className='toast no-print'+(type==='warn'?' -warn':'');
+  t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{t.hidden=true},3600);
+}
+let modalResolve=null;
+function ask(msg,yesLabel='実行する'){
+  return new Promise(res=>{
+    $('#modalMsg').textContent=msg; $('#modalYes').textContent=yesLabel;
+    $('#modal').hidden=false; modalResolve=res; $('#modalYes').focus();
+  });
+}
+function closeModal(v){ $('#modal').hidden=true; const r=modalResolve; modalResolve=null; if(r) r(v); }
+$('#modalYes').addEventListener('click',()=>closeModal(true));
+$('#modalNo').addEventListener('click',()=>closeModal(false));
+$('#modal').addEventListener('click',e=>{ if(e.target===$('#modal')) closeModal(false); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('#modal').hidden) closeModal(false); });
+const jdate=s=>{if(!s)return'';const d=new Date(s+'T00:00:00');return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;};
+/* スプレッドシート側は 2026-09-06 / 2026/09/06 / 日付型 などまちまちなので必ず整える */
+function normDate(v){
+  if(!v) return '';
+  if(v instanceof Date && !isNaN(v.getTime())) return ymd(v);
+  const t=String(v).trim();
+  const m=t.match(/^(\d{4})\s*[-\/.年]\s*(\d{1,2})\s*[-\/.月]\s*(\d{1,2})/);
+  if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  const d=new Date(t);
+  return isNaN(d.getTime()) ? '' : ymd(d);
+}
+function ymd(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+const seasonOf=dateStr=>{ // 8月始まりを1シーズンとする（稲刈りシーズン）
+  const t=normDate(dateStr);
+  if(!t) return null;   // 日付が読めない記録
+  const d=new Date(t+'T00:00:00');
+  if(isNaN(d.getTime())) return null;
+  return d.getMonth()>=7 ? d.getFullYear() : d.getFullYear()-1;
+};
+let SEASON=seasonOf(new Date().toISOString().slice(0,10));
+
+/* ==================== 金額計算（中核） ==================== */
+/* 単価はすべて税込（設定で税別に切替可）。請求書には内消費税額を明記する。 */
+function splitTax(gross){
+  const s=DB.settings, rate=(s.taxRate||0)/100;
+  if(s.taxIncluded===false){ const tax=Math.floor(gross*rate); return {net:gross,tax,gross:gross+tax}; }
+  const net=Math.floor(gross/(1+rate)); return {net,tax:gross-net,gross};
+}
+const numOrNull=v=>{ if(v===''||v==null) return null; const n=Number(v); return isNaN(n)?null:n; };
+/* 買取単価は 記録ごとの上書き → お客様の登録単価 → 全体の既定値 の順で決まる */
+function buyUnits(r){
+  const c=DB.customers.find(x=>x.id===r.customerId)||{}, s=DB.settings;
+  const pick=(...v)=>{ for(const x of v){ const n=numOrNull(x); if(n!=null) return n; } return null; };
+  return { rice:pick(r.buyUnit, c.riceBuyPrice, s.riceBuyPrice),
+           kuzu:pick(r.kuzuUnit, c.kuzuBuyPrice, s.kuzuPrice),
+           haul:pick(c.haulPrice, s.haulPerBag) };
+}
+const KG_PER_BAG=30;
+/* フレコンは重量を30kgで割って袋数に換算する。端数の扱いは設定で変えられる */
+function toBags(kg){
+  const q=(Number(kg)||0)/KG_PER_BAG, m=DB.settings.roundMode||'none';
+  if(m==='ceil') return Math.ceil(q);
+  if(m==='floor') return Math.floor(q);
+  if(m==='round') return Math.round(q);
+  return Math.round(q*100)/100;
+}
+function eqOf(r){
+  if(r.unit==='fleco') return {bags:toBags(r.flecoKg), buyBags:toBags(r.buyKg)};
+  return {bags:Number(r.bags)||0, buyBags:Number(r.buyBags)||0};
+}
+function calc(r){
+  const s=DB.settings;
+  const per_a=(s.harvestPer10a||0)/10;
+  const lodged=Math.min(r.lodgedArea||0, r.area||0);
+  const weed=Math.min(r.weedArea||0, Math.max((r.area||0)-lodged,0));
+  const normal=Math.max((r.area||0)-lodged-weed,0);
+  const harvestNormal = r.doHarvest ? normal*per_a : 0;
+  const harvestLodged = r.doHarvest ? lodged*per_a*(s.lodgeRate||1) : 0;
+  const harvestWeed = r.doHarvest ? weed*per_a*(s.weedRate||1) : 0;
+  const eq=eqOf(r);
+  const dry = r.doDry ? eq.bags*(s.dryPerBag||0) : 0;
+  /* 乾燥・籾摺り調製の2,300円に色選別費が含まれるため、同時のときは色選別を課金しない */
+  const sort = (r.doSort && !r.doDry) ? eq.bags*(s.sortPerBag||0) : 0;
+  const bagFee = r.doBagFee ? (r.bagCount||0)*(s.bagPrice||0) : 0;
+  const u=buyUnits(r);
+  const haulUnit = u.haul;
+  const haulBags = numOrNull(r.haulBags)!=null ? Number(r.haulBags) : eq.bags;
+  const haul = (r.doHaul && haulUnit!=null) ? haulBags*haulUnit : 0;
+  const containerQty=Number(r.containerQty)||0, mowerQty=Number(r.mowerQty)||0;
+  const container = containerQty*(s.containerFee||0);
+  const mower = mowerQty*(s.mowerFee||0);
+  const t=splitTax(harvestNormal+harvestLodged+harvestWeed+dry+sort+bagFee+haul+container+mower);
+  const buyBags=Math.min(eq.buyBags, eq.bags);
+  const buyAmt = u.rice!=null ? buyBags*u.rice : 0;
+  const kuzuAmt = (s.offsetKuzu && u.kuzu!=null) ? (r.kuzu||0)*u.kuzu : 0;
+  return {per_a,normal,lodged,weed,harvestNormal,harvestLodged,harvestWeed,dry,sort,bagFee,haul,haulUnit,haulBags,
+          container,containerQty,mower,mowerQty,
+          eqBags:eq.bags, subtotal:t.net, tax:t.tax, gross:t.gross,
+          buyBags, buyUnit:u.rice, buyAmt,
+          kuzuUnit:u.kuzu, kuzuAmt,
+          deduction:buyAmt+kuzuAmt,
+          total:t.gross-buyAmt-kuzuAmt};
+}
+const recsOf=(custId,from,to,season)=>DB.records.filter(r=>
+  (!custId||r.customerId===custId) &&
+  (!from||r.date>=from) && (!to||r.date<=to) &&
+  (season==null||seasonOf(r.date)===season)
+).sort((a,b)=>a.date.localeCompare(b.date));
+
+function aggregate(list){
+  const s=DB.settings, per_a=(s.harvestPer10a||0)/10;
+  const a={normalA:0,lodgedA:0,weedA:0,area:0,bags:0,buyBags:0,bagCount:0,kuzu:0,flecoKg:0,
+           harvestNormal:0,harvestLodged:0,harvestWeed:0,dry:0,sort:0,bagFee:0,haul:0,sortBags:0,haulBags:0,haulLines:{},
+           container:0,containerQty:0,mower:0,mowerQty:0,
+           buyAmt:0,kuzuAmt:0,buyLines:{},kuzuLines:{},kuzuNoPrice:0};
+  list.forEach(r=>{
+    const c=calc(r);
+    a.area+=r.area||0; a.normalA+=c.normal; a.lodgedA+=c.lodged; a.weedA+=c.weed;
+    a.bags+=r.doDry?c.eqBags:0; a.bagCount+=r.doBagFee?(r.bagCount||0):0; a.kuzu+=r.kuzu||0;
+    if(r.unit==='fleco') a.flecoKg+=Number(r.flecoKg)||0;
+    a.harvestNormal+=c.harvestNormal; a.harvestLodged+=c.harvestLodged; a.harvestWeed+=c.harvestWeed;
+    a.dry+=c.dry; a.bagFee+=c.bagFee;
+    a.sort+=c.sort; if(r.doSort) a.sortBags+=c.eqBags;
+    a.haul+=c.haul; if(c.haul>0){ a.haulBags+=c.haulBags; a.haulLines[c.haulUnit]=(a.haulLines[c.haulUnit]||0)+c.haulBags; }
+    a.container+=c.container; a.containerQty+=c.containerQty;
+    a.mower+=c.mower; a.mowerQty+=c.mowerQty;
+    a.buyBags+=c.buyBags;
+    if(c.buyUnit!=null && c.buyBags>0){ a.buyLines[c.buyUnit]=(a.buyLines[c.buyUnit]||0)+c.buyBags; a.buyAmt+=c.buyAmt; }
+    if(c.kuzuAmt>0){ a.kuzuLines[c.kuzuUnit]=(a.kuzuLines[c.kuzuUnit]||0)+(r.kuzu||0); a.kuzuAmt+=c.kuzuAmt; }
+    else a.kuzuNoPrice+=r.kuzu||0;
+  });
+  const t=splitTax(a.harvestNormal+a.harvestLodged+a.harvestWeed+a.dry+a.sort+a.bagFee+a.haul+a.container+a.mower);
+  a.subtotal=t.net; a.tax=t.tax; a.gross=t.gross;
+  a.deduction=a.buyAmt+a.kuzuAmt;
+  a.total=t.gross-a.deduction;
+  a.per_a=per_a;
+  return a;
+}
+const custName=id=>{const c=DB.customers.find(c=>c.id===id);return c?c.name:'（削除済み）';};
+
+/* ========================= タブ ========================= */
+$$('.tab').forEach(t=>t.addEventListener('click',()=>{
+  $$('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));
+  $$('main > section').forEach(s=>s.hidden=true);
+  $('#view-'+t.dataset.view).hidden=false;
+  renderAll();
+  window.scrollTo(0,0);
+}));
+
+/* ======================= 年度セレクタ ======================= */
+function renderSeasons(){
+  const now=seasonOf(new Date().toISOString().slice(0,10));
+  const set=new Set(DB.records.map(r=>seasonOf(r.date)).filter(v=>v!=null));
+  set.add(now);
+  const arr=[...set].sort((a,b)=>b-a);
+  $('#seasonSel').innerHTML=arr.map(y=>`<option value="${y}" ${y===SEASON?'selected':''}>${y}年産</option>`).join('');
+}
+$('#seasonSel').addEventListener('change',e=>{SEASON=Number(e.target.value);renderAll();});
+
+/* ====================== ダッシュボード ====================== */
+function renderDash(){
+  const total=DB.records.length;
+  const bad=DB.records.filter(r=>seasonOf(r.date)==null);
+  const other=DB.records.filter(r=>{const y=seasonOf(r.date);return y!=null&&y!==SEASON;});
+  $('#dashSeason').textContent = `${SEASON}年産`+(total? `／全${total}件中 ${total-bad.length-other.length}件` : '');
+  const nb=document.getElementById('dashNote');
+  if(nb){
+    const msg=[];
+    if(bad.length) msg.push(`作業日が読み取れない記録が${bad.length}件あります。作業一覧から日付を入れ直してください。`);
+    if(other.length) msg.push(`他の年度に${other.length}件あります（右上の年度で切り替えられます）。`);
+    nb.innerHTML=msg.join('<br>'); nb.hidden=!msg.length;
+  }
+  const list=recsOf(null,null,null,SEASON);
+  const a=aggregate(list);
+  const unbilled=list.filter(r=>!r.billed);
+  const ua=aggregate(unbilled);
+  $('#dashStats').innerHTML=`
+    <div class="stat"><div class="label">受託面積</div><div class="value">${nf(a.area)}<em>a</em></div><div class="foot">${nf(a.area/10,2)}反／うち倒伏 ${nf(a.lodgedA)}a</div></div>
+    <div class="stat"><div class="label">30kg 袋数</div><div class="value">${nf(a.bags,1)}<em>袋</em></div><div class="foot">${a.flecoKg>0?`うちフレコン ${nf(a.flecoKg,0)}kg`:`約${nf(a.bags*30,0)}kg`}</div></div>
+    <div class="stat"><div class="label">作業受託費（差引前・税込）</div><div class="value" style="font-size:21px">${yen(a.gross)}</div><div class="foot">うち消費税 ${yen(a.tax)}</div></div>
+    <div class="stat -seal"><div class="label">お買取分（差引額）</div><div class="value" style="font-size:21px">${yen(a.deduction)}</div><div class="foot">玄米${nf(a.buyBags,0)}袋・くず米${nf(a.kuzu)}kg</div></div>
+    <div class="stat -money"><div class="label">差引請求見込み（税込）</div><div class="value" style="font-size:21px">${yen(a.total)}</div><div class="foot">未請求 ${yen(ua.total)}／${unbilled.length}件</div></div>`;
+
+  const byCust={};
+  list.forEach(r=>{const t=calc(r).total;byCust[r.customerId]=(byCust[r.customerId]||0)+t;});
+  const rows=Object.entries(byCust).sort((x,y)=>y[1]-x[1]);
+  const max=rows.length?rows[0][1]:1;
+  $('#dashBars').innerHTML = rows.length ? rows.map(([id,v])=>`
+    <div class="bar-row"><div class="nm">${esc(custName(id))}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${Math.max(3,v/max*100)}%"></div></div>
+    <div class="amt">${yen(v)}</div></div>`).join('')
+    : '<div class="empty"><div class="big">まだ作業記録がありません</div>「作業入力」から1件目を登録してください。</div>';
+
+  const g={};
+  list.forEach(r=>{(g[r.customerId]=g[r.customerId]||[]).push(r);});
+  const keys=Object.keys(g);
+  $('#dashTbl').innerHTML = keys.length ? `
+    <thead><tr><th>お客様</th><th class="r">面積(a)</th><th class="r">倒伏(a)</th><th class="r">30kg袋</th><th class="r">うち買取</th><th class="r">くず米(kg)</th><th class="r">差引請求(税込)</th></tr></thead>
+    <tbody>${keys.map(id=>{const x=aggregate(g[id]);return `<tr>
+      <td>${esc(custName(id))}</td><td class="r">${nf(x.area)}</td><td class="r">${nf(x.lodgedA)}</td>
+      <td class="r">${nf(x.bags,1)}</td><td class="r">${nf(x.buyBags,1)}</td><td class="r">${nf(x.kuzu)}</td><td class="r">${yen(x.total)}</td></tr>`}).join('')}
+    <tr style="font-weight:700"><td>合計</td><td class="r">${nf(a.area)}</td><td class="r">${nf(a.lodgedA)}</td>
+      <td class="r">${nf(a.bags,1)}</td><td class="r">${nf(a.buyBags,1)}</td><td class="r">${nf(a.kuzu)}</td><td class="r">${yen(a.total)}</td></tr></tbody>`
+    : '<tbody><tr><td class="empty">データがありません</td></tr></tbody>';
 }
 
-/* ================= 読み込み ================= */
-
-function loadAll() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+/* ======================= 作業入力 ======================= */
+let editingRec=null;
+function fillCustSelects(){
+  /* 作り直すと選択が先頭に戻るので、いま選んでいるお客様を覚えておく */
+  const keep={f:$('#f_cust').value, l:$('#l_cust').value, b:$('#b_cust').value};
+  const opts=DB.customers.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  $('#f_cust').innerHTML = DB.customers.length?opts:'<option value="">先に「お客様」を登録してください</option>';
+  $('#l_cust').innerHTML = '<option value="">すべて</option>'+opts;
+  $('#b_cust').innerHTML = DB.customers.length?opts:'<option value="">お客様が未登録です</option>';
+  const has=id=>DB.customers.some(c=>c.id===id);
+  if(has(keep.f)) $('#f_cust').value=keep.f;
+  if(keep.l==='' || has(keep.l)) $('#l_cust').value=keep.l;
+  if(has(keep.b)) $('#b_cust').value=keep.b;
+}
+function readForm(){
   return {
-    customers: readSheet(sheet(ss, SHEET_CUST, CUST_MAP), CUST_MAP),
-    records:   readSheet(sheet(ss, SHEET_REC,  REC_MAP),  REC_MAP),
-    settings:  readSettings(ss)
+    customerId:$('#f_cust').value, date:$('#f_date').value, field:$('#f_field').value.trim(),
+    variety:$('#f_variety').value.trim(),
+    doHarvest:$('#f_harvest').checked, doDry:$('#f_dry').checked, doSort:$('#f_sort').checked,
+    doBagFee:$('#f_bagfee').checked, doHaul:$('#f_haul').checked,
+    area:num($('#f_area')), lodgedArea:num($('#f_lodged')), weedArea:num($('#f_weed')),
+    unit:$('#f_unit_fleco').checked?'fleco':'bag',
+    bags:num($('#f_bags')), buyBags:num($('#f_buybags')),
+    flecoKg:num($('#f_flecokg')), buyKg:num($('#f_buykg')),
+    buyUnit:$('#f_buyunit').value.trim(),
+    bagCount:num($('#f_bagcnt')), kuzu:num($('#f_kuzu')),
+    haulBags:$('#f_haulbags').value.trim(),
+    containerQty:num($('#f_container')), mowerQty:num($('#f_mower')),
+    memo:$('#f_memo').value.trim()
   };
 }
-
-function readSheet(sh, map) {
-  const values = sh.getDataRange().getValues();
-  if (values.length < 2) return [];
-  const head = values[0];
-  const idx = {};
-  map.forEach(function (m) { idx[m[0]] = head.indexOf(m[1]); });
-
-  const out = [];
-  for (let r = 1; r < values.length; r++) {
-    const row = values[r];
-    if (!row[idx['id']]) continue;   // ID が無い行は無視
-    const o = {};
-    map.forEach(function (m) {
-      const key = m[0];
-      let v = idx[key] >= 0 ? row[idx[key]] : '';
-      if (key === 'date') v = fmtDate(v);
-      else if (BOOL_KEYS.indexOf(key) >= 0) v = (v === true || v === 'TRUE' || v === '○' || v === 1);
-      else if (NUM_KEYS.indexOf(key) >= 0) v = (v === '' || v === null) ? 0 : Number(v);
-      else v = (v === null) ? '' : String(v);
-      o[key] = v;
-    });
-    if (!o.unit) o.unit = 'bag';
-    out.push(o);
+function renderPreview(){
+  const r=readForm(), c=calc(r), s=DB.settings;
+  $('#f_areaTan').textContent = r.area? `${nf(r.area/100,2)}ha ／ ${nf(r.area/10,2)}反` : '1ha＝100a、1反＝10a';
+  const L=[];
+  if(r.doHarvest&&c.normal>0) L.push(['稲刈り（通常）',`${nf(c.normal)}a × ${yen(c.per_a)}`,c.harvestNormal]);
+  if(r.doHarvest&&c.lodged>0) L.push([`稲刈り（倒伏 ${s.lodgeRate}倍）`,`${nf(c.lodged)}a × ${yen(c.per_a*s.lodgeRate)}`,c.harvestLodged]);
+  if(r.doHarvest&&c.weed>0) L.push([`稲刈り（草多い ${s.weedRate}倍）`,`${nf(c.weed)}a × ${yen(c.per_a*s.weedRate)}`,c.harvestWeed]);
+  if(r.doDry&&c.eqBags>0) L.push(['乾燥・籾摺り調製',
+    (r.unit==='fleco'?`${nf(r.flecoKg,0)}kg → ${nf(c.eqBags,2)}袋換算 × `:`${nf(c.eqBags,2)}袋 × `)+yen(s.dryPerBag), c.dry]);
+  if(r.doSort&&c.sort>0) L.push(['色選別',`${nf(c.eqBags,2)}袋 × ${yen(s.sortPerBag)}`,c.sort]);
+  if(r.doBagFee&&r.bagCount>0) L.push(['米袋代',`${nf(r.bagCount,0)}枚 × ${yen(s.bagPrice)}`,c.bagFee]);
+  if(c.haul>0) L.push(['玄米運搬費',`${nf(c.haulBags,2)}袋 × ${yen(c.haulUnit)}`,c.haul]);
+  if(c.container>0) L.push(['コンテナ賃借料',`${nf(c.containerQty,0)}個 × ${yen(s.containerFee)}`,c.container]);
+  if(c.mower>0) L.push(['モア作業',`${nf(c.mowerQty,0)}回 × ${yen(s.mowerFee)}`,c.mower]);
+  let html = L.length? L.map(([a,b,v])=>`<div class="pv-line"><span>${a}<span style="color:var(--ink-2);font-size:11.5px"> ${b}</span></span><span class="n">${yen(v)}</span></div>`).join('')
+    : '<div class="pv-line -mute"><span>面積や袋数を入れると、ここに金額が出ます</span><span></span></div>';
+  if(L.length){
+    html+=`<div class="pv-line -mute"><span>小計（税込）</span><span class="n">${yen(c.gross)}</span></div>`;
+    html+=`<div class="pv-line -mute" style="font-size:11.5px"><span>うち消費税 ${s.taxRate}%（税抜 ${yen(c.subtotal)}）</span><span class="n">${yen(c.tax)}</span></div>`;
   }
-  return out;
+  if(c.buyAmt>0) html+=`<div class="pv-line -mute"><span>玄米買取 ${nf(c.buyBags,2)}袋${r.unit==='fleco'?`（${nf(r.buyKg,0)}kg）`:''} × ${yen(c.buyUnit)}</span><span class="n">−${yen(c.buyAmt)}</span></div>`;
+  if(c.kuzuAmt>0) html+=`<div class="pv-line -mute"><span>くず米買取 ${nf(r.kuzu)}kg × ${yen(c.kuzuUnit)}</span><span class="n">−${yen(c.kuzuAmt)}</span></div>`;
+  if(L.length||c.deduction>0){
+    html+=`<div class="pv-line -total"><span>この圃場の請求額（税込）</span><span class="n">${yen(c.total)}</span></div>`;
+  }
+  const hasBuy=(r.unit==='fleco'?r.buyKg:r.buyBags)>0;
+  if(hasBuy&&c.buyUnit==null) html+=`<div class="pv-line -mute" style="font-size:11.5px;color:var(--seal)"><span>買取単価が未設定です。お客様の登録単価か、上の欄に入力してください</span><span></span></div>`;
+  if(c.buyBags>0) html+=`<div class="pv-line -mute" style="font-size:11.5px"><span>お客様へお渡し ${nf(c.eqBags-c.buyBags,2)}袋 ／ 当社買取 ${nf(c.buyBags,2)}袋</span><span></span></div>`;
+  if(r.kuzu>0&&c.kuzuAmt===0) html+=`<div class="pv-line -mute" style="font-size:11.5px"><span>くず米 ${nf(r.kuzu)}kg は報告書に数量のみ記載</span><span></span></div>`;
+  const u=buyUnits(r);
+  $('#f_flecohint').textContent = r.flecoKg? `${nf(r.flecoKg,0)}kg ÷ 30kg = ${nf(toBags(r.flecoKg),2)}袋換算` : '30kgで割って袋数に換算します';
+  $('#f_buykghint').textContent = r.buyKg? `${nf(toBags(r.buyKg),2)}袋換算・単価 ${u.rice!=null?yen(u.rice):'未設定'}` : (u.rice!=null?`登録単価 ${yen(u.rice)}／袋`:'買取単価が未設定です');
+  $('#f_bagcnthint').textContent = r.unit==='fleco' ? '30kgで割り戻した枚数が自動で入ります' : '袋数を入れると自動で同じ枚数が入ります';
+  $('#f_kuzuhint').textContent = u.kuzu!=null ? `買取 ${yen(u.kuzu)}／kg` : '買取単価は未設定（数量のみ報告）';
+  const cu=DB.customers.find(x=>x.id===r.customerId)||{};
+  $('#f_haulbagshint').textContent = numOrNull(r.haulBags)!=null
+    ? `${nf(Number(r.haulBags),0)}袋で計算します`
+    : `空欄なので調製した ${nf(c.eqBags,2)}袋 で計算します`;
+  $('#f_containerhint').textContent = `1個 ${yen(DB.settings.containerFee||0)}`;
+  $('#f_mowerhint').textContent = `1回 ${yen(DB.settings.mowerFee||0)}`;
+  $('#f_haulnote').textContent = numOrNull(cu.haulPrice)!=null
+    ? `${cu.name}さんは玄米運搬費 ${yen(numOrNull(cu.haulPrice))}／袋 が登録されています`
+    : (r.doHaul ? `運搬費の登録がないため、既定の ${yen(DB.settings.haulPerBag||0)}／袋 で計算します` : '');
+  $('#f_preview').innerHTML=html;
+}
+function applyUnitMode(){
+  const fleco=$('#f_unit_fleco').checked;
+  $('#grp_bag').hidden=fleco; $('#grp_fleco').hidden=!fleco;
+}
+['#f_unit_bag','#f_unit_fleco'].forEach(s=>$(s).addEventListener('change',()=>{applyUnitMode();autoBagCount();renderPreview();}));
+['#f_area','#f_lodged','#f_weed','#f_buyunit','#f_bagcnt','#f_kuzu','#f_haulbags','#f_container','#f_mower','#f_harvest','#f_dry','#f_sort','#f_bagfee','#f_haul','#f_cust']
+  .forEach(s=>$(s).addEventListener('input',renderPreview));
+/* 乾燥・籾摺り調製と色選別は同時に請求しない（2,300円に含まれるため） */
+$('#f_dry').addEventListener('change',()=>{ if($('#f_dry').checked) $('#f_sort').checked=false; renderPreview(); });
+$('#f_sort').addEventListener('change',()=>{ if($('#f_sort').checked) $('#f_dry').checked=false; renderPreview(); });
+/* 運搬費が登録されているお客様は、運搬を自動でオンにする */
+$('#f_cust').addEventListener('change',()=>{
+  if(editingRec) return;
+  const c=DB.customers.find(x=>x.id===$('#f_cust').value)||{};
+  $('#f_haul').checked = numOrNull(c.haulPrice)!=null;
+  renderPreview();
+});
+/* 米袋の枚数は、袋数またはフレコンの換算袋数から自動で入れる */
+function autoBagCount(){
+  const bc=$('#f_bagcnt');
+  if(bc.dataset.touched) return;
+  const fleco=$('#f_unit_fleco').checked;
+  const v = fleco ? toBags(num($('#f_flecokg'))) : num($('#f_bags'));
+  bc.value = v ? (Math.round(v*100)/100) : '';
+}
+['#f_bags','#f_buybags','#f_flecokg','#f_buykg'].forEach(s=>$(s).addEventListener('input',()=>{autoBagCount();renderPreview();}));
+$('#f_cust').addEventListener('change',renderPreview);
+$('#f_bagcnt').addEventListener('input',e=>{e.target.dataset.touched='1';});
+$$('[data-preset]').forEach(b=>b.addEventListener('click',()=>{
+  const p=b.dataset.preset;
+  $('#f_harvest').checked = (p==='all'||p==='harvest');
+  $('#f_dry').checked     = (p==='all'||p==='dry');
+  $('#f_sort').checked    = (p==='sort');
+  $('#f_bagfee').checked  = (p==='all'||p==='dry'||p==='sort');
+  renderPreview();
+}));
+$('#f_allLodged').addEventListener('click',()=>{$('#f_lodged').value=$('#f_area').value;$('#f_weed').value='';renderPreview();});
+$('#f_allWeed').addEventListener('click',()=>{$('#f_weed').value=$('#f_area').value;$('#f_lodged').value='';renderPreview();});
+
+function clearForm(){
+  ['#f_field','#f_variety','#f_area','#f_lodged','#f_weed','#f_bags','#f_buybags','#f_flecokg','#f_buykg','#f_buyunit','#f_bagcnt','#f_kuzu','#f_haulbags','#f_container','#f_mower','#f_memo'].forEach(s=>$(s).value='');
+  $('#f_unit_bag').checked=true; applyUnitMode();
+  $('#f_harvest').checked=$('#f_dry').checked=$('#f_bagfee').checked=true;
+  $('#f_sort').checked=false; $('#f_dry').checked=true;
+  const _c=DB.customers.find(x=>x.id===$('#f_cust').value)||{};
+  $('#f_haul').checked = numOrNull(_c.haulPrice)!=null;
+  $('#f_date').value=new Date().toISOString().slice(0,10);
+  $('#f_bagcnt').dataset.touched='';
+  editingRec=null; $('#f_editing').textContent=''; $('#f_save').textContent='この内容で登録';
+  $('#f_clear').textContent='入力をクリア'; $('#f_del').hidden=true;
+  renderPreview();
+}
+$('#f_clear').addEventListener('click',clearForm);
+$('#f_del').addEventListener('click',async()=>{
+  if(!editingRec)return;
+  const r=editingRec;
+  const ok=await ask(`${custName(r.customerId)}／${r.field||'圃場名なし'}（${r.date}）の作業記録を削除します。元に戻せません。`,'削除する');
+  if(!ok)return;
+  markDeleted(r.id);
+  DB.records=DB.records.filter(x=>x.id!==r.id); saveDB(); clearForm(); renderAll();
+  toast('作業記録を削除しました。');
+});
+$('#f_save').addEventListener('click',async()=>{
+  const r=readForm();
+  if(!r.customerId){toast('お客様を選んでください。未登録なら「お客様」タブで登録できます。','warn');return;}
+  if(!r.date){toast('作業日を入れてください。','warn');return;}
+  const eq=eqOf(r);
+  if(r.area<=0&&eq.bags<=0){toast(r.unit==='fleco'?'面積かフレコン重量を入れてください。':'面積か袋数のどちらかを入れてください。','warn');return;}
+  if(r.lodgedArea+r.weedArea>r.area){toast('倒伏面積と草が多い面積の合計が、総面積を超えています。','warn');return;}
+  if(eq.buyBags>eq.bags){toast(r.unit==='fleco'?'買取重量が総重量を超えています。':'買取袋数が総袋数を超えています。','warn');return;}
+  if(eq.buyBags>0&&buyUnits(r).rice==null){
+    if(!await ask('買取単価が未設定です。単価なしのまま登録しますか？（請求書には差し引かれません）','このまま登録'))return;
+  }
+  const wasEditing=!!editingRec;
+  if(editingRec){ Object.assign(editingRec,r); stamp(editingRec); }
+  else { DB.records.push(stamp(Object.assign({id:uid(),billed:false,invoiceNo:''},r))); }
+  saveDB();
+  const keepCust=r.customerId, keepDate=r.date;
+  clearForm(); renderAll();
+  $('#f_cust').value=keepCust; $('#f_date').value=keepDate; renderPreview();
+  toast(wasEditing?'変更を保存しました。':'登録しました。同じお客様で続けて入力できます。');
+});
+
+/* ======================= 作業一覧 ======================= */
+function renderList(){
+  const cid=$('#l_cust').value, st=$('#l_status').value;
+  const yr=$('#l_season')? $('#l_season').value : 'season';
+  let list=recsOf(cid||null,null,null, yr==='all'?null:SEASON);
+  if(yr==='all') list=DB.records.filter(r=>!cid||r.customerId===cid).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  if(st==='unbilled') list=list.filter(r=>!r.billed);
+  if(st==='billed') list=list.filter(r=>r.billed);
+  $('#listCount').textContent=`${list.length}件`;
+  if(!list.length){$('#listBody').innerHTML='<div class="card"><div class="empty"><div class="big">該当する記録がありません</div>「作業入力」から登録するか、絞り込みを変えてください。</div></div>';return;}
+  $('#listBody').innerHTML=list.map(r=>{
+    const c=calc(r);
+    const cls=r.billed?'-billed':(c.lodged>0?'-lodged':'');
+    const seal=r.billed?'<div class="seal -done">発行済</div>':(c.lodged>0?'<div class="seal">倒伏</div>':'');
+    return `<div class="slip ${cls}">${seal}
+      <div class="slip-hd"><span class="cust">${esc(custName(r.customerId))}</span>
+        <span class="fld">${esc(r.field||'圃場名なし')}${r.variety?' ／ '+esc(r.variety):''}</span>
+        <span class="date">${r.date}</span></div>
+      <div class="slip-body">
+        <span>面積 <b>${nf(r.area)}</b>a${c.lodged>0?`（倒伏 <b>${nf(c.lodged)}</b>a）`:''}${c.weed>0?`（草多い <b>${nf(c.weed)}</b>a）`:''}</span>
+        <span>${r.unit==='fleco'?`フレコン <b>${nf(r.flecoKg,0)}</b>kg＝<b>${nf(c.eqBags,2)}</b>袋`:`30kg袋 <b>${nf(c.eqBags,0)}</b>袋`}${c.buyBags?`（買取 <b>${nf(c.buyBags,2)}</b>袋）`:''}</span>
+        <span>袋 <b>${nf(r.bagCount,0)}</b>枚</span>
+        <span>くず米 <b>${nf(r.kuzu)}</b>kg</span>
+      </div>
+      ${r.memo?`<div style="font-size:12px;color:var(--ink-2);margin-top:5px">${esc(r.memo)}</div>`:''}
+      <div class="slip-foot"><span class="sum">${yen(c.total)}</span>
+        <button class="btn -ghost -sm" data-edit="${r.id}">編集</button>
+        <button class="btn -danger -sm" data-del="${r.id}">削除</button></div></div>`;
+  }).join('');
+  $$('[data-edit]').forEach(b=>b.addEventListener('click',()=>{
+    const r=DB.records.find(x=>x.id===b.dataset.edit); if(!r)return;
+    $$('.tab').find(t=>t.dataset.view==='record').click();  // 先に画面を切り替える
+    editingRec=r;
+    $('#f_cust').value=r.customerId; $('#f_date').value=r.date; $('#f_field').value=r.field||'';
+    $('#f_variety').value=r.variety||''; $('#f_harvest').checked=!!r.doHarvest; $('#f_dry').checked=!!r.doDry;
+    $('#f_sort').checked=!!r.doSort; $('#f_haul').checked=!!r.doHaul; $('#f_bagfee').checked=!!r.doBagFee; $('#f_area').value=r.area||''; $('#f_lodged').value=r.lodgedArea||''; $('#f_weed').value=r.weedArea||'';
+    (r.unit==='fleco'?$('#f_unit_fleco'):$('#f_unit_bag')).checked=true; applyUnitMode();
+    $('#f_bags').value=r.bags||''; $('#f_buybags').value=r.buyBags||'';
+    $('#f_flecokg').value=r.flecoKg||''; $('#f_buykg').value=r.buyKg||'';
+    $('#f_buyunit').value=r.buyUnit||'';
+    $('#f_bagcnt').value=r.bagCount||''; $('#f_bagcnt').dataset.touched='1';
+    $('#f_kuzu').value=r.kuzu||''; $('#f_haulbags').value=r.haulBags||'';
+    $('#f_container').value=r.containerQty||''; $('#f_mower').value=r.mowerQty||'';
+    $('#f_memo').value=r.memo||'';
+    $('#f_editing').textContent='編集中'; $('#f_save').textContent='変更を保存';
+    $('#f_clear').textContent='編集をやめる'; $('#f_del').hidden=false;
+    renderPreview();
+    window.scrollTo(0,0);
+  }));
+  $$('[data-del]').forEach(b=>b.addEventListener('click',async()=>{
+    const r=DB.records.find(x=>x.id===b.dataset.del); if(!r)return;
+    const ok=await ask(`${custName(r.customerId)}／${r.field||'圃場名なし'}（${r.date}）の作業記録を削除します。元に戻せません。`,'削除する');
+    if(!ok)return;
+    if(editingRec&&editingRec.id===r.id) clearForm();
+    markDeleted(r.id);
+    DB.records=DB.records.filter(x=>x.id!==b.dataset.del); saveDB(); renderAll();
+    toast('作業記録を削除しました。');
+  }));
+}
+$('#l_cust').addEventListener('change',renderList);
+$('#l_season').addEventListener('change',renderList);
+$('#l_status').addEventListener('change',renderList);
+
+/* ======================== お客様 ======================== */
+let editingCust=null;
+function clearCust(){
+  ['#c_name','#c_addr','#c_tel','#c_rice','#c_kuzu','#c_haul','#c_bank','#c_memo'].forEach(s=>$(s).value='');
+  $('#c_honor').value='様'; editingCust=null; $('#c_editing').textContent='';
+  $('#c_save').textContent='お客様を登録';
+}
+$('#c_clear').addEventListener('click',clearCust);
+$('#c_save').addEventListener('click',()=>{
+  const name=$('#c_name').value.trim();
+  if(!name){toast('お名前を入れてください。','warn');return;}
+  const o={name,honor:$('#c_honor').value,addr:$('#c_addr').value.trim(),tel:$('#c_tel').value.trim(),
+           riceBuyPrice:$('#c_rice').value.trim(), kuzuBuyPrice:$('#c_kuzu').value.trim(),
+           haulPrice:$('#c_haul').value.trim(),
+           bank:$('#c_bank').value.trim(), memo:$('#c_memo').value.trim()};
+  const wasEdit=!!editingCust;
+  if(editingCust){ Object.assign(editingCust,o); stamp(editingCust); }
+  else DB.customers.push(stamp(Object.assign({id:uid()},o)));
+  saveDB(); clearCust(); renderAll(); toast(wasEdit?'お客様の情報を更新しました。':'お客様を登録しました。');
+});
+function renderCust(){
+  if(!DB.customers.length){$('#custList').innerHTML='<div class="empty"><div class="big">お客様がまだ登録されていません</div>上のフォームから1件目を登録してください。</div>';return;}
+  $('#custList').innerHTML=`<h3 class="sub" style="margin-top:0">登録済み ${DB.customers.length}件</h3>
+    <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>お名前</th><th>買取単価</th><th class="r">${SEASON}年産</th><th></th></tr></thead>
+    <tbody>${DB.customers.map(c=>{
+      const x=aggregate(recsOf(c.id,null,null,SEASON));
+      const rp=numOrNull(c.riceBuyPrice), kp=numOrNull(c.kuzuBuyPrice);
+      return `<tr><td><strong>${esc(c.name)}</strong> ${esc(c.honor||'')}
+        <div style="font-size:11.5px;color:var(--ink-2)">${esc(c.addr||'')} ${esc(c.tel||'')}</div>
+        ${c.memo?`<div style="font-size:11.5px;color:var(--ink-2)">${esc(c.memo)}</div>`:''}</td>
+      <td style="font-size:12px;color:var(--ink-2)">玄米 ${rp!=null?yen(rp)+'/袋':'<span style="color:var(--seal)">未設定</span>'}<br>くず米 ${kp!=null?yen(kp)+'/kg':'未設定'}${numOrNull(c.haulPrice)!=null?`<br>運搬 ${yen(numOrNull(c.haulPrice))}/袋`:''}</td>
+      <td class="r">${nf(x.area)}a／${nf(x.bags,1)}袋${x.buyBags?`（買取${nf(x.buyBags,1)}）`:''}<br><span style="color:var(--grain)">${yen(x.total)}</span></td>
+      <td class="r"><button class="btn -ghost -sm" data-ce="${c.id}">編集</button>
+        <button class="btn -danger -sm" data-cd="${c.id}">削除</button></td></tr>`}).join('')}
+    </tbody></table></div>`;
+  $$('[data-ce]').forEach(b=>b.addEventListener('click',()=>{
+    const c=DB.customers.find(x=>x.id===b.dataset.ce); editingCust=c;
+    $('#c_name').value=c.name; $('#c_honor').value=c.honor||'様'; $('#c_addr').value=c.addr||'';
+    $('#c_tel').value=c.tel||''; $('#c_rice').value=c.riceBuyPrice||''; $('#c_kuzu').value=c.kuzuBuyPrice||'';
+    $('#c_haul').value=c.haulPrice||''; $('#c_bank').value=c.bank||''; $('#c_memo').value=c.memo||'';
+    $('#c_editing').textContent='編集中'; $('#c_save').textContent='変更を保存';
+    window.scrollTo(0,0);
+  }));
+  $$('[data-cd]').forEach(b=>b.addEventListener('click',async()=>{
+    const c=DB.customers.find(x=>x.id===b.dataset.cd); if(!c)return;
+    const n=DB.records.filter(r=>r.customerId===b.dataset.cd).length;
+    const ok=await ask(n?`${c.name}さんには作業記録が${n}件あります。お客様だけを削除しますか？（記録は残ります）`:`${c.name}さんを削除します。よろしいですか？`,'削除する');
+    if(!ok)return;
+    if(editingCust&&editingCust.id===c.id) clearCust();
+    markDeleted(c.id);
+    DB.customers=DB.customers.filter(x=>x.id!==b.dataset.cd); saveDB(); renderAll();
+    toast('お客様を削除しました。');
+  }));
 }
 
-function readSettings(ss) {
-  const sh = sheet(ss, SHEET_SET, null);
-  const values = sh.getDataRange().getValues();
-  const o = {};
-  for (let r = 1; r < values.length; r++) {
-    const k = values[r][0];
-    if (!k) continue;
-    let v = values[r][1];
-    if (v === 'TRUE' || v === true) v = true;
-    else if (v === 'FALSE' || v === false) v = false;
-    o[String(k)] = v;
-  }
-  return o;
+/* ==================== 請求書・報告書 ==================== */
+$('#b_make').addEventListener('click',buildBill);
+$('#b_print').addEventListener('click',()=>{ if(!$('#billOut').innerHTML){toast('先に「帳票をつくる」を押してください。','warn');return;} window.print(); });
+$('#b_mark').addEventListener('click',async()=>{
+  const list=recsOf($('#b_cust').value,$('#b_from').value,$('#b_to').value,null);
+  if(!list.length){toast('対象の作業記録がありません。','warn');return;}
+  if(!await ask(`${list.length}件を発行済みにします。よろしいですか？`,'発行済みにする'))return;
+  list.forEach(r=>{r.billed=true; stamp(r);}); saveDB(); renderAll(); toast('発行済みにしました。');
+});
+function buildBill(){
+  const cid=$('#b_cust').value, from=$('#b_from').value, to=$('#b_to').value;
+  const issue=$('#b_issue').value||new Date().toISOString().slice(0,10);
+  const cust=DB.customers.find(c=>c.id===cid);
+  if(!cust){toast('お客様を選んでください。','warn');return;}
+  const list=recsOf(cid,from,to,null);
+  if(!list.length){$('#billOut').innerHTML='<div class="card"><div class="empty"><div class="big">対象の作業記録がありません</div>期間を広げるか、作業を登録してください。</div></div>';return;}
+  const a=aggregate(list), s=DB.settings;
+  DB.seq=(DB.seq||0)+1;
+  const invNo=`${issue.replace(/-/g,'').slice(0,6)}-${String(DB.seq).padStart(3,'0')}`;
+  saveDB();
+
+  const rows=[];
+  if(a.harvestNormal>0) rows.push(['稲刈り作業受託',`${nf(a.normalA)} a`,yen(a.per_a),yen(a.harvestNormal)]);
+  if(a.harvestLodged>0) rows.push([`稲刈り作業受託（倒伏 ${s.lodgeRate}倍）`,`${nf(a.lodgedA)} a`,yen(a.per_a*s.lodgeRate),yen(a.harvestLodged)]);
+  if(a.harvestWeed>0) rows.push([`稲刈り作業受託（草多い ${s.weedRate}倍）`,`${nf(a.weedA)} a`,yen(a.per_a*s.weedRate),yen(a.harvestWeed)]);
+  if(a.dry>0) rows.push(['乾燥・籾摺り調製',`${nf(a.bags,2)} 袋`,yen(s.dryPerBag),yen(a.dry)]);
+  if(a.sort>0) rows.push(['色選別',`${nf(a.sortBags,2)} 袋`,yen(s.sortPerBag),yen(a.sort)]);
+  if(a.bagFee>0) rows.push(['米袋代',`${nf(a.bagCount,0)} 枚`,yen(s.bagPrice),yen(a.bagFee)]);
+  Object.entries(a.haulLines).forEach(([u,bags])=>rows.push(['玄米運搬',`${nf(bags,2)} 袋`,yen(Number(u)),yen(bags*Number(u))]));
+  if(a.container>0) rows.push(['コンテナ賃借料',`${nf(a.containerQty,0)} 個`,yen(s.containerFee),yen(a.container)]);
+  if(a.mower>0) rows.push(['モア作業',`${nf(a.mowerQty,0)} 回`,yen(s.mowerFee),yen(a.mower)]);
+
+  const ded=[];
+  Object.entries(a.buyLines).forEach(([u,bags])=>ded.push([`玄米 買取（当社買取分）`,`${nf(bags,2)} 袋`,yen(Number(u)),yen(bags*Number(u))]));
+  Object.entries(a.kuzuLines).forEach(([u,kg])=>ded.push([`くず米 買取`,`${nf(kg)} kg`,yen(Number(u)),yen(kg*Number(u))]));
+
+  const from_ = from? jdate(from):'';
+  const to_ = to? jdate(to):'';
+  const period = (from_||to_)? `${from_} 〜 ${to_}` : '全期間';
+  const payable = a.total < 0;            // 買取が作業料を上回った＝当社からのお支払い
+  const payAmt = Math.abs(a.total);
+
+  const partiesHtml = `
+    <div class="sheet-parties">
+      <div class="party">
+        <div class="to">${esc(cust.name)}<small>${esc(cust.honor||'様')}</small></div>
+        <div style="font-size:12px;color:var(--ink-2);margin-top:8px">${esc(cust.addr||'')}</div>
+        <div style="font-size:12.5px;margin-top:12px">${payable?'下記のとおりお支払いいたします。':'下記のとおりご請求申し上げます。'}</div>
+        <div style="font-size:12px;color:var(--ink-2)">対象期間：${period}</div>
+      </div>
+      <div class="party -from">
+        <strong>${esc(s.co||'')}</strong>
+        ${esc(s.addr||'')}<br>${s.tel?'TEL '+esc(s.tel)+'<br>':''}
+        ${s.invoiceNo?'登録番号 '+esc(s.invoiceNo):'<span style="color:var(--seal)">登録番号 未設定</span>'}
+      </div>
+    </div>`;
+
+  const mainSheet = payable ? `
+  <div class="sheet">
+    <h1 class="sheet-title">支払通知書</h1>
+    <div class="sheet-no">No. ${invNo}　／　発行日 ${jdate(issue)}</div>
+    ${partiesHtml}
+    <div class="grand"><span class="lb">お支払金額（税込）</span><span class="vl">${yen(payAmt)}</span></div>
+    <table class="tbl">
+      <thead><tr><th>品目</th><th class="r">数量</th><th class="r">単価(税込)</th><th class="r">金額(税込)</th></tr></thead>
+      <tbody>
+        <tr><td colspan="4" style="font-weight:600">お買取分</td></tr>
+        ${ded.map(r=>`<tr><td>${r[0]}</td><td class="r">${r[1]}</td><td class="r">${r[2]}</td><td class="r">${r[3]}</td></tr>`).join('')}
+        <tr><td colspan="3" class="r">お買取分 合計</td><td class="r">${yen(a.deduction)}</td></tr>
+        ${rows.length?`<tr><td colspan="4" style="padding-top:14px;font-weight:600;color:var(--seal)">作業受託料（差し引き）</td></tr>`:''}
+        ${rows.map(r=>`<tr><td>${r[0]}</td><td class="r">${r[1]}</td><td class="r">${r[2]}</td><td class="r">−${r[3]}</td></tr>`).join('')}
+        ${rows.length?`<tr><td colspan="3" class="r">作業料 小計（税込）</td><td class="r">−${yen(a.gross)}</td></tr>
+        <tr style="color:var(--ink-2);font-size:12px"><td colspan="3" class="r">10%対象 ${yen(a.subtotal)}／うち消費税（${s.taxRate}%）</td><td class="r">${yen(a.tax)}</td></tr>`:''}
+        <tr style="font-weight:700;font-size:15px"><td colspan="3" class="r">差引お支払金額（税込）</td><td class="r">${yen(payAmt)}</td></tr>
+      </tbody>
+    </table>
+    <dl class="sheet-note">
+      <dt>お振込先</dt><dd>${cust.bank?esc(cust.bank):'<span style="color:var(--seal)">お客様の口座が未登録です（「お客様」画面で登録してください）</span>'}</dd>
+      ${s.payTerms?`<dt>お支払日</dt><dd>${esc(s.payTerms)}</dd>`:''}
+      ${a.kuzuNoPrice>0?`<dt>くず米</dt><dd>${nf(a.kuzuNoPrice)}kg をお預かりしています。買取単価が決まり次第、別途ご精算いたします。</dd>`:''}
+      <dt>ご確認</dt><dd>内容にお間違いがある場合は、お手数ですがご連絡ください。</dd>
+    </dl>
+  </div>` : `
+  <div class="sheet">
+    <h1 class="sheet-title">御請求書</h1>
+    <div class="sheet-no">No. ${invNo}　／　発行日 ${jdate(issue)}</div>
+    ${partiesHtml}
+    <div class="grand"><span class="lb">差引ご請求金額（税込）</span><span class="vl">${yen(a.total)}</span></div>
+    <table class="tbl">
+      <thead><tr><th>品目</th><th class="r">数量</th><th class="r">単価(税込)</th><th class="r">金額(税込)</th></tr></thead>
+      <tbody>
+        ${rows.map(r=>`<tr><td>${r[0]}</td><td class="r">${r[1]}</td><td class="r">${r[2]}</td><td class="r">${r[3]}</td></tr>`).join('')}
+        <tr><td colspan="3" class="r">作業料 小計（税込）</td><td class="r">${yen(a.gross)}</td></tr>
+        <tr style="color:var(--ink-2);font-size:12px"><td colspan="3" class="r">10%対象 ${yen(a.subtotal)}／うち消費税（${s.taxRate}%）</td><td class="r">${yen(a.tax)}</td></tr>
+        ${ded.length?`<tr><td colspan="4" style="padding-top:14px;font-weight:600;color:var(--seal)">お買取分（差し引き）</td></tr>`:''}
+        ${ded.map(r=>`<tr><td>${r[0]}</td><td class="r">${r[1]}</td><td class="r">${r[2]}</td><td class="r">−${r[3]}</td></tr>`).join('')}
+        ${ded.length?`<tr><td colspan="3" class="r">お買取分 合計</td><td class="r">−${yen(a.deduction)}</td></tr>`:''}
+        <tr style="font-weight:700;font-size:15px"><td colspan="3" class="r">差引ご請求金額（税込）</td><td class="r">${yen(a.total)}</td></tr>
+      </tbody>
+    </table>
+    <dl class="sheet-note">
+      ${s.bank?`<dt>お振込先</dt><dd>${esc(s.bank)}</dd>`:''}
+      ${s.terms?`<dt>お支払い</dt><dd>${esc(s.terms)}</dd>`:''}
+      ${a.kuzuNoPrice>0?`<dt>くず米</dt><dd>${nf(a.kuzuNoPrice)}kg をお預かりしています。買取単価が決まり次第、別途ご精算いたします。</dd>`:''}
+    </dl>
+  </div>`;
+
+  $('#billOut').innerHTML=`
+  ${mainSheet}
+
+  <hr class="pagebreak">
+
+  <div class="sheet">
+    <h1 class="sheet-title">作業報告書</h1>
+    <div class="sheet-no">${esc(cust.name)} ${esc(cust.honor||'様')}　／　${period}</div>
+
+    <div class="stats" style="margin-bottom:18px">
+      <div class="stat"><div class="label">受託面積</div><div class="value">${nf(a.area)}<em>a</em></div><div class="foot">${nf(a.area/10,2)}反</div></div>
+      <div class="stat"><div class="label">30kg 袋数</div><div class="value">${nf(a.bags,2)}<em>袋</em></div><div class="foot">${a.buyBags>0?`お渡し ${nf(a.bags-a.buyBags,2)}袋・当社買取 ${nf(a.buyBags,2)}袋`:`約${nf(a.bags*30,0)}kg`}</div></div>
+      <div class="stat -seal"><div class="label">くず米</div><div class="value">${nf(a.kuzu)}<em>kg</em></div><div class="foot">${a.kuzuAmt>0?'買取済み':'買取単価は協議中'}</div></div>
+      <div class="stat"><div class="label">倒伏面積</div><div class="value">${nf(a.lodgedA)}<em>a</em></div><div class="foot">全体の${a.area?nf(a.lodgedA/a.area*100,0):0}%</div></div>
+    </div>
+
+    <h3 class="sub" style="margin-top:0">圃場ごとの明細</h3>
+    <table class="tbl">
+      <thead><tr><th>作業日</th><th>圃場</th><th>品種</th><th class="r">面積(a)</th><th class="r">倒伏(a)</th><th class="r">30kg袋</th><th class="r">うち買取</th><th class="r">くず米(kg)</th><th class="r">反収(袋/反)</th></tr></thead>
+      <tbody>
+        ${list.map(r=>{const c=calc(r);const tan=r.area/10;return `<tr>
+          <td>${r.date.slice(5).replace('-','/')}</td><td>${esc(r.field||'—')}</td><td>${esc(r.variety||'—')}</td>
+          <td class="r">${nf(r.area)}</td><td class="r">${c.lodged?nf(c.lodged):'—'}</td>
+          <td class="r">${nf(c.eqBags,2)}</td><td class="r">${c.buyBags?nf(c.buyBags,2):'—'}</td><td class="r">${nf(r.kuzu)}</td>
+          <td class="r">${tan?nf(c.eqBags/tan,1):'—'}</td></tr>`}).join('')}
+        <tr style="font-weight:700"><td colspan="3">合計</td><td class="r">${nf(a.area)}</td><td class="r">${nf(a.lodgedA)}</td>
+          <td class="r">${nf(a.bags,2)}</td><td class="r">${nf(a.buyBags,2)}</td><td class="r">${nf(a.kuzu)}</td>
+          <td class="r">${a.area?nf(a.bags/(a.area/10),1):'—'}</td></tr>
+      </tbody>
+    </table>
+    ${list.some(r=>r.memo)?`<dl class="sheet-note"><dt>作業メモ</dt><dd>${list.filter(r=>r.memo).map(r=>esc((r.field||r.date)+'：'+r.memo)).join('<br>')}</dd></dl>`:''}
+  </div>`;
 }
 
-/* ================= 書き込み ================= */
-
-function saveAll(data) {
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    writeSheet(sheet(ss, SHEET_CUST, CUST_MAP), CUST_MAP, data.customers || []);
-    writeSheet(sheet(ss, SHEET_REC,  REC_MAP),  REC_MAP,  data.records   || []);
-    writeSettings(ss, data.settings || {});
-    return { savedAt: new Date().toISOString(),
-             customers: (data.customers || []).length,
-             records: (data.records || []).length };
-  } finally {
-    lock.releaseLock();
-  }
+/* ========================= 設定 ========================= */
+function loadSettings(){
+  const s=DB.settings;
+  $('#s_harvest').value=s.harvestPer10a; $('#s_lodge').value=s.lodgeRate; $('#s_dry').value=s.dryPerBag;
+  $('#s_bag').value=s.bagPrice; $('#s_sort').value=s.sortPerBag; $('#s_haul').value=s.haulPerBag;
+  $('#s_container').value=s.containerFee; $('#s_mower').value=s.mowerFee; $('#s_kuzu').value=s.kuzuPrice; $('#s_rice').value=s.riceBuyPrice||'';
+  $('#s_tax').value=s.taxRate;
+  $('#s_weed').value=s.weedRate;
+  $('#f_lodgeRateLb').textContent=s.lodgeRate; $('#f_weedRateLb').textContent=s.weedRate;
+  $('#s_incl').value=(s.taxIncluded===false)?'0':'1'; $('#s_round').value=s.roundMode||'none';
+  $('#s_h_hint').textContent=`10a単価 ${nf(s.harvestPer10a,0)}円 → 1aあたり ${nf(s.harvestPer10a/10,0)}円`;
+  $('#s_co').value=s.co||''; $('#s_addr').value=s.addr||'';
+  $('#s_tel').value=s.tel||''; $('#s_inv').value=s.invoiceNo||''; $('#s_bank').value=s.bank||'';
+  $('#s_terms').value=s.terms||''; $('#s_payterms').value=s.payTerms||'';
+  $('#s_gas').value=s.gasUrl||'';
 }
-
-function writeSheet(sh, map, list) {
-  const head = map.map(function (m) { return m[1]; });
-  sh.clear();
-  const rows = [head];
-  list.forEach(function (o) {
-    rows.push(map.map(function (m) {
-      const v = o[m[0]];
-      if (v === undefined || v === null) return '';
-      return v;
-    }));
+$('#s_save').addEventListener('click',()=>{
+  Object.assign(DB.settings,{
+    harvestPer10a:num($('#s_harvest')), lodgeRate:num($('#s_lodge')), weedRate:num($('#s_weed')), dryPerBag:num($('#s_dry')),
+    bagPrice:num($('#s_bag')), sortPerBag:num($('#s_sort')), haulPerBag:num($('#s_haul')),
+    containerFee:num($('#s_container')), mowerFee:num($('#s_mower')), kuzuPrice:$('#s_kuzu').value.trim(), riceBuyPrice:$('#s_rice').value.trim(),
+    taxRate:num($('#s_tax')),
+    taxIncluded:$('#s_incl').value==='1', roundMode:$('#s_round').value, offsetKuzu:true, co:$('#s_co').value.trim(), addr:$('#s_addr').value.trim(),
+    tel:$('#s_tel').value.trim(), invoiceNo:$('#s_inv').value.trim(), bank:$('#s_bank').value.trim(),
+    terms:$('#s_terms').value.trim(), payTerms:$('#s_payterms').value.trim(),
+    gasUrl:$('#s_gas').value.trim()
   });
-  sh.getRange(1, 1, rows.length, head.length).setValues(rows);
-  sh.getRange(1, 1, 1, head.length).setFontWeight('bold').setBackground('#EEF3F7');
-  sh.setFrozenRows(1);
-}
+  saveDB(); loadSettings(); renderAll(); toast('設定を保存しました。');
+});
+$('#d_pull').addEventListener('click',pullNow);
+$('#d_push').addEventListener('click',async()=>{ await pushNow(); toast(syncState==='idle'?'送信しました。':'送信できませんでした。', syncState==='idle'?'ok':'warn'); });
+$('#d_export').addEventListener('click',()=>{
+  const b=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download=`受託管理_${new Date().toISOString().slice(0,10)}.json`; a.click();
+});
+$('#d_import').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=async()=>{ try{
+      const d=JSON.parse(rd.result);
+      if(!d.records||!d.customers) throw 0;
+      if(!await ask('読み込むと、いま入っているお客様・作業記録はすべて置き換わります。よろしいですか？','読み込む'))return;
+      DB=d; DB.settings=Object.assign({},DEFAULT_SETTINGS,DB.settings||{});
+      saveDB(); loadSettings(); renderAll(); toast('読み込みました。');
+    }catch(err){ toast('このファイルは読み込めません。書き出したJSONを選んでください。','warn'); } };
+  rd.readAsText(f); e.target.value='';
+});
+$('#d_reset').addEventListener('click',async()=>{
+  if(!await ask('お客様・作業記録・設定をすべて消します。元に戻せません。','すべて消す'))return;
+  localStorage.removeItem(KEY); DB=loadDB(); loadSettings(); renderAll(); toast('すべて消去しました。');
+});
 
-function writeSettings(ss, settings) {
-  const sh = sheet(ss, SHEET_SET, null);
-  sh.clear();
-  const rows = [['項目', '値']];
-  Object.keys(settings).forEach(function (k) {
-    rows.push([k, settings[k] === undefined ? '' : settings[k]]);
-  });
-  sh.getRange(1, 1, rows.length, 2).setValues(rows);
-  sh.getRange(1, 1, 1, 2).setFontWeight('bold').setBackground('#EEF3F7');
-  sh.setFrozenRows(1);
-}
-
-/* ================= 補助 ================= */
-
-function sheet(ss, name, map) {
-  let sh = ss.getSheetByName(name);
-  if (!sh) {
-    sh = ss.insertSheet(name);
-    const head = map ? map.map(function (m) { return m[1]; }) : ['項目', '値'];
-    sh.getRange(1, 1, 1, head.length).setValues([head])
-      .setFontWeight('bold').setBackground('#EEF3F7');
-    sh.setFrozenRows(1);
-  }
-  return sh;
-}
-
-function fmtDate(v) {
-  if (!v) return '';
-  if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy-MM-dd');
-  var t = String(v).trim();
-  // 2026/09/06 や 2026.9.6 のような書き方も yyyy-MM-dd にそろえる
-  var m = t.match(/^(\d{4})\s*[-\/.\u5e74]\s*(\d{1,2})\s*[-\/.\u6708]\s*(\d{1,2})/);
-  if (m) {
-    return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
-  }
-  return t.slice(0, 10);
-}
-
-/**
- * 初回のみ実行するとシートが3枚できる。
- * エディタ上部のプルダウンで setup を選んで実行。
- */
-function setup() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) {
-    throw new Error('スプレッドシートに紐づいていません。スプレッドシートの「拡張機能 → Apps Script」から作り直してください。');
-  }
-  sheet(ss, SHEET_CUST, CUST_MAP);
-  sheet(ss, SHEET_REC,  REC_MAP);
-  sheet(ss, SHEET_SET,  null);
-  Logger.log('シートを3枚用意しました：' + SHEET_CUST + ' / ' + SHEET_REC + ' / ' + SHEET_SET);
-}
+/* ========================= 起動 ========================= */
+function renderAll(){ renderSeasons(); fillCustSelects(); renderDash(); renderList(); renderCust(); renderPreview(); }
+(function init(){
+  const today=new Date().toISOString().slice(0,10);
+  $('#f_date').value=today; $('#b_issue').value=today;
+  $('#b_from').value=SEASON+'-08-01'; $('#b_to').value=(SEASON+1)+'-01-31';
+  applyUnitMode(); loadSettings(); renderAll(); checkStorage();
+  if(gasUrl()) pullNow(); else setSync('off','端末内のみ');
+  window.addEventListener('focus',()=>{ if(gasUrl()&&syncState!=='busy') pullNow(); });
+})();
+</script>
+</body>
+</html>
