@@ -21,6 +21,7 @@
   --mono:"SFMono-Regular",Menlo,Consolas,"Courier New",monospace;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;padding:0}
 body{
   background:var(--paper);color:var(--ink);
@@ -239,6 +240,7 @@ table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
 <!-- ===== ダッシュボード ===== -->
 <section id="view-dash">
   <h2 class="head">今年度の受託状況 <span id="dashSeason"></span></h2>
+  <div id="dashNote" class="notice" hidden></div>
   <div class="stats" id="dashStats"></div>
 
   <div class="card" style="margin-top:14px">
@@ -302,9 +304,14 @@ table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
         <div class="hint" id="f_areaTan">1反＝10a</div>
       </div>
       <div class="field">
-        <label for="f_lodged">うち倒伏面積（1.5倍請求）</label>
+        <label for="f_lodged">うち倒伏面積（<span id="f_lodgeRateLb">1.5</span>倍請求）</label>
         <div class="suffix"><input type="number" id="f_lodged" min="0" step="0.1" placeholder="0"><i>a</i></div>
         <div class="hint"><button class="btn -ghost -sm" type="button" id="f_allLodged">全面が倒伏</button></div>
+      </div>
+      <div class="field">
+        <label for="f_weed">うち草が多い面積（<span id="f_weedRateLb">1.5</span>倍請求）</label>
+        <div class="suffix"><input type="number" id="f_weed" min="0" step="0.1" placeholder="0"><i>a</i></div>
+        <div class="hint"><button class="btn -ghost -sm" type="button" id="f_allWeed">全面が草多い</button></div>
       </div>
     </div>
 
@@ -398,6 +405,11 @@ table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
   <h2 class="head">作業一覧 <span id="listCount"></span></h2>
   <div class="toolbar">
     <div class="field"><label for="l_cust">お客様で絞る</label><select id="l_cust"></select></div>
+    <div class="field"><label for="l_season">年度</label>
+      <select id="l_season">
+        <option value="season">表示中の年度のみ</option>
+        <option value="all">すべての年度</option>
+      </select></div>
     <div class="field"><label for="l_status">状態</label>
       <select id="l_status">
         <option value="all">すべて</option>
@@ -474,6 +486,9 @@ table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
         <div class="hint" id="s_h_hint"></div></div>
       <div class="field"><label for="s_lodge">倒伏の割増率</label>
         <div class="suffix"><input type="number" id="s_lodge" step="0.1"><i>倍</i></div></div>
+      <div class="field"><label for="s_weed">草が多い場合の割増率</label>
+        <div class="suffix"><input type="number" id="s_weed" step="0.1"><i>倍</i></div>
+        <div class="hint">倒伏と重なる場合は、どちらか一方に入れてください</div></div>
       <div class="field"><label for="s_dry">乾燥・籾摺り調製（1袋）</label>
         <div class="suffix"><input type="number" id="s_dry" step="100"><i>円</i></div>
         <div class="hint">色選別費込み。昨年度は2,000円</div></div>
@@ -568,7 +583,7 @@ const KEY='tamba_juttaku_v1';
 const GAS_URL='https://script.google.com/macros/s/AKfycbxq-c_7QbzFMUHWrcah8Ckqp_xAJ2OxX43YmecxXygRy_cutm5DbgSO55zhE4DAJGgA/exec';
 const DEFAULT_SETTINGS={
   harvestPer10a:27000, lodgeRate:1.5, dryPerBag:2300, bagPrice:75,
-  sortPerBag:700, haulPerBag:120, containerFee:30000, mowerFee:10000,
+  weedRate:1.5, sortPerBag:700, haulPerBag:120, containerFee:30000, mowerFee:10000,
   kuzuPrice:25, riceBuyPrice:9000, roundMode:'round', taxRate:10, taxIncluded:true, offsetKuzu:true,
   co:'丹波農場', addr:'', tel:'', invoiceNo:'', bank:'', terms:'翌月末日までにお振込みください',
   payTerms:'翌月末日までにお振込みいたします', gasUrl:GAS_URL, _deleted:'{}'
@@ -616,6 +631,7 @@ function mergeList(remote,local){
   const t=tombs(), out={};
   (remote||[]).concat(local||[]).forEach(o=>{
     if(!o||!o.id||t[o.id]) return;
+    if('date' in o) o.date=normDate(o.date);
     const ex=out[o.id];
     if(!ex||String(o.updatedAt||'')>=String(ex.updatedAt||'')) out[o.id]=o;
   });
@@ -713,8 +729,24 @@ $('#modalNo').addEventListener('click',()=>closeModal(false));
 $('#modal').addEventListener('click',e=>{ if(e.target===$('#modal')) closeModal(false); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('#modal').hidden) closeModal(false); });
 const jdate=s=>{if(!s)return'';const d=new Date(s+'T00:00:00');return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;};
+/* スプレッドシート側は 2026-09-06 / 2026/09/06 / 日付型 などまちまちなので必ず整える */
+function normDate(v){
+  if(!v) return '';
+  if(v instanceof Date && !isNaN(v.getTime())) return ymd(v);
+  const t=String(v).trim();
+  const m=t.match(/^(\d{4})\s*[-\/.年]\s*(\d{1,2})\s*[-\/.月]\s*(\d{1,2})/);
+  if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  const d=new Date(t);
+  return isNaN(d.getTime()) ? '' : ymd(d);
+}
+function ymd(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 const seasonOf=dateStr=>{ // 8月始まりを1シーズンとする（稲刈りシーズン）
-  const d=new Date(dateStr+'T00:00:00');
+  const t=normDate(dateStr);
+  if(!t) return null;   // 日付が読めない記録
+  const d=new Date(t+'T00:00:00');
+  if(isNaN(d.getTime())) return null;
   return d.getMonth()>=7 ? d.getFullYear() : d.getFullYear()-1;
 };
 let SEASON=seasonOf(new Date().toISOString().slice(0,10));
@@ -752,9 +784,11 @@ function calc(r){
   const s=DB.settings;
   const per_a=(s.harvestPer10a||0)/10;
   const lodged=Math.min(r.lodgedArea||0, r.area||0);
-  const normal=Math.max((r.area||0)-lodged,0);
+  const weed=Math.min(r.weedArea||0, Math.max((r.area||0)-lodged,0));
+  const normal=Math.max((r.area||0)-lodged-weed,0);
   const harvestNormal = r.doHarvest ? normal*per_a : 0;
   const harvestLodged = r.doHarvest ? lodged*per_a*(s.lodgeRate||1) : 0;
+  const harvestWeed = r.doHarvest ? weed*per_a*(s.weedRate||1) : 0;
   const eq=eqOf(r);
   const dry = r.doDry ? eq.bags*(s.dryPerBag||0) : 0;
   /* 乾燥・籾摺り調製の2,300円に色選別費が含まれるため、同時のときは色選別を課金しない */
@@ -767,11 +801,11 @@ function calc(r){
   const containerQty=Number(r.containerQty)||0, mowerQty=Number(r.mowerQty)||0;
   const container = containerQty*(s.containerFee||0);
   const mower = mowerQty*(s.mowerFee||0);
-  const t=splitTax(harvestNormal+harvestLodged+dry+sort+bagFee+haul+container+mower);
+  const t=splitTax(harvestNormal+harvestLodged+harvestWeed+dry+sort+bagFee+haul+container+mower);
   const buyBags=Math.min(eq.buyBags, eq.bags);
   const buyAmt = u.rice!=null ? buyBags*u.rice : 0;
   const kuzuAmt = (s.offsetKuzu && u.kuzu!=null) ? (r.kuzu||0)*u.kuzu : 0;
-  return {per_a,normal,lodged,harvestNormal,harvestLodged,dry,sort,bagFee,haul,haulUnit,haulBags,
+  return {per_a,normal,lodged,weed,harvestNormal,harvestLodged,harvestWeed,dry,sort,bagFee,haul,haulUnit,haulBags,
           container,containerQty,mower,mowerQty,
           eqBags:eq.bags, subtotal:t.net, tax:t.tax, gross:t.gross,
           buyBags, buyUnit:u.rice, buyAmt,
@@ -787,16 +821,17 @@ const recsOf=(custId,from,to,season)=>DB.records.filter(r=>
 
 function aggregate(list){
   const s=DB.settings, per_a=(s.harvestPer10a||0)/10;
-  const a={normalA:0,lodgedA:0,area:0,bags:0,buyBags:0,bagCount:0,kuzu:0,flecoKg:0,
-           harvestNormal:0,harvestLodged:0,dry:0,sort:0,bagFee:0,haul:0,sortBags:0,haulBags:0,haulLines:{},
+  const a={normalA:0,lodgedA:0,weedA:0,area:0,bags:0,buyBags:0,bagCount:0,kuzu:0,flecoKg:0,
+           harvestNormal:0,harvestLodged:0,harvestWeed:0,dry:0,sort:0,bagFee:0,haul:0,sortBags:0,haulBags:0,haulLines:{},
            container:0,containerQty:0,mower:0,mowerQty:0,
            buyAmt:0,kuzuAmt:0,buyLines:{},kuzuLines:{},kuzuNoPrice:0};
   list.forEach(r=>{
     const c=calc(r);
-    a.area+=r.area||0; a.normalA+=c.normal; a.lodgedA+=c.lodged;
+    a.area+=r.area||0; a.normalA+=c.normal; a.lodgedA+=c.lodged; a.weedA+=c.weed;
     a.bags+=r.doDry?c.eqBags:0; a.bagCount+=r.doBagFee?(r.bagCount||0):0; a.kuzu+=r.kuzu||0;
     if(r.unit==='fleco') a.flecoKg+=Number(r.flecoKg)||0;
-    a.harvestNormal+=c.harvestNormal; a.harvestLodged+=c.harvestLodged; a.dry+=c.dry; a.bagFee+=c.bagFee;
+    a.harvestNormal+=c.harvestNormal; a.harvestLodged+=c.harvestLodged; a.harvestWeed+=c.harvestWeed;
+    a.dry+=c.dry; a.bagFee+=c.bagFee;
     a.sort+=c.sort; if(r.doSort) a.sortBags+=c.eqBags;
     a.haul+=c.haul; if(c.haul>0){ a.haulBags+=c.haulBags; a.haulLines[c.haulUnit]=(a.haulLines[c.haulUnit]||0)+c.haulBags; }
     a.container+=c.container; a.containerQty+=c.containerQty;
@@ -806,7 +841,7 @@ function aggregate(list){
     if(c.kuzuAmt>0){ a.kuzuLines[c.kuzuUnit]=(a.kuzuLines[c.kuzuUnit]||0)+(r.kuzu||0); a.kuzuAmt+=c.kuzuAmt; }
     else a.kuzuNoPrice+=r.kuzu||0;
   });
-  const t=splitTax(a.harvestNormal+a.harvestLodged+a.dry+a.sort+a.bagFee+a.haul+a.container+a.mower);
+  const t=splitTax(a.harvestNormal+a.harvestLodged+a.harvestWeed+a.dry+a.sort+a.bagFee+a.haul+a.container+a.mower);
   a.subtotal=t.net; a.tax=t.tax; a.gross=t.gross;
   a.deduction=a.buyAmt+a.kuzuAmt;
   a.total=t.gross-a.deduction;
@@ -827,7 +862,7 @@ $$('.tab').forEach(t=>t.addEventListener('click',()=>{
 /* ======================= 年度セレクタ ======================= */
 function renderSeasons(){
   const now=seasonOf(new Date().toISOString().slice(0,10));
-  const set=new Set(DB.records.map(r=>seasonOf(r.date)));
+  const set=new Set(DB.records.map(r=>seasonOf(r.date)).filter(v=>v!=null));
   set.add(now);
   const arr=[...set].sort((a,b)=>b-a);
   $('#seasonSel').innerHTML=arr.map(y=>`<option value="${y}" ${y===SEASON?'selected':''}>${y}年産</option>`).join('');
@@ -836,7 +871,17 @@ $('#seasonSel').addEventListener('change',e=>{SEASON=Number(e.target.value);rend
 
 /* ====================== ダッシュボード ====================== */
 function renderDash(){
-  $('#dashSeason').textContent=SEASON+'年産';
+  const total=DB.records.length;
+  const bad=DB.records.filter(r=>seasonOf(r.date)==null);
+  const other=DB.records.filter(r=>{const y=seasonOf(r.date);return y!=null&&y!==SEASON;});
+  $('#dashSeason').textContent = `${SEASON}年産`+(total? `／全${total}件中 ${total-bad.length-other.length}件` : '');
+  const nb=document.getElementById('dashNote');
+  if(nb){
+    const msg=[];
+    if(bad.length) msg.push(`作業日が読み取れない記録が${bad.length}件あります。作業一覧から日付を入れ直してください。`);
+    if(other.length) msg.push(`他の年度に${other.length}件あります（右上の年度で切り替えられます）。`);
+    nb.innerHTML=msg.join('<br>'); nb.hidden=!msg.length;
+  }
   const list=recsOf(null,null,null,SEASON);
   const a=aggregate(list);
   const unbilled=list.filter(r=>!r.billed);
@@ -874,10 +919,16 @@ function renderDash(){
 /* ======================= 作業入力 ======================= */
 let editingRec=null;
 function fillCustSelects(){
+  /* 作り直すと選択が先頭に戻るので、いま選んでいるお客様を覚えておく */
+  const keep={f:$('#f_cust').value, l:$('#l_cust').value, b:$('#b_cust').value};
   const opts=DB.customers.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
   $('#f_cust').innerHTML = DB.customers.length?opts:'<option value="">先に「お客様」を登録してください</option>';
   $('#l_cust').innerHTML = '<option value="">すべて</option>'+opts;
   $('#b_cust').innerHTML = DB.customers.length?opts:'<option value="">お客様が未登録です</option>';
+  const has=id=>DB.customers.some(c=>c.id===id);
+  if(has(keep.f)) $('#f_cust').value=keep.f;
+  if(keep.l==='' || has(keep.l)) $('#l_cust').value=keep.l;
+  if(has(keep.b)) $('#b_cust').value=keep.b;
 }
 function readForm(){
   return {
@@ -885,7 +936,7 @@ function readForm(){
     variety:$('#f_variety').value.trim(),
     doHarvest:$('#f_harvest').checked, doDry:$('#f_dry').checked, doSort:$('#f_sort').checked,
     doBagFee:$('#f_bagfee').checked, doHaul:$('#f_haul').checked,
-    area:num($('#f_area')), lodgedArea:num($('#f_lodged')),
+    area:num($('#f_area')), lodgedArea:num($('#f_lodged')), weedArea:num($('#f_weed')),
     unit:$('#f_unit_fleco').checked?'fleco':'bag',
     bags:num($('#f_bags')), buyBags:num($('#f_buybags')),
     flecoKg:num($('#f_flecokg')), buyKg:num($('#f_buykg')),
@@ -902,6 +953,7 @@ function renderPreview(){
   const L=[];
   if(r.doHarvest&&c.normal>0) L.push(['稲刈り（通常）',`${nf(c.normal)}a × ${yen(c.per_a)}`,c.harvestNormal]);
   if(r.doHarvest&&c.lodged>0) L.push([`稲刈り（倒伏 ${s.lodgeRate}倍）`,`${nf(c.lodged)}a × ${yen(c.per_a*s.lodgeRate)}`,c.harvestLodged]);
+  if(r.doHarvest&&c.weed>0) L.push([`稲刈り（草多い ${s.weedRate}倍）`,`${nf(c.weed)}a × ${yen(c.per_a*s.weedRate)}`,c.harvestWeed]);
   if(r.doDry&&c.eqBags>0) L.push(['乾燥・籾摺り調製',
     (r.unit==='fleco'?`${nf(r.flecoKg,0)}kg → ${nf(c.eqBags,2)}袋換算 × `:`${nf(c.eqBags,2)}袋 × `)+yen(s.dryPerBag), c.dry]);
   if(r.doSort&&c.sort>0) L.push(['色選別',`${nf(c.eqBags,2)}袋 × ${yen(s.sortPerBag)}`,c.sort]);
@@ -945,7 +997,7 @@ function applyUnitMode(){
   $('#grp_bag').hidden=fleco; $('#grp_fleco').hidden=!fleco;
 }
 ['#f_unit_bag','#f_unit_fleco'].forEach(s=>$(s).addEventListener('change',()=>{applyUnitMode();autoBagCount();renderPreview();}));
-['#f_area','#f_lodged','#f_buyunit','#f_bagcnt','#f_kuzu','#f_haulbags','#f_container','#f_mower','#f_harvest','#f_dry','#f_sort','#f_bagfee','#f_haul','#f_cust']
+['#f_area','#f_lodged','#f_weed','#f_buyunit','#f_bagcnt','#f_kuzu','#f_haulbags','#f_container','#f_mower','#f_harvest','#f_dry','#f_sort','#f_bagfee','#f_haul','#f_cust']
   .forEach(s=>$(s).addEventListener('input',renderPreview));
 /* 乾燥・籾摺り調製と色選別は同時に請求しない（2,300円に含まれるため） */
 $('#f_dry').addEventListener('change',()=>{ if($('#f_dry').checked) $('#f_sort').checked=false; renderPreview(); });
@@ -976,10 +1028,11 @@ $$('[data-preset]').forEach(b=>b.addEventListener('click',()=>{
   $('#f_bagfee').checked  = (p==='all'||p==='dry'||p==='sort');
   renderPreview();
 }));
-$('#f_allLodged').addEventListener('click',()=>{$('#f_lodged').value=$('#f_area').value;renderPreview();});
+$('#f_allLodged').addEventListener('click',()=>{$('#f_lodged').value=$('#f_area').value;$('#f_weed').value='';renderPreview();});
+$('#f_allWeed').addEventListener('click',()=>{$('#f_weed').value=$('#f_area').value;$('#f_lodged').value='';renderPreview();});
 
 function clearForm(){
-  ['#f_field','#f_variety','#f_area','#f_lodged','#f_bags','#f_buybags','#f_flecokg','#f_buykg','#f_buyunit','#f_bagcnt','#f_kuzu','#f_haulbags','#f_container','#f_mower','#f_memo'].forEach(s=>$(s).value='');
+  ['#f_field','#f_variety','#f_area','#f_lodged','#f_weed','#f_bags','#f_buybags','#f_flecokg','#f_buykg','#f_buyunit','#f_bagcnt','#f_kuzu','#f_haulbags','#f_container','#f_mower','#f_memo'].forEach(s=>$(s).value='');
   $('#f_unit_bag').checked=true; applyUnitMode();
   $('#f_harvest').checked=$('#f_dry').checked=$('#f_bagfee').checked=true;
   $('#f_sort').checked=false; $('#f_dry').checked=true;
@@ -1007,7 +1060,7 @@ $('#f_save').addEventListener('click',async()=>{
   if(!r.date){toast('作業日を入れてください。','warn');return;}
   const eq=eqOf(r);
   if(r.area<=0&&eq.bags<=0){toast(r.unit==='fleco'?'面積かフレコン重量を入れてください。':'面積か袋数のどちらかを入れてください。','warn');return;}
-  if(r.lodgedArea>r.area){toast('倒伏面積が総面積を超えています。','warn');return;}
+  if(r.lodgedArea+r.weedArea>r.area){toast('倒伏面積と草が多い面積の合計が、総面積を超えています。','warn');return;}
   if(eq.buyBags>eq.bags){toast(r.unit==='fleco'?'買取重量が総重量を超えています。':'買取袋数が総袋数を超えています。','warn');return;}
   if(eq.buyBags>0&&buyUnits(r).rice==null){
     if(!await ask('買取単価が未設定です。単価なしのまま登録しますか？（請求書には差し引かれません）','このまま登録'))return;
@@ -1025,7 +1078,9 @@ $('#f_save').addEventListener('click',async()=>{
 /* ======================= 作業一覧 ======================= */
 function renderList(){
   const cid=$('#l_cust').value, st=$('#l_status').value;
-  let list=recsOf(cid||null,null,null,SEASON);
+  const yr=$('#l_season')? $('#l_season').value : 'season';
+  let list=recsOf(cid||null,null,null, yr==='all'?null:SEASON);
+  if(yr==='all') list=DB.records.filter(r=>!cid||r.customerId===cid).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   if(st==='unbilled') list=list.filter(r=>!r.billed);
   if(st==='billed') list=list.filter(r=>r.billed);
   $('#listCount').textContent=`${list.length}件`;
@@ -1039,7 +1094,7 @@ function renderList(){
         <span class="fld">${esc(r.field||'圃場名なし')}${r.variety?' ／ '+esc(r.variety):''}</span>
         <span class="date">${r.date}</span></div>
       <div class="slip-body">
-        <span>面積 <b>${nf(r.area)}</b>a${c.lodged>0?`（倒伏 <b>${nf(c.lodged)}</b>a）`:''}</span>
+        <span>面積 <b>${nf(r.area)}</b>a${c.lodged>0?`（倒伏 <b>${nf(c.lodged)}</b>a）`:''}${c.weed>0?`（草多い <b>${nf(c.weed)}</b>a）`:''}</span>
         <span>${r.unit==='fleco'?`フレコン <b>${nf(r.flecoKg,0)}</b>kg＝<b>${nf(c.eqBags,2)}</b>袋`:`30kg袋 <b>${nf(c.eqBags,0)}</b>袋`}${c.buyBags?`（買取 <b>${nf(c.buyBags,2)}</b>袋）`:''}</span>
         <span>袋 <b>${nf(r.bagCount,0)}</b>枚</span>
         <span>くず米 <b>${nf(r.kuzu)}</b>kg</span>
@@ -1051,10 +1106,11 @@ function renderList(){
   }).join('');
   $$('[data-edit]').forEach(b=>b.addEventListener('click',()=>{
     const r=DB.records.find(x=>x.id===b.dataset.edit); if(!r)return;
+    $$('.tab').find(t=>t.dataset.view==='record').click();  // 先に画面を切り替える
     editingRec=r;
     $('#f_cust').value=r.customerId; $('#f_date').value=r.date; $('#f_field').value=r.field||'';
     $('#f_variety').value=r.variety||''; $('#f_harvest').checked=!!r.doHarvest; $('#f_dry').checked=!!r.doDry;
-    $('#f_sort').checked=!!r.doSort; $('#f_haul').checked=!!r.doHaul; $('#f_bagfee').checked=!!r.doBagFee; $('#f_area').value=r.area||''; $('#f_lodged').value=r.lodgedArea||'';
+    $('#f_sort').checked=!!r.doSort; $('#f_haul').checked=!!r.doHaul; $('#f_bagfee').checked=!!r.doBagFee; $('#f_area').value=r.area||''; $('#f_lodged').value=r.lodgedArea||''; $('#f_weed').value=r.weedArea||'';
     (r.unit==='fleco'?$('#f_unit_fleco'):$('#f_unit_bag')).checked=true; applyUnitMode();
     $('#f_bags').value=r.bags||''; $('#f_buybags').value=r.buyBags||'';
     $('#f_flecokg').value=r.flecoKg||''; $('#f_buykg').value=r.buyKg||'';
@@ -1065,7 +1121,8 @@ function renderList(){
     $('#f_memo').value=r.memo||'';
     $('#f_editing').textContent='編集中'; $('#f_save').textContent='変更を保存';
     $('#f_clear').textContent='編集をやめる'; $('#f_del').hidden=false;
-    $$('.tab').find(t=>t.dataset.view==='record').click();
+    renderPreview();
+    window.scrollTo(0,0);
   }));
   $$('[data-del]').forEach(b=>b.addEventListener('click',async()=>{
     const r=DB.records.find(x=>x.id===b.dataset.del); if(!r)return;
@@ -1078,6 +1135,7 @@ function renderList(){
   }));
 }
 $('#l_cust').addEventListener('change',renderList);
+$('#l_season').addEventListener('change',renderList);
 $('#l_status').addEventListener('change',renderList);
 
 /* ======================== お客様 ======================== */
@@ -1159,6 +1217,7 @@ function buildBill(){
   const rows=[];
   if(a.harvestNormal>0) rows.push(['稲刈り作業受託',`${nf(a.normalA)} a`,yen(a.per_a),yen(a.harvestNormal)]);
   if(a.harvestLodged>0) rows.push([`稲刈り作業受託（倒伏 ${s.lodgeRate}倍）`,`${nf(a.lodgedA)} a`,yen(a.per_a*s.lodgeRate),yen(a.harvestLodged)]);
+  if(a.harvestWeed>0) rows.push([`稲刈り作業受託（草多い ${s.weedRate}倍）`,`${nf(a.weedA)} a`,yen(a.per_a*s.weedRate),yen(a.harvestWeed)]);
   if(a.dry>0) rows.push(['乾燥・籾摺り調製',`${nf(a.bags,2)} 袋`,yen(s.dryPerBag),yen(a.dry)]);
   if(a.sort>0) rows.push(['色選別',`${nf(a.sortBags,2)} 袋`,yen(s.sortPerBag),yen(a.sort)]);
   if(a.bagFee>0) rows.push(['米袋代',`${nf(a.bagCount,0)} 枚`,yen(s.bagPrice),yen(a.bagFee)]);
@@ -1282,6 +1341,8 @@ function loadSettings(){
   $('#s_bag').value=s.bagPrice; $('#s_sort').value=s.sortPerBag; $('#s_haul').value=s.haulPerBag;
   $('#s_container').value=s.containerFee; $('#s_mower').value=s.mowerFee; $('#s_kuzu').value=s.kuzuPrice; $('#s_rice').value=s.riceBuyPrice||'';
   $('#s_tax').value=s.taxRate;
+  $('#s_weed').value=s.weedRate;
+  $('#f_lodgeRateLb').textContent=s.lodgeRate; $('#f_weedRateLb').textContent=s.weedRate;
   $('#s_incl').value=(s.taxIncluded===false)?'0':'1'; $('#s_round').value=s.roundMode||'none';
   $('#s_h_hint').textContent=`10a単価 ${nf(s.harvestPer10a,0)}円 → 1aあたり ${nf(s.harvestPer10a/10,0)}円`;
   $('#s_co').value=s.co||''; $('#s_addr').value=s.addr||'';
@@ -1291,7 +1352,7 @@ function loadSettings(){
 }
 $('#s_save').addEventListener('click',()=>{
   Object.assign(DB.settings,{
-    harvestPer10a:num($('#s_harvest')), lodgeRate:num($('#s_lodge')), dryPerBag:num($('#s_dry')),
+    harvestPer10a:num($('#s_harvest')), lodgeRate:num($('#s_lodge')), weedRate:num($('#s_weed')), dryPerBag:num($('#s_dry')),
     bagPrice:num($('#s_bag')), sortPerBag:num($('#s_sort')), haulPerBag:num($('#s_haul')),
     containerFee:num($('#s_container')), mowerFee:num($('#s_mower')), kuzuPrice:$('#s_kuzu').value.trim(), riceBuyPrice:$('#s_rice').value.trim(),
     taxRate:num($('#s_tax')),
