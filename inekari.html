@@ -627,9 +627,11 @@ function markDeleted(id){
   Object.keys(t).forEach(k=>{ if(new Date(t[k]).getTime()<cut) delete t[k]; });
   DB.settings._deleted=JSON.stringify(t);
 }
-function mergeList(remote,local){
+function mergeList(remote,local,preferRemote){
   const t=tombs(), out={};
-  (remote||[]).concat(local||[]).forEach(o=>{
+  /* 通常は端末側を優先。読み込み時はスプレッドシート側を正とする */
+  const order = preferRemote ? (local||[]).concat(remote||[]) : (remote||[]).concat(local||[]);
+  order.forEach(o=>{
     if(!o||!o.id||t[o.id]) return;
     if('date' in o) o.date=normDate(o.date);
     const ex=out[o.id];
@@ -691,8 +693,8 @@ async function pullNow(){
   try{
     const remote=await gasCall('load');
     if(remote.settings&&remote.settings._deleted) DB.settings._deleted=remote.settings._deleted;
-    DB.customers=mergeList(remote.customers,DB.customers);
-    DB.records  =mergeList(remote.records,  DB.records);
+    DB.customers=mergeList(remote.customers,DB.customers,true);
+    DB.records  =mergeList(remote.records,  DB.records,true);
     if(remote.settings) DB.settings=Object.assign({},DB.settings,remote.settings,{gasUrl:gasUrl()});
     try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){}
     loadSettings(); renderAll(); setSync('idle');
