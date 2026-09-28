@@ -481,7 +481,7 @@ table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
         <div class="hint">税込なら請求書に内消費税額を表示します</div></div>
       <div class="field"><label for="s_tax">消費税率</label>
         <div class="suffix"><input type="number" id="s_tax" step="1"><i>%</i></div></div>
-      <div class="field"><label for="s_harvest">稲刈り作業受託（10aあたり）</label>
+      <div class="field"><label for="s_harvest">稲刈り作業受託（10aあたり・もみ運搬費用込み）</label>
         <div class="suffix"><input type="number" id="s_harvest" step="100"><i>円</i></div>
         <div class="hint" id="s_h_hint"></div></div>
       <div class="field"><label for="s_lodge">倒伏の割増率</label>
@@ -1221,9 +1221,9 @@ function buildBill(){
   saveDB();
 
   const rows=[];
-  if(a.harvestNormal>0) rows.push(['稲刈り作業受託',`${nf(a.normalA)} a`,yen(a.per_a),yen(a.harvestNormal)]);
-  if(a.harvestLodged>0) rows.push([`稲刈り作業受託（倒伏 ${s.lodgeRate}倍）`,`${nf(a.lodgedA)} a`,yen(a.per_a*s.lodgeRate),yen(a.harvestLodged)]);
-  if(a.harvestWeed>0) rows.push([`稲刈り作業受託（草多い ${s.weedRate}倍）`,`${nf(a.weedA)} a`,yen(a.per_a*s.weedRate),yen(a.harvestWeed)]);
+  if(a.harvestNormal>0) rows.push(['稲刈り作業受託（もみ運搬費用込み）',`${nf(a.normalA)} a`,yen(a.per_a),yen(a.harvestNormal)]);
+  if(a.harvestLodged>0) rows.push([`稲刈り作業受託（もみ運搬費用込み・倒伏 ${s.lodgeRate}倍）`,`${nf(a.lodgedA)} a`,yen(a.per_a*s.lodgeRate),yen(a.harvestLodged)]);
+  if(a.harvestWeed>0) rows.push([`稲刈り作業受託（もみ運搬費用込み・草多い ${s.weedRate}倍）`,`${nf(a.weedA)} a`,yen(a.per_a*s.weedRate),yen(a.harvestWeed)]);
   if(a.dry>0) rows.push(['乾燥・籾摺り調製',`${nf(a.bags,2)} 袋`,yen(s.dryPerBag),yen(a.dry)]);
   if(a.sort>0) rows.push(['色選別',`${nf(a.sortBags,2)} 袋`,yen(s.sortPerBag),yen(a.sort)]);
   if(a.bagFee>0) rows.push(['米袋代',`${nf(a.bagCount,0)} 枚`,yen(s.bagPrice),yen(a.bagFee)]);
