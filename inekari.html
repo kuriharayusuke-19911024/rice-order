@@ -458,14 +458,13 @@ table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
   <h2 class="head">請求書・作業報告書 <span>印刷またはPDF保存</span></h2>
   <div class="toolbar no-print">
     <div class="field"><label for="b_cust">お客様</label><select id="b_cust"></select></div>
-    <div class="field"><label for="b_from">対象期間（開始）</label><input type="date" id="b_from"></div>
-    <div class="field"><label for="b_to">対象期間（終了）</label><input type="date" id="b_to"></div>
     <div class="field"><label for="b_issue">発行日</label><input type="date" id="b_issue"></div>
   </div>
+  <p style="font-size:12px;color:var(--ink-2);margin:-4px 0 10px" class="no-print" id="b_scope"></p>
   <div class="actions no-print" style="margin-top:0">
     <button class="btn" id="b_make">帳票をつくる</button>
     <button class="btn -ghost" id="b_print">印刷 / PDF保存</button>
-    <button class="btn -ghost" id="b_mark">この期間を発行済みにする</button>
+    <button class="btn -ghost" id="b_mark">発行済みにする</button>
   </div>
   <div id="billOut"></div>
 </section>
@@ -585,9 +584,19 @@ const DEFAULT_SETTINGS={
   harvestPer10a:27000, lodgeRate:1.5, dryPerBag:2300, bagPrice:75,
   weedRate:1.5, sortPerBag:700, haulPerBag:120, containerFee:30000, mowerFee:10000,
   kuzuPrice:25, riceBuyPrice:9000, roundMode:'round', taxRate:10, taxIncluded:true, offsetKuzu:true,
-  co:'丹波農場', addr:'', tel:'', invoiceNo:'', bank:'', terms:'翌月末日までにお振込みください',
+  co:'株式会社丹波農商', addr:'〒669-4341 兵庫県丹波市市島町上竹田915-5', tel:'090-7763-4337',
+  invoiceNo:'', bank:'', terms:'翌月末日までにお振込みください',
   payTerms:'翌月末日までにお振込みいたします', gasUrl:GAS_URL, _deleted:'{}'
 };
+/* 会社情報の入れ違いを直す。変わったら true を返す */
+function normalizeSettings(st){
+  if(!st) return false;
+  let changed=false;
+  if(!st.co || st.co==='丹波農場'){ st.co='株式会社丹波農商'; changed=true; }
+  if(!st.addr){ st.addr='〒669-4341 兵庫県丹波市市島町上竹田915-5'; changed=true; }
+  if(!st.tel){  st.tel='090-7763-4337'; changed=true; }
+  return changed;
+}
 let DB = loadDB();
 function loadDB(){
   try{
@@ -596,6 +605,7 @@ function loadDB(){
     d.settings=Object.assign({},DEFAULT_SETTINGS,d.settings||{});
     if(d.settings.riceBuyPrice===''||d.settings.riceBuyPrice==null) d.settings.riceBuyPrice=9000;
     if(d.settings.kuzuPrice===''||d.settings.kuzuPrice==null) d.settings.kuzuPrice=25;
+    normalizeSettings(d.settings);
     d.settings.offsetKuzu=true;   // 買取はすべて請求から相殺する運用
     d.customers=d.customers||[]; d.records=d.records||[];
     return d;
@@ -696,8 +706,10 @@ async function pullNow(){
     DB.customers=mergeList(remote.customers,DB.customers,true);
     DB.records  =mergeList(remote.records,  DB.records,true);
     if(remote.settings) DB.settings=Object.assign({},DB.settings,remote.settings,{gasUrl:gasUrl()});
+    const fixed=normalizeSettings(DB.settings);
     try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){}
     loadSettings(); renderAll(); setSync('idle');
+    if(fixed) queuePush();   // 直した会社情報をスプレッドシートにも反映
     toast(`スプレッドシートから読み込みました（お客様${DB.customers.length}件・作業${DB.records.length}件）`);
   }catch(e){
     setSync('err'); toast('読み込めませんでした：'+e.message,'warn');
@@ -1201,20 +1213,21 @@ function renderCust(){
 
 /* ==================== 請求書・報告書 ==================== */
 $('#b_make').addEventListener('click',buildBill);
+$('#b_cust').addEventListener('change',renderBillScope);
 $('#b_print').addEventListener('click',()=>{ if(!$('#billOut').innerHTML){toast('先に「帳票をつくる」を押してください。','warn');return;} window.print(); });
 $('#b_mark').addEventListener('click',async()=>{
-  const list=recsOf($('#b_cust').value,$('#b_from').value,$('#b_to').value,null);
+  const list=recsOf($('#b_cust').value,null,null,SEASON);
   if(!list.length){toast('対象の作業記録がありません。','warn');return;}
   if(!await ask(`${list.length}件を発行済みにします。よろしいですか？`,'発行済みにする'))return;
   list.forEach(r=>{r.billed=true; stamp(r);}); saveDB(); renderAll(); toast('発行済みにしました。');
 });
 function buildBill(){
-  const cid=$('#b_cust').value, from=$('#b_from').value, to=$('#b_to').value;
+  const cid=$('#b_cust').value;
   const issue=$('#b_issue').value||new Date().toISOString().slice(0,10);
   const cust=DB.customers.find(c=>c.id===cid);
   if(!cust){toast('お客様を選んでください。','warn');return;}
-  const list=recsOf(cid,from,to,null);
-  if(!list.length){$('#billOut').innerHTML='<div class="card"><div class="empty"><div class="big">対象の作業記録がありません</div>期間を広げるか、作業を登録してください。</div></div>';return;}
+  const list=recsOf(cid,null,null,SEASON);
+  if(!list.length){$('#billOut').innerHTML='<div class="card"><div class="empty"><div class="big">対象の作業記録がありません</div>右上の年度を切り替えるか、作業を登録してください。</div></div>';return;}
   const a=aggregate(list), s=DB.settings;
   DB.seq=(DB.seq||0)+1;
   const invNo=`${issue.replace(/-/g,'').slice(0,6)}-${String(DB.seq).padStart(3,'0')}`;
@@ -1235,9 +1248,6 @@ function buildBill(){
   Object.entries(a.buyLines).forEach(([u,bags])=>ded.push([`玄米 買取（当社買取分）`,`${nf(bags,2)} 袋`,yen(Number(u)),yen(bags*Number(u))]));
   Object.entries(a.kuzuLines).forEach(([u,kg])=>ded.push([`くず米 買取`,`${nf(kg)} kg`,yen(Number(u)),yen(kg*Number(u))]));
 
-  const from_ = from? jdate(from):'';
-  const to_ = to? jdate(to):'';
-  const period = (from_||to_)? `${from_} 〜 ${to_}` : '全期間';
   const payable = a.total < 0;            // 買取が作業料を上回った＝当社からのお支払い
   const payAmt = Math.abs(a.total);
 
@@ -1247,7 +1257,6 @@ function buildBill(){
         <div class="to">${esc(cust.name)}<small>${esc(cust.honor||'様')}</small></div>
         <div style="font-size:12px;color:var(--ink-2);margin-top:8px">${esc(cust.addr||'')}</div>
         <div style="font-size:12.5px;margin-top:12px">${payable?'下記のとおりお支払いいたします。':'下記のとおりご請求申し上げます。'}</div>
-        <div style="font-size:12px;color:var(--ink-2)">対象期間：${period}</div>
       </div>
       <div class="party -from">
         <strong>${esc(s.co||'')}</strong>
@@ -1313,7 +1322,7 @@ function buildBill(){
 
   <div class="sheet">
     <h1 class="sheet-title">作業報告書</h1>
-    <div class="sheet-no">${esc(cust.name)} ${esc(cust.honor||'様')}　／　${period}</div>
+    <div class="sheet-no">${esc(cust.name)} ${esc(cust.honor||'様')}</div>
 
     <div class="stats" style="margin-bottom:18px">
       <div class="stat"><div class="label">受託面積</div><div class="value">${nf(a.area)}<em>a</em></div><div class="foot">${nf(a.area/10,2)}反</div></div>
@@ -1394,11 +1403,16 @@ $('#d_reset').addEventListener('click',async()=>{
 });
 
 /* ========================= 起動 ========================= */
-function renderAll(){ renderSeasons(); fillCustSelects(); renderDash(); renderList(); renderCust(); renderPreview(); }
+function renderBillScope(){
+  const el=document.getElementById('b_scope'); if(!el)return;
+  const n=recsOf($('#b_cust').value||null,null,null,SEASON).length;
+  el.textContent=`${SEASON}年産の作業 ${n}件をまとめて1枚にします（年度は右上で切り替え）`;
+}
+function renderAll(){ renderSeasons(); fillCustSelects(); renderBillScope(); renderDash(); renderList(); renderCust(); renderPreview(); }
 (function init(){
   const today=new Date().toISOString().slice(0,10);
   $('#f_date').value=today; $('#b_issue').value=today;
-  $('#b_from').value=SEASON+'-08-01'; $('#b_to').value=(SEASON+1)+'-01-31';
+
   applyUnitMode(); loadSettings(); renderAll(); checkStorage();
   if(gasUrl()) pullNow(); else setSync('off','端末内のみ');
   window.addEventListener('focus',()=>{ if(gasUrl()&&syncState!=='busy') pullNow(); });
