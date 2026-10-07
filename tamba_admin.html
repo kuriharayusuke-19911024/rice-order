@@ -191,8 +191,11 @@ textarea{resize:vertical;min-height:60px;}
 .map-modal-overlay.show{opacity:1;pointer-events:all;}
 .map-modal-box {
   background:#fff;border-radius:16px;width:95%;max-width:900px;
-  height:85vh;display:flex;flex-direction:column;
+  height:90svh;max-height:90svh;display:flex;flex-direction:column;
   box-shadow:0 20px 60px rgba(0,0,0,0.4);overflow:hidden;
+}
+@supports not (height: 1svh) {
+  .map-modal-box { height:85vh;max-height:85vh; }
 }
 .map-modal-header {
   display:flex;align-items:center;gap:12px;padding:14px 18px;
@@ -214,7 +217,7 @@ textarea{resize:vertical;min-height:60px;}
   transition:all 0.15s;white-space:nowrap;
 }
 .map-filter-btn.active{background:var(--soil);color:var(--straw);border-color:var(--soil);}
-#bulkMap{flex:1;width:100%;}
+#bulkMap{flex:1;width:100%;min-height:300px;}
 </style>
 </head>
 <body>
@@ -260,10 +263,7 @@ textarea{resize:vertical;min-height:60px;}
     <div class="tab-panel active" id="tab-orders">
       <div class="stats-grid" id="statsGrid"></div>
       <div class="card">
-        <div class="card-title" style="display:flex;align-items:center;gap:12px;">📋 発注一覧
-          <button class="btn btn-outline btn-sm" onclick="fetchOrdersFromGAS()" id="gasRefreshBtn">🔄 最新データを取得</button>
-          <span id="gasLoadingIndicator" style="display:none;font-size:0.78rem;color:var(--leaf);">⏳ データ取得中...</span>
-        </div>
+        <div class="card-title">📋 発注一覧</div>
         <div class="search-bar">
           <input type="text" class="search-input" placeholder="名前・作物・住所で検索" oninput="renderOrders(this.value)">
           <select style="border:1.5px solid rgba(139,94,60,0.22);border-radius:8px;padding:7px 11px;font-size:0.82rem;font-family:'Noto Sans JP',sans-serif;outline:none;" onchange="renderOrders('',this.value)" id="monthFilter">
@@ -391,37 +391,75 @@ textarea{resize:vertical;min-height:60px;}
 
     <!-- ===== 在庫管理 ===== -->
     <div class="tab-panel" id="tab-inventory">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+
+      <!-- 拠点サマリー -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+        <div class="stat-card" style="border-left:4px solid var(--accent);">
+          <div class="stat-label">🏔 前山 現在庫</div>
+          <div class="stat-value" id="maeyama_now">−<span class="stat-unit">t</span></div>
+          <div class="stat-sub" id="maeyama_4w">4週後残量：−</div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid var(--leaf);">
+          <div class="stat-label">🌿 夜久野 現在庫</div>
+          <div class="stat-value" id="yakuno_now">−<span class="stat-unit">t</span></div>
+          <div class="stat-sub" id="yakuno_4w">4週後残量：−</div>
+        </div>
+      </div>
+
+      <!-- 前山 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;">
         <div>
           <div class="card">
-            <div class="card-title">📦 現在の在庫・製造スケジュール</div>
-            <div class="form-grid" style="margin-bottom:14px;">
-              <div class="field span2">
-                <label>現在の在庫量（トン）</label>
-                <input type="number" id="inv_current" placeholder="例：100" min="0" step="0.5" oninput="updateInventoryChart()">
-              </div>
+            <div class="card-title" style="color:var(--accent);">🏔 前山 在庫・製造スケジュール</div>
+            <div class="field" style="margin-bottom:12px;">
+              <label>現在の在庫量（トン）</label>
+              <input type="number" id="inv_maeyama" placeholder="例：60" min="0" step="0.5" oninput="updateInventoryChart()" value="60">
             </div>
             <div style="font-size:0.78rem;font-weight:600;color:var(--soil);margin-bottom:8px;">週別 製造完成予定</div>
-            <div id="prodScheduleRows"></div>
-            <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addProdRow()">＋ 製造予定を追加</button>
-            <div style="margin-top:14px;display:flex;gap:8px;">
+            <div id="prodScheduleRows_maeyama"></div>
+            <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addProdRow('maeyama')">＋ 製造予定を追加</button>
+            <div style="margin-top:12px;">
               <button class="btn btn-primary btn-sm" onclick="saveInventory()">💾 保存</button>
             </div>
           </div>
         </div>
         <div>
           <div class="card">
-            <div class="card-title">📊 週別 在庫・出荷シミュレーション</div>
+            <div class="card-title" style="color:var(--accent);">📊 前山 週別シミュレーション</div>
             <div class="inv-legend">
               <span><span class="inv-legend-dot" style="background:var(--accent);"></span>出荷予定</span>
-              <span><span class="inv-legend-dot" style="background:var(--leaf);opacity:0.7;"></span>製造完成</span>
+              <span><span class="inv-legend-dot" style="background:var(--accent);opacity:0.4;"></span>製造完成</span>
             </div>
-            <div class="inventory-bar-wrap" id="inventoryChart"></div>
-            <div style="margin-top:12px;padding:10px 13px;background:#f5f0e8;border-radius:8px;font-size:0.82rem;">
-              <div style="display:flex;justify-content:space-between;"><span>現在庫：</span><strong id="inv_now_val">−</strong></div>
-              <div style="display:flex;justify-content:space-between;margin-top:4px;"><span>4週後残量：</span><strong id="inv_4w_val">−</strong></div>
-              <div style="display:flex;justify-content:space-between;margin-top:4px;"><span>発注済み合計出荷予定：</span><strong id="inv_ship_val">−</strong></div>
+            <div class="inventory-bar-wrap" id="inventoryChart_maeyama"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 夜久野 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+        <div>
+          <div class="card">
+            <div class="card-title" style="color:var(--leaf);">🌿 夜久野 在庫・製造スケジュール</div>
+            <div class="field" style="margin-bottom:12px;">
+              <label>現在の在庫量（トン）</label>
+              <input type="number" id="inv_yakuno" placeholder="例：0" min="0" step="0.5" oninput="updateInventoryChart()" value="0">
             </div>
+            <div style="font-size:0.78rem;font-weight:600;color:var(--soil);margin-bottom:8px;">週別 製造完成予定</div>
+            <div id="prodScheduleRows_yakuno"></div>
+            <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addProdRow('yakuno')">＋ 製造予定を追加</button>
+            <div style="margin-top:12px;">
+              <button class="btn btn-primary btn-sm" onclick="saveInventory()">💾 保存</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-title" style="color:var(--leaf);">📊 夜久野 週別シミュレーション</div>
+            <div class="inv-legend">
+              <span><span class="inv-legend-dot" style="background:var(--leaf);"></span>出荷予定</span>
+              <span><span class="inv-legend-dot" style="background:var(--leaf);opacity:0.4;"></span>製造完成</span>
+            </div>
+            <div class="inventory-bar-wrap" id="inventoryChart_yakuno"></div>
           </div>
         </div>
       </div>
@@ -492,30 +530,11 @@ textarea{resize:vertical;min-height:60px;}
   </div>
 </div>
 
-<!-- 請求書編集モーダル -->
-<div class="modal-overlay" id="invoiceEditModal">
-  <div class="modal-box" style="max-width:720px;">
-    <div class="modal-title" id="invEditTitle">請求書 編集</div>
-    <div style="font-size:0.82rem;color:var(--text-mid);margin-bottom:14px;">✏️ 今回請求しない圃場はチェックを外してください。数量・単価も変更できます。</div>
-    <div id="invEditItems"></div>
-    <div style="margin-top:16px;padding:14px;background:#f8f4ee;border-radius:10px;">
-      <div style="display:flex;justify-content:space-between;font-size:0.9rem;font-weight:700;color:var(--soil);">
-        <span>合計（税込）</span><span id="invEditTotal">¥0</span>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:16px;">
-      <button class="btn btn-green" onclick="printEditedInvoice()">🖨 印刷する</button>
-      <button class="btn btn-outline" onclick="closeInvoiceEdit()">キャンセル</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
 const PASSWORD = '1108';
 const STORAGE_KEY = 'tamba_admin_v2';
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyC7k3wKrr2p_UJRBzgG0dVi7hOOjWpjLHdPZBBx4jJ47eS-6h9ZnIeXKtHe-kNzmmVIA/exec';
 
 // 単価デフォルト
 const DEFAULT_PRICES = [
@@ -565,88 +584,6 @@ function initAdmin() {
   const store = getStore();
   document.getElementById('inv_number').value = `2026-${String(store.invoiceSeq).padStart(3,'0')}`;
   updateInvoicePreview();
-  // GASからデータ取得
-  fetchOrdersFromGAS();
-}
-
-// ===== GAS連携 =====
-// GASスプレッドシート列: 受付日時(0),氏名(1),電話(2),メール(3),圃場番号(4),圃場数(5),
-//   堆肥種類(6),数量(7),面積(8),用途(9),野菜種類(10),前作(11),有機JAS(12),珪カル(13),
-//   作業形態(14),散布開始(15),散布終了(16),ピン情報(17),住所備考(18),合計数量(19),備考(20)
-async function fetchOrdersFromGAS() {
-  const loader = document.getElementById('gasLoadingIndicator');
-  const btn = document.getElementById('gasRefreshBtn');
-  if (loader) loader.style.display = 'inline';
-  if (btn) btn.disabled = true;
-  try {
-    const res = await fetch(GAS_URL + '?action=getOrders&pw=' + encodeURIComponent(PASSWORD));
-    const result = await res.json();
-    if (result.result === 'ok' && result.orders) {
-      const store = getStore();
-      // GASは1圃場1行なので、同じ注文（受付日時+氏名+メール）をグループ化
-      const grouped = {};
-      (result.orders || []).forEach(function(row) {
-        var key = String(row[0]||'') + '|' + String(row[1]||'') + '|' + String(row[3]||'');
-        if (!grouped[key]) {
-          // ピン情報をパース（テキスト形式: "圃場1: 住所 (lat,lng) ／ ..."）
-          var pinText = String(row[17] || '');
-          var pins = [];
-          if (pinText) {
-            pinText.split('／').forEach(function(p) {
-              var m = p.match(/\(([0-9.]+),\s*([0-9.]+)\)/);
-              var addrM = p.match(/:\s*(.+?)\s*\(/);
-              pins.push({ lat: m ? m[1] : '', lng: m ? m[2] : '', address: addrM ? addrM[1].trim() : '' });
-            });
-          }
-          grouped[key] = {
-            id: 'GAS-' + String(row[0]||'').replace(/[\/\s:]/g,''),
-            submittedAt: row[0] || '',
-            name: row[1] || '', phone: row[2] || '', email: row[3] || '',
-            compostType: row[6] || '牛ふん堆肥',
-            totalQty: String(row[19] || '').replace('トン',''),
-            fieldCount: parseInt(row[5]) || 1,
-            fields: [], pins: pins,
-            usage: row[9] || '', vegType: row[10] || '',
-            organicJAS: row[12] || '', keical: row[13] || '',
-            dateFrom: row[15] || '', dateTo: row[16] || '',
-            addressNote: row[18] || '', remarks: row[20] || '',
-            status: '未確認', source: 'GAS'
-          };
-        }
-        // 圃場データを追加
-        grouped[key].fields.push({
-          num: parseInt(row[4]) || grouped[key].fields.length + 1,
-          name: '圃場' + (parseInt(row[4]) || grouped[key].fields.length + 1),
-          qty: row[7] || '', area: row[8] || '',
-          service: row[14] || '', usage: row[9] || '',
-          address: row[18] || '', organicJAS: row[12] || '',
-          keical: row[13] || '',
-          lat: '', lng: ''
-        });
-      });
-      // ピンデータを圃場にマージ
-      var gasOrders = Object.values(grouped);
-      gasOrders.forEach(function(o) {
-        o.fields.forEach(function(f, i) {
-          if (o.pins[i]) { f.lat = o.pins[i].lat; f.lng = o.pins[i].lng; if (!f.address) f.address = o.pins[i].address; }
-        });
-      });
-      // ローカルのみの注文を保持（代行入力など）
-      const gasIds = new Set(gasOrders.map(o => o.id));
-      const localOnly = (store.orders || []).filter(o => !gasIds.has(o.id));
-      store.orders = [...gasOrders, ...localOnly];
-      gasOrders.forEach(o => upsertCustomer(store, o));
-      saveStore(store);
-      renderOrders(); renderStats(); initMonthFilter();
-      showToast('✅ ' + gasOrders.length + '件の発注データを取得しました');
-    }
-  } catch (e) {
-    console.error('GAS通信エラー:', e);
-    showToast('⚠️ GAS通信エラー。ローカルデータを使用します。');
-  } finally {
-    if (loader) loader.style.display = 'none';
-    if (btn) btn.disabled = false;
-  }
 }
 
 // ===== タブ =====
@@ -758,11 +695,14 @@ function renderBulkMarkers(data) {
       title: `${d.name}様・${d.fieldName}`,
     });
     marker.addListener('click', () => {
+      const area = d.area ? `${d.area}a` : '';
+      const qtyKg = parseFloat(d.qty) < 1 ? `${Math.round(parseFloat(d.qty)*1000)}kg` : `${d.qty}t`;
       infoWindow.setContent(`
         <div style="font-family:'Noto Sans JP',sans-serif;font-size:0.84rem;min-width:180px;padding:4px;">
           <div style="font-weight:700;color:#3d2b1a;margin-bottom:6px;">👤 ${d.name}様</div>
           <div style="margin-bottom:3px;">📍 ${d.fieldName}</div>
-          <div style="margin-bottom:3px;">📦 ${d.qty}トン　${d.service?.slice(0,8)||''}</div>
+          <div style="margin-bottom:3px;">📦 散布量：<strong>${qtyKg}</strong>${area ? `　面積：${area}` : ''}</div>
+          <div style="margin-bottom:3px;">🚜 ${d.service?.slice(0,8)||''}</div>
           <div style="margin-bottom:3px;">📅 ${d.dateFrom||''}〜${d.dateTo||''}</div>
           ${d.address?`<div style="font-size:0.76rem;color:#5a4433;margin-top:4px;">${d.address}</div>`:''}
           <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank"
@@ -841,7 +781,7 @@ function renderOrders(q='',month='') {
         ${o.status !== 'confirmed' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();confirmOrder('${o.id}')" style="background:linear-gradient(135deg,#4a6741,#6b9162);">✅ 確認</button>` : ''}
         <button class="btn btn-green btn-sm" onclick="event.stopPropagation();invoiceFromOrder('${o.id}','請求書',true)">🖨 請求書</button>
         <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();invoiceFromOrder('${o.id}','納品書',true)">📦 納品書</button>
-        <button class="btn btn-sm" onclick="event.stopPropagation();deleteOrder('${o.id}')" style="background:#fde8e0;color:#c85a2a;border:1px solid rgba(200,90,42,0.3);">🗑 削除</button>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteOrder('${o.id}')">🗑</button>
       </td>
     </tr>`;
   }).join('');
@@ -852,12 +792,12 @@ function deleteOrder(id) {
   const store = getStore();
   const o = store.orders.find(x => x.id === id);
   if (!o) return;
-  if (!confirm(`【${o.name}様】${o.totalQty}トンの発注を削除しますか？\nこの操作は取り消せません。`)) return;
+  if (!confirm(`【${o.name||''}様】の発注を削除しますか？\n（この操作は元に戻せません）`)) return;
   store.orders = store.orders.filter(x => x.id !== id);
   saveStore(store);
-  showToast('🗑 発注を削除しました');
   renderOrders();
   renderStats();
+  showToast('🗑 発注を削除しました');
 }
 
 // ===== 発注確認（ワンクリック処理）=====
@@ -867,16 +807,25 @@ function confirmOrder(id) {
   if (!o) return;
   if (o.status === 'confirmed') { showToast('この発注はすでに確認済みです'); return; }
 
-  if (!confirm(`【${o.name}様】${o.totalQty}トンの発注を確認しますか？\n\n✅ ステータスを「確認済」に更新\n📦 在庫から${o.totalQty}トンを引く\n🧾 請求書を自動発行記録に保存`)) return;
+  // 出荷拠点選択ダイアログ
+  const base = window.confirm(
+    `【${o.name}様】${o.totalQty}トンの発注を確認します。\n\n出荷拠点を選択してください：\n\n「OK」→ 🏔 前山から出荷\n「キャンセル」→ 🌿 夜久野から出荷`
+  ) ? 'maeyama' : 'yakuno';
 
-  // ① ステータス更新
+  const baseLabel = base === 'maeyama' ? '🏔 前山' : '🌿 夜久野';
+
+  if (!confirm(`${baseLabel}から ${o.totalQty}トン出荷します。よろしいですか？\n\n✅ ステータスを「確認済」に更新\n📦 ${baseLabel}の在庫から${o.totalQty}トンを引く\n🧾 請求書を自動発行記録に保存`)) return;
+
+  // ① ステータス・出荷拠点を更新
   o.status = 'confirmed';
+  o.shipBase = base;
   o.confirmedAt = new Date().toLocaleString('ja-JP', {timeZone:'Asia/Tokyo'});
 
-  // ② 在庫から引く
-  if (!store.inventory) store.inventory = {current:0, prodSchedule:[]};
-  const prev = store.inventory.current || 0;
-  store.inventory.current = Math.max(0, prev - (parseFloat(o.totalQty) || 0));
+  // ② 該当拠点の在庫から引く
+  if (!store.inventory) store.inventory = {};
+  if (!store.inventory[base]) store.inventory[base] = {current:0, prodSchedule:[]};
+  const prev = store.inventory[base].current || 0;
+  store.inventory[base].current = Math.max(0, prev - (parseFloat(o.totalQty) || 0));
 
   // ③ 請求書を自動発行記録に保存
   const invItems = (o.fields || []).map(f => {
@@ -884,7 +833,7 @@ function confirmOrder(id) {
     return {desc:`牛ふん堆肥 ${f.service}（${f.name}）`, qty:f.qty, unit:'t', price:pi?pi.price:0};
   });
   const subtotal = invItems.reduce((s,i) => s + (parseFloat(i.qty)||0) * (parseFloat(i.price)||0), 0);
-  const tax = 0; // 単価は税込のため消費税なし
+  const tax = Math.round(subtotal * 0.1);
   store.invoiceSeq = (store.invoiceSeq || 1);
   const rec = {
     id: Date.now().toString(),
@@ -892,8 +841,9 @@ function confirmOrder(id) {
     number: `2026-${String(store.invoiceSeq).padStart(3,'0')}`,
     customer: o.name,
     date: new Date().toISOString().split('T')[0],
-    total: `¥${subtotal.toLocaleString()}`,
+    total: `¥${(subtotal+tax).toLocaleString()}`,
     orderId: id,
+    shipBase: base,
     savedAt: o.confirmedAt,
   };
   store.invoiceRecords = store.invoiceRecords || [];
@@ -906,9 +856,11 @@ function confirmOrder(id) {
   saveStore(store);
   renderOrders();
   renderStats();
-  showToast(`✅ ${o.name}様の発注を確認しました。在庫：${prev}t → ${store.inventory.current.toFixed(1)}t`, 5000);
+  updateInventoryChart();
 
-  // 請求書タブに自動遷移するか確認
+  const newStock = store.inventory[base].current.toFixed(1);
+  showToast(`✅ ${o.name}様の発注を確認。${baseLabel}在庫：${prev}t → ${newStock}t`, 5000);
+
   if (confirm('請求書プレビューを開きますか？')) {
     invoiceFromOrder(id, '請求書');
   }
@@ -1112,97 +1064,26 @@ const COMPANY_INFO = {
   bank: '丹波ひかみ農業協同組合 市島支店（019）\n　口座種別：普通\n　口座番号：0091205\n　口座名義：カ）タンバノウショウ',
 };
 
-// 請求書編集用グローバル変数
-let _invEditOrderId = null;
-let _invEditType = '請求書';
-
 function invoiceFromOrder(id, type='請求書') {
   const store = getStore();
   const o = store.orders.find(x => x.id === id);
   if (!o) return;
 
-  _invEditOrderId = id;
-  _invEditType = type;
-
-  // 明細を編集モーダルに表示
+  // 明細を計算
   const items = (o.fields||[]).filter(f=>f.qty).map(f=>{
     const pi = store.prices.find(p=>p.label===f.service);
     const price = pi ? pi.price : 0;
-    return { desc:`牛ふん堆肥 ${f.service}（${f.name}）`, qty: parseFloat(f.qty)||0, unit:'t', price, checked: true };
+    return { desc:`牛ふん堆肥 ${f.service}（${f.name}）`, qty: parseFloat(f.qty)||0, unit:'t', price };
   });
-
-  document.getElementById('invEditTitle').textContent = `${type} 編集 ─ ${o.name}様`;
-  let html = '';
-  items.forEach((item, i) => {
-    html += `<div style="display:flex;gap:8px;align-items:center;padding:10px;background:${i%2===0?'#fdfaf5':'#fff'};border-radius:8px;margin-bottom:6px;flex-wrap:wrap;" id="invEditRow-${i}">
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;min-width:40px;">
-        <input type="checkbox" checked onchange="updateInvEditTotal()" style="width:18px;height:18px;accent-color:var(--leaf);">
-      </label>
-      <input type="text" value="${item.desc}" style="flex:2;min-width:200px;border:1.5px solid rgba(139,94,60,0.22);border-radius:6px;padding:7px 10px;font-size:0.82rem;">
-      <input type="number" value="${item.qty}" step="0.1" min="0" onchange="updateInvEditTotal()" style="width:70px;border:1.5px solid rgba(139,94,60,0.22);border-radius:6px;padding:7px 10px;font-size:0.82rem;text-align:right;">
-      <span style="font-size:0.78rem;color:var(--text-mid);">${item.unit}</span>
-      <span style="font-size:0.78rem;color:var(--text-mid);">×</span>
-      <input type="number" value="${item.price}" step="100" min="0" onchange="updateInvEditTotal()" style="width:90px;border:1.5px solid rgba(139,94,60,0.22);border-radius:6px;padding:7px 10px;font-size:0.82rem;text-align:right;">
-      <span style="font-size:0.78rem;color:var(--text-mid);">円</span>
-      <span style="font-size:0.82rem;font-weight:600;color:var(--soil);min-width:80px;text-align:right;" class="invEditRowAmt">¥${(item.qty*item.price).toLocaleString()}</span>
-    </div>`;
-  });
-  document.getElementById('invEditItems').innerHTML = html;
-  updateInvEditTotal();
-  document.getElementById('invoiceEditModal').classList.add('show');
-}
-
-function updateInvEditTotal() {
-  let total = 0;
-  document.querySelectorAll('#invEditItems > div').forEach(row => {
-    const cb = row.querySelector('input[type="checkbox"]');
-    const qty = parseFloat(row.querySelectorAll('input')[2]?.value) || 0;
-    const price = parseFloat(row.querySelectorAll('input')[3]?.value) || 0;
-    const amt = row.querySelector('.invEditRowAmt');
-    if (cb && cb.checked) {
-      total += qty * price;
-      if (amt) amt.textContent = `¥${(qty*price).toLocaleString()}`;
-      row.style.opacity = '1';
-    } else {
-      if (amt) amt.textContent = '−';
-      row.style.opacity = '0.4';
-    }
-  });
-  document.getElementById('invEditTotal').textContent = `¥${total.toLocaleString()}`;
-}
-
-function closeInvoiceEdit() {
-  document.getElementById('invoiceEditModal').classList.remove('show');
-}
-
-function printEditedInvoice() {
-  const store = getStore();
-  const o = store.orders.find(x => x.id === _invEditOrderId);
-  if (!o) return;
-  const type = _invEditType;
-
-  // 編集後の明細を収集
-  const items = [];
-  document.querySelectorAll('#invEditItems > div').forEach(row => {
-    const cb = row.querySelector('input[type="checkbox"]');
-    if (!cb || !cb.checked) return;
-    const inputs = row.querySelectorAll('input');
-    const desc = inputs[1]?.value || '';
-    const qty = parseFloat(inputs[2]?.value) || 0;
-    const price = parseFloat(inputs[3]?.value) || 0;
-    if (qty > 0) items.push({ desc, qty, unit: 't', price });
-  });
-
-  const subtotal = items.reduce((s,i) => s + i.qty * i.price, 0);
-  const total = subtotal;
+  const subtotal = items.reduce((s,i)=>s+i.qty*i.price,0);
+  const tax = Math.round(subtotal*0.1);
+  const total = subtotal + tax;
 
   // 書類番号
   const today = new Date().toISOString().split('T')[0];
   const docNo = `${today.replace(/-/g,'')}-${o.id.slice(-4)}`;
 
-  closeInvoiceEdit();
-
-  // 印刷用ウィンドウを開く
+  // 印刷用ウィンドウを直接開く
   const win = window.open('', '_blank');
   const itemsHtml = items.map(i=>`
     <tr>
@@ -1286,8 +1167,9 @@ function printEditedInvoice() {
 </table>
 <div class="total-section">
   <table class="total-table">
-    <tr><td>小計（税込）</td><td>¥${subtotal.toLocaleString()}</td></tr>
-    <tr class="grand-row"><td>合計金額（税込）</td><td>¥${total.toLocaleString()}</td></tr>
+    <tr><td>小計</td><td>¥${subtotal.toLocaleString()}</td></tr>
+    <tr><td>消費税（10%）</td><td>¥${tax.toLocaleString()}</td></tr>
+    <tr class="grand-row"><td>合計金額</td><td>¥${total.toLocaleString()}</td></tr>
   </table>
 </div>
 <div class="bank-box">
@@ -1336,14 +1218,16 @@ function addInvItem(preset){
 }
 
 function updateInvoiceCalc(){
+  const rate=parseFloat(document.getElementById('inv_taxrate')?.value)||0.1;
   let sub=0;
   document.querySelectorAll('#invItems > div').forEach(r=>{
     const ins=r.querySelectorAll('input');
     sub+=(parseFloat(ins[1]?.value)||0)*(parseFloat(ins[3]?.value)||0);
   });
+  const tax=Math.round(sub*rate);
   document.getElementById('inv_subtotal').textContent=`¥${sub.toLocaleString()}`;
-  document.getElementById('inv_tax').textContent='¥0（税込単価）';
-  document.getElementById('inv_total').textContent=`¥${sub.toLocaleString()}`;
+  document.getElementById('inv_tax').textContent=`¥${tax.toLocaleString()}`;
+  document.getElementById('inv_total').textContent=`¥${(sub+tax).toLocaleString()}`;
   updateInvoicePreview();
 }
 
@@ -1354,6 +1238,8 @@ function updateInvoicePreview(){
   const customer=document.getElementById('inv_customer')?.value||'　';
   const number=document.getElementById('inv_number')?.value||'';
   const note=document.getElementById('inv_note')?.value||'';
+  const rate=parseFloat(document.getElementById('inv_taxrate')?.value)||0.1;
+
   const items=[];
   document.querySelectorAll('#invItems > div').forEach(r=>{
     const ins=r.querySelectorAll('input');
@@ -1362,8 +1248,8 @@ function updateInvoicePreview(){
     if(desc||qty) items.push({desc,qty,unit,price,amount:qty*price});
   });
   const sub=items.reduce((s,i)=>s+i.amount,0);
-  const tax=0;
-  const total=sub;
+  const tax=Math.round(sub*rate);
+  const total=sub+tax;
 
   document.getElementById('invoicePreview').innerHTML=`
     <div style="max-width:660px;margin:0 auto;font-size:0.83rem;">
@@ -1389,8 +1275,9 @@ function updateInvoicePreview(){
         <tbody>${items.map(i=>`<tr><td>${i.desc}</td><td>${i.qty} ${i.unit}</td><td>¥${i.price.toLocaleString()}</td><td>¥${i.amount.toLocaleString()}</td></tr>`).join('')}</tbody>
       </table>
       <div style="text-align:right;font-size:0.82rem;">
-        <div style="display:flex;justify-content:flex-end;gap:50px;padding:5px 0;border-bottom:1px solid #e0d5c5;"><span>小計（税込）</span><span>¥${sub.toLocaleString()}</span></div>
-        <div style="display:flex;justify-content:flex-end;gap:50px;padding:9px 14px;font-size:1rem;font-weight:700;color:var(--soil);background:#f5f0e8;border-radius:6px;margin-top:3px;"><span>合計（税込）</span><span>¥${total.toLocaleString()}</span></div>
+        <div style="display:flex;justify-content:flex-end;gap:50px;padding:5px 0;border-bottom:1px solid #e0d5c5;"><span>小計</span><span>¥${sub.toLocaleString()}</span></div>
+        <div style="display:flex;justify-content:flex-end;gap:50px;padding:5px 0;border-bottom:1px solid #e0d5c5;"><span>消費税（${Math.round(rate*100)}%）</span><span>¥${tax.toLocaleString()}</span></div>
+        <div style="display:flex;justify-content:flex-end;gap:50px;padding:9px 14px;font-size:1rem;font-weight:700;color:var(--soil);background:#f5f0e8;border-radius:6px;margin-top:3px;"><span>合計</span><span>¥${total.toLocaleString()}</span></div>
       </div>
       ${note?`<div style="margin-top:14px;padding:10px;background:#f8f4ee;border-radius:7px;font-size:0.77rem;color:var(--text-mid);white-space:pre-wrap;">${note}</div>`:''}
     </div>`;
@@ -1434,104 +1321,113 @@ function renderInvoiceRecords(){
   </table>`;
 }
 
-// ===== 在庫管理 =====
+// ===== 在庫管理（2拠点対応）=====
 function initInventory(){
   const store=getStore();
-  document.getElementById('inv_current').value=store.inventory?.current||'';
-  renderProdScheduleRows();
+  const inv=store.inventory||{};
+  document.getElementById('inv_maeyama').value=inv.maeyama?.current??60;
+  document.getElementById('inv_yakuno').value=inv.yakuno?.current??0;
+  renderProdScheduleRows('maeyama');
+  renderProdScheduleRows('yakuno');
   updateInventoryChart();
 }
 
 let prodRowCount=0;
-function renderProdScheduleRows(){
+function renderProdScheduleRows(base){
   const store=getStore();
-  const rows=store.inventory?.prodSchedule||[];
-  prodRowCount=rows.length;
-  document.getElementById('prodScheduleRows').innerHTML=rows.map((r,i)=>`
-    <div id="prod-${i}" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-bottom:6px;">
+  const rows=store.inventory?.[base]?.prodSchedule||[];
+  document.getElementById(`prodScheduleRows_${base}`).innerHTML=rows.map((r,i)=>`
+    <div id="prod-${base}-${i}" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-bottom:6px;">
       <input type="date" value="${r.date||''}" oninput="updateInventoryChart()">
       <input type="number" placeholder="完成トン数" value="${r.ton||''}" min="0" step="0.5" oninput="updateInventoryChart()">
-      <button class="btn btn-danger btn-sm" onclick="removeProdRow(${i})">✕</button>
+      <button class="btn btn-danger btn-sm" onclick="removeProdRow('${base}',${i})">✕</button>
     </div>`).join('');
 }
 
-function addProdRow(){
+function addProdRow(base){
   const store=getStore();
-  if(!store.inventory) store.inventory={current:0,prodSchedule:[]};
-  store.inventory.prodSchedule.push({date:'',ton:''});
-  saveStore(store);renderProdScheduleRows();
+  if(!store.inventory) store.inventory={};
+  if(!store.inventory[base]) store.inventory[base]={current:0,prodSchedule:[]};
+  store.inventory[base].prodSchedule.push({date:'',ton:''});
+  saveStore(store);renderProdScheduleRows(base);
 }
-function removeProdRow(i){
+
+function removeProdRow(base,i){
   const store=getStore();
-  store.inventory.prodSchedule.splice(i,1);
-  saveStore(store);renderProdScheduleRows();updateInventoryChart();
+  store.inventory[base].prodSchedule.splice(i,1);
+  saveStore(store);renderProdScheduleRows(base);updateInventoryChart();
 }
 
 function saveInventory(){
   const store=getStore();
-  if(!store.inventory) store.inventory={current:0,prodSchedule:[]};
-  store.inventory.current=parseFloat(document.getElementById('inv_current').value)||0;
-  const rows=document.querySelectorAll('#prodScheduleRows > div');
-  store.inventory.prodSchedule=Array.from(rows).map(r=>{
-    const ins=r.querySelectorAll('input');
-    return{date:ins[0]?.value||'',ton:parseFloat(ins[1]?.value)||0};
+  if(!store.inventory) store.inventory={};
+  ['maeyama','yakuno'].forEach(base=>{
+    if(!store.inventory[base]) store.inventory[base]={current:0,prodSchedule:[]};
+    store.inventory[base].current=parseFloat(document.getElementById(`inv_${base}`)?.value)||0;
+    const rows=document.querySelectorAll(`#prodScheduleRows_${base} > div`);
+    store.inventory[base].prodSchedule=Array.from(rows).map(r=>{
+      const ins=r.querySelectorAll('input');
+      return{date:ins[0]?.value||'',ton:parseFloat(ins[1]?.value)||0};
+    });
   });
   saveStore(store);updateInventoryChart();showToast('✅ 在庫情報を保存しました');
 }
 
 function updateInventoryChart(){
-  const current=parseFloat(document.getElementById('inv_current')?.value)||0;
   const store=getStore();
-  const orders=store.orders;
-
-  // 4週分のシミュレーション
+  const orders=store.orders||[];
   const now=new Date();
-  const weeks=[];
-  for(let w=0;w<6;w++){
-    const start=new Date(now);start.setDate(start.getDate()+w*7);
-    const end=new Date(start);end.setDate(end.getDate()+6);
-    const label=`第${w+1}週`;
-    // その週に出荷予定の発注
-    const shipped=orders.reduce((s,o)=>{
-      if(!o.dateFrom) return s;
-      const d=new Date(o.dateFrom);
-      if(d>=start&&d<=end) return s+(parseFloat(o.totalQty)||0);
-      return s;
-    },0);
-    // 製造完成（scheduleから）
-    const prodRows=document.querySelectorAll('#prodScheduleRows > div');
-    const produced=Array.from(prodRows).reduce((s,r)=>{
-      const ins=r.querySelectorAll('input');
-      const d=new Date(ins[0]?.value);
-      if(d>=start&&d<=end) return s+(parseFloat(ins[1]?.value)||0);
-      return s;
-    },0);
-    weeks.push({label,shipped,produced});
-  }
 
-  // 残量計算
-  let remaining=current;
-  const maxVal=Math.max(current,...weeks.map(w=>w.shipped),1);
-  let totalShip=weeks.reduce((s,w)=>s+w.shipped,0);
+  ['maeyama','yakuno'].forEach(base=>{
+    const color=base==='maeyama'?'var(--accent)':'var(--leaf)';
+    const current=parseFloat(document.getElementById(`inv_${base}`)?.value)||0;
+    const weeks=[];
+    for(let w=0;w<6;w++){
+      const start=new Date(now);start.setDate(start.getDate()+w*7);
+      const end=new Date(start);end.setDate(end.getDate()+6);
+      // その拠点から出荷予定の発注（base指定ありのもの＋未指定は按分しない）
+      const shipped=orders.reduce((s,o)=>{
+        if(!o.dateFrom) return s;
+        if(o.shipBase && o.shipBase!==base) return s;
+        if(!o.shipBase) return s; // 未確認分は含めない
+        const d=new Date(o.dateFrom);
+        if(d>=start&&d<=end) return s+(parseFloat(o.totalQty)||0);
+        return s;
+      },0);
+      const prodRows=document.querySelectorAll(`#prodScheduleRows_${base} > div`);
+      const produced=Array.from(prodRows).reduce((s,r)=>{
+        const ins=r.querySelectorAll('input');
+        const d=new Date(ins[0]?.value);
+        if(d>=start&&d<=end) return s+(parseFloat(ins[1]?.value)||0);
+        return s;
+      },0);
+      weeks.push({label:`第${w+1}週`,shipped,produced});
+    }
+    const maxVal=Math.max(current,...weeks.map(w=>w.shipped+w.produced),1);
+    let remaining=current;
+    const chart=document.getElementById(`inventoryChart_${base}`);
+    if(!chart) return;
+    chart.innerHTML=weeks.map(w=>{
+      const shipPct=Math.min(100,(w.shipped/maxVal)*100);
+      const prodPct=Math.min(100,(w.produced/maxVal)*100);
+      remaining=remaining-w.shipped+w.produced;
+      return `<div class="inv-week-row">
+        <div class="inv-week-label">${w.label}</div>
+        <div class="inv-bar-outer">
+          <div class="inv-bar-ship" style="width:${shipPct}%;background:${color};"></div>
+          <div class="inv-bar-prod" style="width:${prodPct}%;background:${color};position:absolute;top:0;left:0;opacity:0.35;"></div>
+        </div>
+        <div class="inv-bar-val">${w.shipped>0?`出荷${w.shipped}t`:''}${w.produced>0?` +${w.produced}t`:''}</div>
+      </div>`;
+    }).join('');
 
-  const chart=document.getElementById('inventoryChart');
-  chart.innerHTML=weeks.map(w=>{
-    const shipPct=Math.min(100,(w.shipped/maxVal)*100);
-    const prodPct=Math.min(100,(w.produced/maxVal)*100);
-    remaining=remaining-w.shipped+w.produced;
-    return `<div class="inv-week-row">
-      <div class="inv-week-label">${w.label}</div>
-      <div class="inv-bar-outer">
-        <div class="inv-bar-ship" style="width:${shipPct}%"></div>
-        <div class="inv-bar-prod" style="width:${prodPct}%"></div>
-      </div>
-      <div class="inv-bar-val">出荷${w.shipped}t${w.produced?` 製造+${w.produced}t`:''}</div>
-    </div>`;
-  }).join('');
-
-  document.getElementById('inv_now_val').textContent=`${current}t`;
-  document.getElementById('inv_4w_val').textContent=`${remaining.toFixed(1)}t`;
-  document.getElementById('inv_ship_val').textContent=`${totalShip.toFixed(1)}t`;
+    // サマリー更新
+    const nowEl=document.getElementById(`${base}_now`);
+    const wkEl=document.getElementById(`${base}_4w`);
+    if(nowEl) nowEl.innerHTML=`${current}<span class="stat-unit">t</span>`;
+    const rem4=weeks.slice(0,4).reduce((s,w)=>s-w.shipped+w.produced,current);
+    if(wkEl) wkEl.textContent=`4週後残量：${rem4.toFixed(1)}t`;
+  });
 }
 
 // ===== 顧客管理 =====
