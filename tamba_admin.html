@@ -648,56 +648,73 @@ function extractLatLngFromText(text) {
 }
 function extractLatLng(text) { return extractLatLngFromText(text); }
 
-async function fetchOrdersFromGAS() {
+// JSONP方式でGASからデータ取得（CORSを回避）
+function fetchOrdersFromGAS() {
   const statusEl = document.getElementById('gasStatus');
   if (statusEl) { statusEl.textContent = '🔄 Googleスプレッドシートから読み込み中...'; statusEl.style.color='#666'; }
-  try {
-    const url = `${GAS_URL}?action=getOrders&pw=1108&t=${Date.now()}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
 
-    // GASが返す形式に応じて処理
-    let rows = [];
-    if (Array.isArray(data)) {
-      rows = data;
-    } else if (data.orders && Array.isArray(data.orders)) {
-      rows = data.orders;
-    } else if (data.rows && Array.isArray(data.rows)) {
-      rows = data.rows;
-    } else if (data.values && Array.isArray(data.values)) {
-      rows = data.values;
-    }
+  const callbackName = 'gasCallback_' + Date.now();
+  const script = document.createElement('script');
+  const timeoutId = setTimeout(() => {
+    cleanup();
+    console.warn('GAS JSONP timeout');
+    if (statusEl) { statusEl.textContent = '⚠️ タイムアウト。ローカルデータを使用中。'; statusEl.style.color='#c0392b'; }
+  }, 15000);
 
-    // GASが既にオブジェクト形式で返す場合（{name,dateFrom,...}）はそのまま使う
-    let gasOrders = [];
-    if (rows.length > 0 && Array.isArray(rows[0])) {
-      // 2次元配列形式（スプレッドシートの行データ）
-      const dataRows = rows[0][0] === '受付日時' ? rows.slice(1) : rows;
-      gasOrders = convertGasRowsToOrders(dataRows);
-    } else if (rows.length > 0 && typeof rows[0] === 'object') {
-      // オブジェクト配列形式
-      gasOrders = rows;
-    }
-
-    if (gasOrders.length === 0) {
-      if (statusEl) { statusEl.textContent = '⚠️ GASからデータなし。ローカルデータを表示中。'; statusEl.style.color='#e67e22'; }
-      return;
-    }
-
-    // storeのordersをGASデータで上書き
-    const store = getStore();
-    store.orders = gasOrders;
-    saveStore(store);
-    gasLoaded = true;
-
-    if (statusEl) { statusEl.textContent = `✅ ${gasOrders.length}件の発注を読み込みました`; statusEl.style.color='#2e7d32'; }
-    renderStats(); renderOrders(); initMonthFilter();
-  } catch(e) {
-    console.warn('GAS fetch error:', e);
-    if (statusEl) { statusEl.textContent = `⚠️ 通信エラー（${e.message}）。ローカルデータを使用中。`; statusEl.style.color='#c0392b'; }
+  function cleanup() {
+    clearTimeout(timeoutId);
+    delete window[callbackName];
+    if (script.parentNode) script.parentNode.removeChild(script);
   }
+
+  window[callbackName] = function(data) {
+    cleanup();
+    try {
+      if (data.error) throw new Error(data.error);
+
+      let rows = [];
+      if (Array.isArray(data)) {
+        rows = data;
+      } else if (data.orders && Array.isArray(data.orders)) {
+        rows = data.orders;
+      } else if (data.rows && Array.isArray(data.rows)) {
+        rows = data.rows;
+      } else if (data.values && Array.isArray(data.values)) {
+        rows = data.values;
+      }
+
+      let gasOrders = [];
+      if (rows.length > 0 && Array.isArray(rows[0])) {
+        const dataRows = rows[0][0] === '受付日時' ? rows.slice(1) : rows;
+        gasOrders = convertGasRowsToOrders(dataRows);
+      } else if (rows.length > 0 && typeof rows[0] === 'object') {
+        gasOrders = rows;
+      }
+
+      if (gasOrders.length === 0) {
+        if (statusEl) { statusEl.textContent = '⚠️ GASからデータなし。ローカルデータを表示中。'; statusEl.style.color='#e67e22'; }
+        return;
+      }
+
+      const store = getStore();
+      store.orders = gasOrders;
+      saveStore(store);
+      gasLoaded = true;
+      if (statusEl) { statusEl.textContent = `✅ ${gasOrders.length}件の発注を読み込みました`; statusEl.style.color='#2e7d32'; }
+      renderStats(); renderOrders(); initMonthFilter();
+    } catch(e) {
+      console.warn('GAS data error:', e);
+      if (statusEl) { statusEl.textContent = `⚠️ データエラー（${e.message}）。ローカルデータを使用中。`; statusEl.style.color='#c0392b'; }
+    }
+  };
+
+  script.onerror = function() {
+    cleanup();
+    if (statusEl) { statusEl.textContent = '⚠️ GAS接続エラー。ローカルデータを使用中。'; statusEl.style.color='#c0392b'; }
+  };
+
+  script.src = `${GAS_URL}?action=getOrders&pw=1108&callback=${callbackName}&t=${Date.now()}`;
+  document.head.appendChild(script);
 }
 
 // ===== ログイン =====
