@@ -261,6 +261,7 @@ textarea{resize:vertical;min-height:60px;}
 
     <!-- ===== 発注管理 ===== -->
     <div class="tab-panel active" id="tab-orders">
+      <div id="gasStatus" style="font-size:0.85rem;padding:6px 12px;margin-bottom:8px;border-radius:8px;background:#f5f5f5;color:#666;">🔄 Googleスプレッドシートから読み込み中...</div>
       <div class="stats-grid" id="statsGrid"></div>
       <div class="card">
         <div class="card-title">📋 発注一覧</div>
@@ -535,6 +536,8 @@ textarea{resize:vertical;min-height:60px;}
 <script>
 const PASSWORD = '1108';
 const STORAGE_KEY = 'tamba_admin_v2';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjf4FYGdfLbmuGIhgFVOMZDylT0w7ws_vPIYYKJLWZJR_IWZPlTXHo2p2l6SH9FmGdkw/exec';
+let gasLoaded = false;
 
 // 単価デフォルト
 const DEFAULT_PRICES = [
@@ -556,6 +559,146 @@ function initStore() {
     inventory:{current:0,prodSchedule:[]},invoiceSeq:1};
 }
 function saveStore(s) { localStorage.setItem(STORAGE_KEY,JSON.stringify(s)); }
+
+// ===== GAS連携 =====
+// スプレッドシート「発注一覧」の行データ（1行=1圃場）をadminのorders形式に変換
+// 列: A=受付日時,B=氏名,C=電話,D=メール,E=圃場No,F=合計数量(t),G=堆肥種類,
+//     H=圃場数量,I=圃場数量2,J=用途,K=野菜種類,L=前作情報,M=有機JAS,N=珪カル,
+//     O=サービス種別,P=配送希望開始,Q=配送希望終了,R=圃場詳細テキスト,
+//     S=個別住所,T=個別数量,U=個別備考
+function convertGasRowsToOrders(rows) {
+  const orderMap = {};
+  rows.forEach(row => {
+    if (!row[1]) return; // 氏名なし行はスキップ
+    const key = `${row[0]}_${row[1]}`; // 受付日時+氏名でグループ化
+    if (!orderMap[key]) {
+      // フィールド詳細テキスト(R列)から圃場情報をパース
+      const fieldsText = String(row[17] || '');
+      const parsedFields = parseFieldsText(fieldsText, row[14]);
+      orderMap[key] = {
+        id: key,
+        date: String(row[0] || ''),
+        name: String(row[1] || ''),
+        phone: String(row[2] || ''),
+        email: String(row[3] || ''),
+        compostType: String(row[6] || '牛ふん堆肥'),
+        totalQty: parseFloat(row[19] || row[5]) || 0,
+        fieldCount: 0,
+        usage: String(row[9] || ''),
+        vegType: String(row[10] || ''),
+        prevCrop: String(row[11] || ''),
+        organicJas: String(row[12] || ''),
+        silicaLime: String(row[13] || ''),
+        service: String(row[14] || ''),
+        dateFrom: String(row[15] || ''),
+        dateTo: String(row[16] || ''),
+        memo: String(row[20] || ''),
+        fields: parsedFields,
+      };
+    }
+    // 個別圃場情報（S〜U列）を追加
+    if (row[18]) {
+      const fieldAddr = String(row[18]);
+      const fieldQty = parseFloat(row[19]) || 0;
+      const fieldMemo = String(row[20] || '');
+      // 既存フィールドリストに住所が一致するものがなければ追加
+      const exists = orderMap[key].fields.some(f => f.address === fieldAddr);
+      if (!exists) {
+        const latLng = extractLatLng(fieldAddr);
+        orderMap[key].fields.push({
+          name: fieldAddr.replace(/^日本、/, '').substring(0, 20),
+          address: fieldAddr,
+          qty: fieldQty,
+          service: String(row[14] || ''),
+          lat: latLng ? latLng.lat : null,
+          lng: latLng ? latLng.lng : null,
+        });
+      }
+    }
+    orderMap[key].fieldCount = orderMap[key].fields.length;
+  });
+  return Object.values(orderMap);
+}
+
+// 圃場詳細テキスト（R列）から圃場配列をパース
+// 例: "817: 日本、〒... (35.186,135.131) ／ 241: ..."
+function parseFieldsText(text, defaultService) {
+  if (!text) return [];
+  const parts = text.split('／').map(s => s.trim()).filter(Boolean);
+  return parts.map(part => {
+    const latLng = extractLatLngFromText(part);
+    const name = part.split(':')[0].trim();
+    const addr = part.replace(/\([\d.]+,[\d.]+\)/, '').trim();
+    return {
+      name: name,
+      address: addr,
+      qty: 0,
+      service: defaultService || '',
+      lat: latLng ? latLng.lat : null,
+      lng: latLng ? latLng.lng : null,
+    };
+  });
+}
+
+// テキストから "(lat,lng)" を抽出
+function extractLatLngFromText(text) {
+  const m = text.match(/\(([\d.]+),([\d.]+)\)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+  return null;
+}
+function extractLatLng(text) { return extractLatLngFromText(text); }
+
+async function fetchOrdersFromGAS() {
+  const statusEl = document.getElementById('gasStatus');
+  if (statusEl) { statusEl.textContent = '🔄 Googleスプレッドシートから読み込み中...'; statusEl.style.color='#666'; }
+  try {
+    const url = `${GAS_URL}?action=getOrders&pw=1108&t=${Date.now()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // GASが返す形式に応じて処理
+    let rows = [];
+    if (Array.isArray(data)) {
+      rows = data;
+    } else if (data.orders && Array.isArray(data.orders)) {
+      rows = data.orders;
+    } else if (data.rows && Array.isArray(data.rows)) {
+      rows = data.rows;
+    } else if (data.values && Array.isArray(data.values)) {
+      rows = data.values;
+    }
+
+    // GASが既にオブジェクト形式で返す場合（{name,dateFrom,...}）はそのまま使う
+    let gasOrders = [];
+    if (rows.length > 0 && Array.isArray(rows[0])) {
+      // 2次元配列形式（スプレッドシートの行データ）
+      const dataRows = rows[0][0] === '受付日時' ? rows.slice(1) : rows;
+      gasOrders = convertGasRowsToOrders(dataRows);
+    } else if (rows.length > 0 && typeof rows[0] === 'object') {
+      // オブジェクト配列形式
+      gasOrders = rows;
+    }
+
+    if (gasOrders.length === 0) {
+      if (statusEl) { statusEl.textContent = '⚠️ GASからデータなし。ローカルデータを表示中。'; statusEl.style.color='#e67e22'; }
+      return;
+    }
+
+    // storeのordersをGASデータで上書き
+    const store = getStore();
+    store.orders = gasOrders;
+    saveStore(store);
+    gasLoaded = true;
+
+    if (statusEl) { statusEl.textContent = `✅ ${gasOrders.length}件の発注を読み込みました`; statusEl.style.color='#2e7d32'; }
+    renderStats(); renderOrders(); initMonthFilter();
+  } catch(e) {
+    console.warn('GAS fetch error:', e);
+    if (statusEl) { statusEl.textContent = `⚠️ 通信エラー（${e.message}）。ローカルデータを使用中。`; statusEl.style.color='#c0392b'; }
+  }
+}
 
 // ===== ログイン =====
 function checkPassword() {
@@ -584,6 +727,8 @@ function initAdmin() {
   const store = getStore();
   document.getElementById('inv_number').value = `2026-${String(store.invoiceSeq).padStart(3,'0')}`;
   updateInvoicePreview();
+  // GASからデータを取得（非同期）
+  fetchOrdersFromGAS();
 }
 
 // ===== タブ =====
