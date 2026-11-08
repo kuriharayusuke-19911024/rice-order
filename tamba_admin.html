@@ -218,6 +218,25 @@ textarea{resize:vertical;min-height:60px;}
 }
 .map-filter-btn.active{background:var(--soil);color:var(--straw);border-color:var(--soil);}
 #bulkMap{flex:1;width:100%;min-height:300px;}
+/* 追加 */
+.status-bar{font-size:0.85rem;padding:6px 12px;margin-bottom:10px;border-radius:8px;background:#f5f5f5;color:#666;}
+.badge{display:inline-block;font-size:0.7rem;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap;}
+.b-new{background:#fdf0ea;color:#c85a2a;}.b-ok{background:#e6f4e4;color:#4a6741;}
+.b-done{background:#e4eef6;color:#1a6b8a;}.b-cancel{background:#eee;color:#888;}
+.b-draft{background:#fff6dc;color:#8a6a00;}.b-sent{background:#e4eef6;color:#1a6b8a;}
+.rec-row{display:grid;grid-template-columns:1.6fr 70px 1.4fr 90px auto;gap:6px;align-items:center;margin-bottom:6px;}
+@media(max-width:700px){.rec-row{grid-template-columns:1fr 1fr;}}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+@media(max-width:860px){.two-col{grid-template-columns:1fr;}}
+.muted{color:var(--text-mid);font-size:0.78rem;}
+.small-table{width:100%;font-size:0.78rem;border-collapse:collapse;}
+.small-table th{background:#f5f0e8;padding:6px 8px;text-align:left;white-space:nowrap;}
+.small-table td{padding:6px 8px;border-bottom:1px solid rgba(200,169,110,0.15);vertical-align:top;}
+.num{text-align:right;white-space:nowrap;}
+.warn-box{padding:10px 13px;border-radius:8px;background:#fff6dc;color:#7a5c00;font-size:0.8rem;margin-bottom:12px;line-height:1.6;}
+.modal-overlay label{display:block;margin-top:8px;}
+.header-nav a,.logout-btn{white-space:nowrap;}
+@media(max-width:600px){.header-inner{flex-wrap:wrap;}.header-nav{margin-left:0;flex-wrap:wrap;}}
 </style>
 </head>
 <body>
@@ -228,9 +247,9 @@ textarea{resize:vertical;min-height:60px;}
     <div class="login-logo">🌱</div>
     <div class="login-title">丹波農商 管理者ページ</div>
     <div class="login-sub">パスワードを入力してください</div>
-    <input type="password" class="login-input" id="passwordInput" placeholder="••••" maxlength="10"
-      onkeydown="if(event.key==='Enter')checkPassword()">
-    <button class="login-btn" onclick="checkPassword()">ログイン</button>
+    <input type="password" class="login-input" id="passwordInput" placeholder="••••" maxlength="40"
+      onkeydown="if(event.key==='Enter')login()">
+    <button class="login-btn" id="loginBtn" onclick="login()">ログイン</button>
     <div class="login-error" id="loginError"></div>
   </div>
 </div>
@@ -244,275 +263,246 @@ textarea{resize:vertical;min-height:60px;}
       <nav class="header-nav">
         <a href="tamba_compost_order.html" target="_blank">発注フォーム</a>
         <a href="tamba_soil_tool.html" target="_blank">土壌診断</a>
+        <button class="logout-btn" onclick="loadAll()">再読込</button>
         <button class="logout-btn" onclick="logout()">ログアウト</button>
       </nav>
     </div>
   </header>
 
   <main>
-    <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('orders')">📋 発注管理</button>
-      <button class="tab-btn" onclick="switchTab('proxy')">📝 代行入力</button>
-      <button class="tab-btn" onclick="switchTab('invoice')">🧾 請求書・納品書</button>
-      <button class="tab-btn" onclick="switchTab('inventory')">📦 在庫管理</button>
-      <button class="tab-btn" onclick="switchTab('customers')">👥 顧客管理</button>
-      <button class="tab-btn" onclick="switchTab('prices')">💴 単価設定</button>
+    <div class="status-bar" id="gasStatus">🔄 読み込み中...</div>
+    <div class="warn-box" id="legacyBox" style="display:none;"></div>
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="orders">📋 発注</button>
+      <button class="tab-btn" data-tab="records">🚜 散布実績</button>
+      <button class="tab-btn" data-tab="invoice">🧾 請求書</button>
+      <button class="tab-btn" data-tab="inventory">📦 在庫</button>
+      <button class="tab-btn" data-tab="customers">👥 顧客</button>
+      <button class="tab-btn" data-tab="prices">💴 単価・設定</button>
+      <button class="tab-btn" data-tab="proxy">📝 代行入力</button>
     </div>
 
-    <!-- ===== 発注管理 ===== -->
+    <!-- ===== 発注 ===== -->
     <div class="tab-panel active" id="tab-orders">
-      <div id="gasStatus" style="font-size:0.85rem;padding:6px 12px;margin-bottom:8px;border-radius:8px;background:#f5f5f5;color:#666;">🔄 Googleスプレッドシートから読み込み中...</div>
       <div class="stats-grid" id="statsGrid"></div>
       <div class="card">
         <div class="card-title">📋 発注一覧</div>
         <div class="search-bar">
-          <input type="text" class="search-input" placeholder="名前・作物・住所で検索" oninput="renderOrders(this.value)">
-          <select style="border:1.5px solid rgba(139,94,60,0.22);border-radius:8px;padding:7px 11px;font-size:0.82rem;font-family:'Noto Sans JP',sans-serif;outline:none;" onchange="renderOrders('',this.value)" id="monthFilter">
-            <option value="">すべての月</option>
+          <input type="text" class="search-input" id="orderSearch" placeholder="名前・作物・住所で検索" oninput="renderOrders()">
+          <select class="search-input" style="flex:0 0 auto;min-width:0;" id="orderMonth" onchange="renderOrders()"><option value="">すべての月</option></select>
+          <select class="search-input" style="flex:0 0 auto;min-width:0;" id="orderStatusFilter" onchange="renderOrders()">
+            <option value="open">未完了（未確認・確認済）</option><option value="">すべて（キャンセル以外）</option>
+            <option value="未確認">未確認</option><option value="確認済">確認済</option><option value="散布済">散布済</option><option value="キャンセル">キャンセル</option>
           </select>
           <button class="btn btn-outline btn-sm" onclick="exportOrdersCSV()">📥 CSV</button>
-          <button class="btn btn-green btn-sm" onclick="openBulkMap()">🗺️ 全件を地図で表示</button>
+          <button class="btn btn-green btn-sm" onclick="openBulkMap()">🗺️ 地図</button>
         </div>
         <div class="orders-table-wrap">
           <table class="orders-table">
-            <thead><tr><th>受付日時</th><th>お名前</th><th>合計(t)</th><th>用途</th><th>配送希望</th><th>作業形態</th><th>操作</th></tr></thead>
+            <thead><tr><th>受付日時</th><th>お名前</th><th>合計(t)</th><th>用途</th><th>散布希望</th><th>作業形態</th><th>操作</th></tr></thead>
             <tbody id="ordersTableBody"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- ===== 代行入力 ===== -->
-    <div class="tab-panel" id="tab-proxy">
+    <!-- ===== 散布実績 ===== -->
+    <div class="tab-panel" id="tab-records">
       <div class="card">
-        <div class="card-title">👤 お客様情報</div>
-        <div class="field" style="margin-bottom:14px;">
-          <label>過去のお客様から選ぶ</label>
-          <div class="customer-select-wrap">
-            <input type="text" id="customerSearch" placeholder="名前で検索" oninput="searchCustomers(this.value)" autocomplete="off">
-            <div class="customer-dropdown" id="customerDropdown"></div>
-          </div>
+        <div class="card-title">🚜 散布・出荷した記録を登録</div>
+        <p class="muted" style="margin-bottom:10px;">売上は「散布した（お客さんが持ち帰った）時点」でここに記録します。登録すると選んだ拠点の在庫から自動で引きます。月末の請求書はこの記録から作ります。</p>
+        <div class="form-grid-3" style="margin-bottom:10px;">
+          <div class="field"><label>散布日<span class="req">*</span></label><input type="date" id="r_date"></div>
+          <div class="field"><label>取引先<span class="req">*</span></label><input type="text" id="r_customer" list="customerNames" oninput="onRecordCustomer()" placeholder="お名前"></div>
+          <div class="field"><label>担当</label><input type="text" id="r_staff" list="staffNames" placeholder="直人 / 龍之輔"></div>
+          <div class="field"><label>出荷拠点（在庫を引く場所）</label><select id="r_location"></select></div>
+          <div class="field"><label>関連する発注</label><select id="r_order"><option value="">（なし）</option></select></div>
+          <div class="field"><label>メモ</label><input type="text" id="r_memo"></div>
         </div>
-        <div class="form-grid">
-          <div class="field"><label>お名前<span class="req">*</span></label><input type="text" id="p_name" placeholder="山田 太郎"></div>
-          <div class="field"><label>電話番号</label><input type="tel" id="p_phone" placeholder="079-000-0000"></div>
-          <div class="field span2"><label>メールアドレス</label><input type="email" id="p_email" placeholder="yamada@example.com"></div>
+        <div class="muted" style="margin-bottom:4px;">散布先・数量・作業形態・単価（税込・円/t）</div>
+        <div id="recordLines"></div>
+        <button class="btn btn-outline btn-sm" onclick="addRecordLine()">＋ 行を追加</button>
+        <div style="margin-top:10px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+          <label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="r_markDone" checked> 関連する発注を「散布済」にする</label>
+          <span style="margin-left:auto;font-size:0.86rem;">合計 <strong id="r_totalT">0</strong> t ／ <strong id="r_totalY" style="color:var(--accent);">¥0</strong>（税込）</span>
+          <button class="btn btn-primary" id="r_submit" onclick="submitRecords()">💾 実績を登録</button>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">🌾 散布計画</div>
-        <div class="form-grid" style="margin-bottom:14px;">
-          <div class="field"><label>用途</label>
-            <select id="p_usage"><option>水稲</option><option>野菜</option><option>果樹</option><option>その他</option></select></div>
-          <div class="field"><label>野菜の種類</label><input type="text" id="p_vegtype" placeholder="黒豆、にんじん"></div>
+        <div class="card-title">📒 実績一覧</div>
+        <div class="search-bar">
+          <select class="search-input" style="flex:0 0 auto;min-width:0;" id="recMonth" onchange="renderRecords()"></select>
+          <input type="text" class="search-input" id="recSearch" placeholder="取引先・散布先で検索" oninput="renderRecords()">
+          <button class="btn btn-outline btn-sm" onclick="exportRecordsCSV()">📥 CSV</button>
         </div>
-        <div class="field-rows" id="proxyFieldRows"></div>
-        <button class="btn btn-outline btn-sm" onclick="addProxyField()">＋ 圃場を追加</button>
-        <div style="margin-top:10px;padding:10px 13px;background:#f5f0e8;border-radius:8px;font-size:0.84rem;color:var(--soil);text-align:right;">
-          合計：<strong id="proxyTotalQty" style="font-size:1.05rem;color:var(--leaf);">0.0</strong> トン　
-          金額目安：<strong id="proxyTotalPrice" style="color:var(--accent);">¥ ---</strong>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">📅 配送・オプション</div>
-        <div class="form-grid">
-          <div class="field"><label>配送希望開始日</label><input type="date" id="p_dateFrom"></div>
-          <div class="field"><label>配送希望終了日</label><input type="date" id="p_dateTo"></div>
-          <div class="field"><label>有機JAS</label>
-            <select id="p_organicJAS"><option value="なし">なし</option><option value="希望">希望</option></select></div>
-          <div class="field"><label>珪カル資材</label>
-            <select id="p_keical"><option value="なし">なし</option><option value="希望">希望</option></select></div>
-          <div class="field span2"><label>備考</label><textarea id="p_remarks" placeholder="特記事項など"></textarea></div>
-        </div>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="submitProxyOrder()">📨 発注を登録</button>
-        <button class="btn btn-green" onclick="generateInvoiceFromProxy()">🧾 請求書を作成</button>
-        <button class="btn btn-outline" onclick="clearProxyForm()">クリア</button>
+        <div id="recSummary" style="margin-bottom:12px;"></div>
+        <div class="orders-table-wrap" id="recordsTable"></div>
       </div>
     </div>
 
-    <!-- ===== 請求書・納品書 ===== -->
+    <!-- ===== 請求書 ===== -->
     <div class="tab-panel" id="tab-invoice">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
-        <div>
-          <div class="card">
-            <div class="card-title">🧾 書類設定</div>
-            <div class="form-grid" style="margin-bottom:12px;">
-              <div class="field"><label>書類の種類</label>
-                <select id="inv_type" onchange="updateInvoicePreview()">
-                  <option value="請求書">請求書</option>
-                  <option value="納品書">納品書</option>
-                  <option value="領収書">領収書</option>
-                  <option value="見積書">見積書</option>
-                </select></div>
-              <div class="field"><label>発行日</label><input type="date" id="inv_date" oninput="updateInvoicePreview()"></div>
-              <div class="field"><label>宛先<span class="req">*</span></label><input type="text" id="inv_customer" placeholder="山田 太郎" oninput="updateInvoicePreview()"></div>
-              <div class="field"><label>書類番号</label><input type="text" id="inv_number" placeholder="2026-001" oninput="updateInvoicePreview()"></div>
-              <div class="field"><label>支払期限</label><input type="date" id="inv_due" oninput="updateInvoicePreview()"></div>
-              <div class="field"><label>税率</label>
-                <select id="inv_taxrate" onchange="updateInvoiceCalc()">
-                  <option value="0.10">10%</option>
-                  <option value="0.08">8%（軽減）</option>
-                  <option value="0">非課税</option>
-                </select></div>
-            </div>
-            <div style="margin-bottom:10px;">
-              <div style="font-size:0.78rem;font-weight:600;color:var(--soil);margin-bottom:6px;">明細</div>
-              <div id="invItems"></div>
-              <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addInvItem()">＋ 明細を追加</button>
-            </div>
-            <div style="padding:10px 13px;background:#f5f0e8;border-radius:8px;font-size:0.83rem;">
-              <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span>小計</span><span id="inv_subtotal">¥0</span></div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:3px;"><span>消費税</span><span id="inv_tax">¥0</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:700;color:var(--soil);"><span>合計</span><span id="inv_total">¥0</span></div>
-            </div>
-            <div class="field" style="margin-top:10px;"><label>備考・振込先</label>
-              <textarea id="inv_note" placeholder="お振込先：〇〇銀行 〇〇支店 普通 1234567&#10;口座名義：（株）丹波農商" oninput="updateInvoicePreview()"></textarea></div>
-            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
-              <button class="btn btn-primary" onclick="printInvoice()">🖨 印刷・PDF保存</button>
-              <button class="btn btn-green btn-sm" onclick="saveInvoiceRecord()">💾 発行記録を保存</button>
-            </div>
-          </div>
-
-          <!-- 発行済み記録 -->
-          <div class="card">
-            <div class="card-title">📂 発行済み書類一覧</div>
-            <div id="invoiceRecords" style="font-size:0.82rem;"></div>
-          </div>
-        </div>
-
-        <!-- プレビュー -->
+      <div class="two-col">
         <div class="card">
-          <div class="card-title">👁 プレビュー</div>
-          <div class="invoice-preview" id="invoicePreview"></div>
+          <div class="card-title">🧾 散布実績から請求書を作る</div>
+          <div class="form-grid" style="margin-bottom:10px;">
+            <div class="field"><label>対象月</label><select id="i_month" onchange="renderInvoiceBuilder()"></select></div>
+            <div class="field"><label>取引先</label><select id="i_customer" onchange="renderInvoiceBuilder()"></select></div>
+            <div class="field"><label>発行日</label><input type="date" id="i_date" oninput="renderInvoiceBuilder()"></div>
+            <div class="field"><label>支払期限</label><input type="date" id="i_due" oninput="renderInvoiceBuilder()"></div>
+          </div>
+          <div id="i_records"></div>
+          <div class="muted" style="margin:10px 0 4px;">追加の明細（ケイカル・割増・値引きなど。値引きはマイナス金額）</div>
+          <div id="i_extra"></div>
+          <button class="btn btn-outline btn-sm" onclick="addExtraLine()">＋ 明細を追加</button>
+          <div id="i_discountHint" style="margin-top:8px;"></div>
+          <div class="field" style="margin-top:10px;"><label>メモ（請求書に印字）</label><textarea id="i_memo"></textarea></div>
+          <div style="margin-top:10px;padding:10px 13px;background:#f5f0e8;border-radius:8px;font-size:0.86rem;display:flex;justify-content:space-between;">
+            <span>合計（税込）</span><strong id="i_total">¥0</strong>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+            <button class="btn btn-outline" onclick="previewBuilder()">👁 印刷プレビュー</button>
+            <button class="btn btn-primary" id="i_create" onclick="createInvoice()">💾 請求書を作成（下書き）</button>
+          </div>
+          <p class="muted" style="margin-top:8px;">作成した請求書は「下書き」になります。お客さんへ送る前に栗原さんが確認して「栗原OK」を押してください。OK前は「送付済」にできません。</p>
+        </div>
+        <div class="card">
+          <div class="card-title">📂 請求書一覧</div>
+          <div class="search-bar">
+            <select class="search-input" style="flex:0 0 auto;min-width:0;" id="invStatusFilter" onchange="renderInvoices()">
+              <option value="">すべて</option><option>下書き</option><option>栗原OK</option><option>送付済</option><option>入金済</option>
+            </select>
+          </div>
+          <div id="invoiceList"></div>
         </div>
       </div>
     </div>
 
-    <!-- ===== 在庫管理 ===== -->
+    <!-- ===== 在庫 ===== -->
     <div class="tab-panel" id="tab-inventory">
-
-      <!-- 拠点サマリー -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
-        <div class="stat-card" style="border-left:4px solid var(--accent);">
-          <div class="stat-label">🏔 前山 現在庫</div>
-          <div class="stat-value" id="maeyama_now">−<span class="stat-unit">t</span></div>
-          <div class="stat-sub" id="maeyama_4w">4週後残量：−</div>
+      <div class="stats-grid" id="stockCards"></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">✏️ 在庫を動かす</div>
+          <p class="muted" style="margin-bottom:10px;">散布の出庫は「散布実績」を登録すると自動で入ります。ここは製造完成（入庫）・棚卸し・拠点間の移動に使います。</p>
+          <div class="form-grid">
+            <div class="field"><label>種別</label><select id="s_type" onchange="onStockType()">
+              <option value="add">入庫（製造完成など）</option><option value="sub">出庫（散布以外）</option>
+              <option value="set">棚卸し（実際の量に直す）</option><option value="transfer">拠点間の移動</option></select></div>
+            <div class="field"><label id="s_locLabel">拠点</label><select id="s_location"></select></div>
+            <div class="field" id="s_toWrap" style="display:none;"><label>移動先</label><select id="s_to"></select></div>
+            <div class="field"><label id="s_qtyLabel">数量（t）</label><input type="number" id="s_qty" step="0.1" min="0"></div>
+            <div class="field span2"><label>理由・メモ</label><input type="text" id="s_reason"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="submitStock()">💾 反映</button>
         </div>
-        <div class="stat-card" style="border-left:4px solid var(--leaf);">
-          <div class="stat-label">🌿 夜久野 現在庫</div>
-          <div class="stat-value" id="yakuno_now">−<span class="stat-unit">t</span></div>
-          <div class="stat-sub" id="yakuno_4w">4週後残量：−</div>
+        <div class="card">
+          <div class="card-title">📅 製造完成予定と6週間の見通し</div>
+          <div id="prodRows"></div>
+          <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addProdRow()">＋ 製造予定を追加</button>
+          <button class="btn btn-primary btn-sm" style="margin-top:6px;" onclick="saveProd()">💾 保存</button>
+          <p class="muted" style="margin:10px 0 6px;">出荷予定 = 確認済で未散布の発注（散布希望開始日の週・確認時に選んだ拠点）</p>
+          <div id="forecast"></div>
         </div>
       </div>
-
-      <!-- 前山 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;">
-        <div>
-          <div class="card">
-            <div class="card-title" style="color:var(--accent);">🏔 前山 在庫・製造スケジュール</div>
-            <div class="field" style="margin-bottom:12px;">
-              <label>現在の在庫量（トン）</label>
-              <input type="number" id="inv_maeyama" placeholder="例：60" min="0" step="0.5" oninput="updateInventoryChart()" value="60">
-            </div>
-            <div style="font-size:0.78rem;font-weight:600;color:var(--soil);margin-bottom:8px;">週別 製造完成予定</div>
-            <div id="prodScheduleRows_maeyama"></div>
-            <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addProdRow('maeyama')">＋ 製造予定を追加</button>
-            <div style="margin-top:12px;">
-              <button class="btn btn-primary btn-sm" onclick="saveInventory()">💾 保存</button>
-            </div>
-          </div>
-        </div>
-        <div>
-          <div class="card">
-            <div class="card-title" style="color:var(--accent);">📊 前山 週別シミュレーション</div>
-            <div class="inv-legend">
-              <span><span class="inv-legend-dot" style="background:var(--accent);"></span>出荷予定</span>
-              <span><span class="inv-legend-dot" style="background:var(--accent);opacity:0.4;"></span>製造完成</span>
-            </div>
-            <div class="inventory-bar-wrap" id="inventoryChart_maeyama"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 夜久野 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
-        <div>
-          <div class="card">
-            <div class="card-title" style="color:var(--leaf);">🌿 夜久野 在庫・製造スケジュール</div>
-            <div class="field" style="margin-bottom:12px;">
-              <label>現在の在庫量（トン）</label>
-              <input type="number" id="inv_yakuno" placeholder="例：0" min="0" step="0.5" oninput="updateInventoryChart()" value="0">
-            </div>
-            <div style="font-size:0.78rem;font-weight:600;color:var(--soil);margin-bottom:8px;">週別 製造完成予定</div>
-            <div id="prodScheduleRows_yakuno"></div>
-            <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addProdRow('yakuno')">＋ 製造予定を追加</button>
-            <div style="margin-top:12px;">
-              <button class="btn btn-primary btn-sm" onclick="saveInventory()">💾 保存</button>
-            </div>
-          </div>
-        </div>
-        <div>
-          <div class="card">
-            <div class="card-title" style="color:var(--leaf);">📊 夜久野 週別シミュレーション</div>
-            <div class="inv-legend">
-              <span><span class="inv-legend-dot" style="background:var(--leaf);"></span>出荷予定</span>
-              <span><span class="inv-legend-dot" style="background:var(--leaf);opacity:0.4;"></span>製造完成</span>
-            </div>
-            <div class="inventory-bar-wrap" id="inventoryChart_yakuno"></div>
-          </div>
-        </div>
+      <div class="card">
+        <div class="card-title">📜 在庫履歴（新しい順・100件）</div>
+        <div class="orders-table-wrap" id="stockHistory"></div>
       </div>
     </div>
 
-    <!-- ===== 顧客管理 ===== -->
+    <!-- ===== 顧客 ===== -->
     <div class="tab-panel" id="tab-customers">
       <div class="card">
         <div class="card-title">👥 顧客一覧</div>
+        <p class="muted" style="margin-bottom:10px;">発注と散布実績から自動で作ります。LINE名・特別単価・メモは「編集」で保存できます（全端末で共有）。</p>
         <div class="search-bar">
-          <input type="text" class="search-input" placeholder="名前・電話で検索" oninput="renderCustomers(this.value)">
+          <input type="text" class="search-input" id="custSearch" placeholder="名前・電話で検索" oninput="renderCustomers()">
           <button class="btn btn-outline btn-sm" onclick="exportCustomersCSV()">📥 CSV</button>
         </div>
-        <div id="customerList"></div>
+        <div class="orders-table-wrap" id="customerList"></div>
       </div>
     </div>
 
-    <!-- ===== 単価設定 ===== -->
+    <!-- ===== 単価・設定 ===== -->
     <div class="tab-panel" id="tab-prices">
       <div class="card">
         <div class="card-title">💴 作業形態別単価（税込・円/トン）</div>
-        <p style="font-size:0.76rem;color:var(--text-mid);margin-bottom:12px;">変更後は「保存」を押してください。次回から自動計算に反映されます。</p>
+        <p class="muted" style="margin-bottom:12px;">ここで保存した単価は全端末で共有され、散布実績の単価の初期値になります（登録済みの実績・請求書の金額は変わりません）。</p>
         <table class="price-table">
-          <thead><tr><th>作業形態</th><th>単価（円/t）</th><th>備考</th></tr></thead>
+          <thead><tr><th>作業形態</th><th>単価（円/t）</th><th>在庫から引く</th><th>備考</th><th></th></tr></thead>
           <tbody id="priceTableBody"></tbody>
         </table>
-        <div style="margin-top:12px;display:flex;gap:8px;">
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="addPriceRow()">＋ 行を追加</button>
           <button class="btn btn-primary" onclick="savePrices()">💾 単価を保存</button>
-          <button class="btn btn-outline" onclick="resetPrices()">リセット</button>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">📊 数量割引・少量割増</div>
+        <div class="card-title">📊 数量割引</div>
+        <p class="muted" style="margin-bottom:10px;">条件に当てはまる請求書を作るときに「値引きを入れますか？」と案内します（自動では入れません）。</p>
         <div id="discountRows"></div>
         <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addDiscountRow()">＋ 条件を追加</button>
-        <div style="margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="saveDiscounts()">💾 割引設定を保存</button></div>
+        <button class="btn btn-primary btn-sm" style="margin-top:6px;" onclick="saveDiscounts()">💾 保存</button>
+      </div>
+      <div class="card">
+        <div class="card-title">🏠 在庫の拠点</div>
+        <div class="field"><label>拠点名（カンマ区切り）</label><input type="text" id="locationsInput"></div>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="saveLocations()">💾 保存</button>
+      </div>
+    </div>
+
+    <!-- ===== 代行入力 ===== -->
+    <div class="tab-panel" id="tab-proxy">
+      <div class="card">
+        <div class="card-title">👤 お客様情報（電話・LINEで受けた発注）</div>
+        <div class="form-grid">
+          <div class="field"><label>お名前<span class="req">*</span></label><input type="text" id="p_name" list="customerNames" oninput="onProxyName()"></div>
+          <div class="field"><label>電話番号</label><input type="tel" id="p_phone"></div>
+          <div class="field"><label>メールアドレス</label><input type="email" id="p_email"></div>
+          <div class="field"><label>LINE名</label><input type="text" id="p_line"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🌾 圃場</div>
+        <div class="form-grid" style="margin-bottom:12px;">
+          <div class="field"><label>用途</label><select id="p_usage"><option>水稲</option><option>野菜</option><option>果樹</option><option>その他</option></select></div>
+          <div class="field"><label>野菜の種類</label><input type="text" id="p_vegtype"></div>
+        </div>
+        <div id="proxyFieldRows"></div>
+        <button class="btn btn-outline btn-sm" onclick="addProxyField()">＋ 圃場を追加</button>
+        <div style="margin-top:10px;padding:10px 13px;background:#f5f0e8;border-radius:8px;font-size:0.84rem;text-align:right;">
+          合計：<strong id="proxyTotalQty">0.0</strong> トン　金額目安（税込）：<strong id="proxyTotalPrice" style="color:var(--accent);">¥ ---</strong>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 散布希望・オプション</div>
+        <div class="form-grid">
+          <div class="field"><label>希望開始日</label><input type="date" id="p_dateFrom"></div>
+          <div class="field"><label>希望終了日</label><input type="date" id="p_dateTo"></div>
+          <div class="field"><label>有機JAS</label><select id="p_organicJAS"><option value="なし">なし</option><option value="希望">希望</option></select></div>
+          <div class="field"><label>珪カル資材</label><select id="p_keical"><option value="なし">なし</option><option value="50kg">50kg</option><option value="100kg">100kg</option></select></div>
+          <div class="field span2"><label>備考</label><textarea id="p_remarks"></textarea></div>
+          <label class="span2" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" id="p_notify"> お客さんに受付メールを送る（メールアドレスがある場合）</label>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="p_submit" onclick="submitProxyOrder()">📨 発注を登録（スプレッドシートに保存）</button>
+        <button class="btn btn-outline" onclick="clearProxyForm()">クリア</button>
       </div>
     </div>
   </main>
 </div>
 
-<!-- モーダル -->
-<div class="modal-overlay" id="orderModal">
+<datalist id="customerNames"></datalist>
+<datalist id="staffNames"><option value="直人"><option value="龍之輔"><option value="栗原"></datalist>
+
+<!-- 汎用モーダル -->
+<div class="modal-overlay" id="modal">
   <div class="modal-box">
-    <div class="modal-title" id="modalTitle">発注詳細</div>
+    <div class="modal-title" id="modalTitle"></div>
     <div id="modalContent"></div>
-    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
-      <button class="btn btn-primary btn-sm" id="modalConfirmBtn" onclick="invoiceFromModal()" style="background:linear-gradient(135deg,#4a6741,#6b9162);">✅ 発注を確認する</button>
-      <button class="btn btn-green btn-sm" onclick="event.stopPropagation();invoiceFromOrder(_modalOrderId,'請求書',true);closeModal()">🖨 請求書を印刷</button>
-      <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();invoiceFromOrder(_modalOrderId,'納品書',true);closeModal()">📦 納品書を印刷</button>
-      <button class="btn btn-outline btn-sm" onclick="closeModal()">閉じる</button>
-    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;" id="modalButtons"></div>
   </div>
 </div>
 
@@ -521,12 +511,10 @@ textarea{resize:vertical;min-height:60px;}
   <div class="map-modal-box">
     <div class="map-modal-header">
       <span style="font-size:1.4rem;">🗺️</span>
-      <div class="map-modal-title">散布予定地 一括マップ</div>
+      <div class="map-modal-title">散布予定地 一括マップ（表示中の発注）</div>
       <button class="map-modal-close" onclick="closeBulkMap()">✕ 閉じる</button>
     </div>
-    <div class="map-modal-filters" id="bulkMapFilters">
-      <button class="map-filter-btn active" onclick="filterBulkMap('all',this)">全件表示</button>
-    </div>
+    <div class="map-modal-filters" id="bulkMapFilters"></div>
     <div id="bulkMap"></div>
   </div>
 </div>
@@ -534,689 +522,29 @@ textarea{resize:vertical;min-height:60px;}
 <div class="toast" id="toast"></div>
 
 <script>
-const PASSWORD = '1108';
-const STORAGE_KEY = 'tamba_admin_v2';
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyb0FqyJm6nmEuCcrbT5idhrX2Uq6jwxrMnl9gjKZ1Bqe_1L0Zy37wxHkO7-ZushUoW/exec';
-let gasLoaded = false;
+// ============================================================
+// 設定
+// ============================================================
+// 発注フォームと同じGAS（スプレッドシート「堆肥発注管理」の Apps Script）
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyC7k3wKrr2p_UJRBzgG0dVi7hOOjWpjLHdPZBBx4jJ47eS-6h9ZnIeXKtHe-kNzmmVIA/exec';
+const MAPS_API_KEY = 'AIzaSyDU1llWB4bNzM_N2ZZE7vWVV5W-2Ag2bfk'; // Google Cloud でHTTPリファラ制限をかけること
+const PW_KEY = 'tamba_admin_pw';
+const LEGACY_KEY = 'tamba_admin_v2';
 
-// 単価デフォルト
+// 単価（税込・円/t）。管理設定に保存がなければこれを使う
 const DEFAULT_PRICES = [
-  {label:'フルサービス（運搬＋散布）', price:7500, note:'運搬・散布込み'},
-  {label:'ダンプ下ろし（運搬のみ）',   price:5200, note:'運搬のみ'},
-  {label:'積込み付き（スタッフ対応）', price:4200, note:'スタッフ積込み'},
-  {label:'自分で取りに来る',           price:3000, note:'積込のみ'},
+  {label:'フルサービス（運搬＋散布）', price:7500, stock:true, note:'運搬・散布込み'},
+  {label:'ダンプ下ろし（運搬のみ）',   price:5200, stock:true, note:'運搬のみ'},
+  {label:'積込み付き（スタッフ対応）', price:4200, stock:true, note:'スタッフ積込み'},
+  {label:'自分で取りに来る',           price:3000, stock:true, note:'積込のみ'},
+  {label:'森下農園（フル＋朝来＋ケイカル）', price:9500, stock:true, note:'7,500＋朝来1,000＋ケイカル1,000'},
+  {label:'散布のみ（持ち込み堆肥）',   price:0,    stock:false, note:'神戸畜産など。堆肥売上0・在庫は引かない'},
 ];
+const DEFAULT_DISCOUNTS = [{minTon:10, rate:5, note:'10t以上5%引き'}];
+const DEFAULT_LOCATIONS = ['前山','夜久野','朝来'];
 const MIN_LOT = 4.5;
-const BASE_LAT = 35.2178, BASE_LNG = 135.0456;
-const DIST_RULES = [{min:0,max:10,add:0},{min:10,max:15,add:1000},{min:15,max:20,add:2000},{min:20,max:Infinity,add:null}];
+const SVC_OPTS = ['フルサービス（運搬＋散布）','ダンプ下ろし（運搬のみ）','積込み付き（スタッフ対応）','自分で取りに来る'];
 
-function getStore() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || initStore(); } catch { return initStore(); }
-}
-function initStore() {
-  return {customers:[],orders:[],invoiceRecords:[],prices:DEFAULT_PRICES,
-    discounts:[{minTon:10,rate:5,note:'10t以上5%引き'}],
-    inventory:{current:0,prodSchedule:[]},invoiceSeq:1};
-}
-function saveStore(s) { localStorage.setItem(STORAGE_KEY,JSON.stringify(s)); }
-
-// ===== GAS連携 =====
-// スプレッドシート「発注一覧」の行データ（1行=1圃場）をadminのorders形式に変換
-// 列: A=受付日時,B=氏名,C=電話,D=メール,E=圃場No,F=合計数量(t),G=堆肥種類,
-//     H=圃場数量,I=圃場数量2,J=用途,K=野菜種類,L=前作情報,M=有機JAS,N=珪カル,
-//     O=サービス種別,P=配送希望開始,Q=配送希望終了,R=圃場詳細テキスト,
-//     S=個別住所,T=個別数量,U=個別備考
-function convertGasRowsToOrders(rows) {
-  const orderMap = {};
-  rows.forEach(row => {
-    if (!row[1]) return; // 氏名なし行はスキップ
-    const key = `${row[0]}_${row[1]}`; // 受付日時+氏名でグループ化
-    if (!orderMap[key]) {
-      // フィールド詳細テキスト(R列)から圃場情報をパース
-      const fieldsText = String(row[17] || '');
-      const parsedFields = parseFieldsText(fieldsText, row[14]);
-      orderMap[key] = {
-        id: key,
-        date: String(row[0] || ''),
-        name: String(row[1] || ''),
-        phone: String(row[2] || ''),
-        email: String(row[3] || ''),
-        compostType: String(row[6] || '牛ふん堆肥'),
-        totalQty: parseFloat(row[19] || row[5]) || 0,
-        fieldCount: 0,
-        usage: String(row[9] || ''),
-        vegType: String(row[10] || ''),
-        prevCrop: String(row[11] || ''),
-        organicJas: String(row[12] || ''),
-        silicaLime: String(row[13] || ''),
-        service: String(row[14] || ''),
-        dateFrom: String(row[15] || ''),
-        dateTo: String(row[16] || ''),
-        memo: String(row[20] || ''),
-        fields: parsedFields,
-      };
-    }
-    // 個別圃場情報（S〜U列）を追加
-    if (row[18]) {
-      const fieldAddr = String(row[18]);
-      const fieldQty = parseFloat(row[19]) || 0;
-      const fieldMemo = String(row[20] || '');
-      // 既存フィールドリストに住所が一致するものがなければ追加
-      const exists = orderMap[key].fields.some(f => f.address === fieldAddr);
-      if (!exists) {
-        const latLng = extractLatLng(fieldAddr);
-        orderMap[key].fields.push({
-          name: fieldAddr.replace(/^日本、/, '').substring(0, 20),
-          address: fieldAddr,
-          qty: fieldQty,
-          service: String(row[14] || ''),
-          lat: latLng ? latLng.lat : null,
-          lng: latLng ? latLng.lng : null,
-        });
-      }
-    }
-    orderMap[key].fieldCount = orderMap[key].fields.length;
-  });
-  return Object.values(orderMap);
-}
-
-// 圃場詳細テキスト（R列）から圃場配列をパース
-// 例: "817: 日本、〒... (35.186,135.131) ／ 241: ..."
-function parseFieldsText(text, defaultService) {
-  if (!text) return [];
-  const parts = text.split('／').map(s => s.trim()).filter(Boolean);
-  return parts.map(part => {
-    const latLng = extractLatLngFromText(part);
-    const name = part.split(':')[0].trim();
-    const addr = part.replace(/\([\d.]+,[\d.]+\)/, '').trim();
-    return {
-      name: name,
-      address: addr,
-      qty: 0,
-      service: defaultService || '',
-      lat: latLng ? latLng.lat : null,
-      lng: latLng ? latLng.lng : null,
-    };
-  });
-}
-
-// テキストから "(lat,lng)" を抽出
-function extractLatLngFromText(text) {
-  const m = text.match(/\(([\d.]+),([\d.]+)\)/);
-  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-  return null;
-}
-function extractLatLng(text) { return extractLatLngFromText(text); }
-
-// JSONP方式でGASからデータ取得（CORSを回避）
-function fetchOrdersFromGAS() {
-  const statusEl = document.getElementById('gasStatus');
-  if (statusEl) { statusEl.textContent = '🔄 Googleスプレッドシートから読み込み中...'; statusEl.style.color='#666'; }
-
-  const callbackName = 'gasCallback_' + Date.now();
-  const script = document.createElement('script');
-  const timeoutId = setTimeout(() => {
-    cleanup();
-    console.warn('GAS JSONP timeout');
-    if (statusEl) { statusEl.textContent = '⚠️ タイムアウト。ローカルデータを使用中。'; statusEl.style.color='#c0392b'; }
-  }, 15000);
-
-  function cleanup() {
-    clearTimeout(timeoutId);
-    delete window[callbackName];
-    if (script.parentNode) script.parentNode.removeChild(script);
-  }
-
-  window[callbackName] = function(data) {
-    cleanup();
-    try {
-      if (data.error) throw new Error(data.error);
-
-      let rows = [];
-      if (Array.isArray(data)) {
-        rows = data;
-      } else if (data.orders && Array.isArray(data.orders)) {
-        rows = data.orders;
-      } else if (data.rows && Array.isArray(data.rows)) {
-        rows = data.rows;
-      } else if (data.values && Array.isArray(data.values)) {
-        rows = data.values;
-      }
-
-      let gasOrders = [];
-      if (rows.length > 0 && Array.isArray(rows[0])) {
-        const dataRows = rows[0][0] === '受付日時' ? rows.slice(1) : rows;
-        gasOrders = convertGasRowsToOrders(dataRows);
-      } else if (rows.length > 0 && typeof rows[0] === 'object') {
-        gasOrders = rows;
-      }
-
-      if (gasOrders.length === 0) {
-        if (statusEl) { statusEl.textContent = '⚠️ GASからデータなし。ローカルデータを表示中。'; statusEl.style.color='#e67e22'; }
-        return;
-      }
-
-      const store = getStore();
-      store.orders = gasOrders;
-      saveStore(store);
-      gasLoaded = true;
-      if (statusEl) { statusEl.textContent = `✅ ${gasOrders.length}件の発注を読み込みました`; statusEl.style.color='#2e7d32'; }
-      renderStats(); renderOrders(); initMonthFilter();
-    } catch(e) {
-      console.warn('GAS data error:', e);
-      if (statusEl) { statusEl.textContent = `⚠️ データエラー（${e.message}）。ローカルデータを使用中。`; statusEl.style.color='#c0392b'; }
-    }
-  };
-
-  script.onerror = function() {
-    cleanup();
-    if (statusEl) { statusEl.textContent = '⚠️ GAS接続エラー。ローカルデータを使用中。'; statusEl.style.color='#c0392b'; }
-  };
-
-  script.src = `${GAS_URL}?action=getOrders&pw=1108&callback=${callbackName}&t=${Date.now()}`;
-  document.head.appendChild(script);
-}
-
-// ===== ログイン =====
-function checkPassword() {
-  if(document.getElementById('passwordInput').value===PASSWORD) {
-    document.getElementById('loginScreen').style.display='none';
-    document.getElementById('adminScreen').style.display='block';
-    initAdmin();
-  } else {
-    document.getElementById('loginError').textContent='パスワードが違います';
-    document.getElementById('passwordInput').value='';
-  }
-}
-function logout() {
-  document.getElementById('adminScreen').style.display='none';
-  document.getElementById('loginScreen').style.display='flex';
-  document.getElementById('passwordInput').value='';
-}
-
-function initAdmin() {
-  renderStats(); renderOrders(); initMonthFilter();
-  initProxyForm(); initInvItems(); initPriceTable();
-  renderInvoiceRecords(); renderCustomers(); initInventory();
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('p_dateFrom').value = today;
-  document.getElementById('inv_date').value = today;
-  const store = getStore();
-  document.getElementById('inv_number').value = `2026-${String(store.invoiceSeq).padStart(3,'0')}`;
-  updateInvoicePreview();
-  // GASからデータを取得（非同期）
-  fetchOrdersFromGAS();
-}
-
-// ===== タブ =====
-function switchTab(tab) {
-  const tabs = ['orders','proxy','invoice','inventory','customers','prices'];
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',tabs[i]===tab));
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById(`tab-${tab}`).classList.add('active');
-  if(tab==='orders'){renderOrders();renderStats();}
-  if(tab==='customers') renderCustomers();
-  if(tab==='inventory') updateInventoryChart();
-  if(tab==='invoice') updateInvoicePreview();
-}
-
-// ===== トースト =====
-function showToast(msg,dur=3500) {
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),dur);
-}
-
-// ===== 地図一括表示 =====
-const MAPS_API_KEY = 'AIzaSyDU1llWB4bNzM_N2ZZE7vWVV5W-2Ag2bfk';
-let bulkMapInstance = null;
-let bulkMarkers = [];
-let allBulkData = [];
-const FARMER_COLORS = [
-  '#c85a2a','#4a6741','#1a6b8a','#7a4098','#b5860d',
-  '#1a7a5e','#8a1a1a','#2a5a8a','#5c6b1a','#6b2a5c'
-];
-
-function openBulkMap() {
-  const store = getStore();
-  allBulkData = [];
-  const farmerNames = [];
-  store.orders.forEach(o => {
-    if (!farmerNames.includes(o.name)) farmerNames.push(o.name);
-    (o.fields||[]).forEach(f => {
-      if (f.lat && f.lng) {
-        allBulkData.push({
-          name: o.name, fieldName: f.name||'圃場', qty: f.qty,
-          service: f.service, lat: parseFloat(f.lat), lng: parseFloat(f.lng),
-          address: f.address||'', dateFrom: o.dateFrom, dateTo: o.dateTo,
-          farmerIdx: farmerNames.indexOf(o.name),
-        });
-      }
-    });
-  });
-
-  if (allBulkData.length === 0) {
-    showToast('⚠️ 地図ピンが設定された発注がありません');
-    return;
-  }
-
-  // フィルターボタン生成
-  const filtersEl = document.getElementById('bulkMapFilters');
-  filtersEl.innerHTML = `<button class="map-filter-btn active" onclick="filterBulkMap('all',this)">全件（${allBulkData.length}か所）</button>`;
-  farmerNames.forEach((name, i) => {
-    const count = allBulkData.filter(d => d.name === name).length;
-    const color = FARMER_COLORS[i % FARMER_COLORS.length];
-    filtersEl.innerHTML += `<button class="map-filter-btn" onclick="filterBulkMap('${name}',this)"
-      style="border-color:${color};"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:5px;vertical-align:middle;"></span>${name}様（${count}か所）</button>`;
-  });
-
-  document.getElementById('bulkMapModal').classList.add('show');
-
-  if (!window.google) {
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&language=ja`;
-    script.onload = () => initBulkMap(allBulkData);
-    document.head.appendChild(script);
-  } else {
-    setTimeout(() => initBulkMap(allBulkData), 100);
-  }
-}
-
-function initBulkMap(data) {
-  const mapEl = document.getElementById('bulkMap');
-  bulkMapInstance = new google.maps.Map(mapEl, {
-    center: { lat: 35.2178, lng: 135.0456 }, zoom: 11,
-    mapTypeId: 'hybrid', gestureHandling: 'greedy',
-    zoomControl: true, mapTypeControl: false, streetViewControl: false, fullscreenControl: true,
-  });
-  renderBulkMarkers(data);
-}
-
-function renderBulkMarkers(data) {
-  bulkMarkers.forEach(m => m.setMap(null));
-  bulkMarkers = [];
-  if (!bulkMapInstance) return;
-
-  const bounds = new google.maps.LatLngBounds();
-  const infoWindow = new google.maps.InfoWindow();
-
-  data.forEach((d, i) => {
-    const color = FARMER_COLORS[d.farmerIdx % FARMER_COLORS.length];
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
-      <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}" stroke="white" stroke-width="2.5"/>
-      <circle cx="18" cy="18" r="10" fill="white" opacity="0.95"/>
-      <text x="18" y="23" text-anchor="middle" font-size="11" font-weight="bold" font-family="sans-serif" fill="${color}">${i+1}</text>
-    </svg>`;
-    const marker = new google.maps.Marker({
-      position: { lat: d.lat, lng: d.lng }, map: bulkMapInstance,
-      icon: {
-        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-        scaledSize: new google.maps.Size(36, 48),
-        anchor: new google.maps.Point(18, 48),
-      },
-      title: `${d.name}様・${d.fieldName}`,
-    });
-    marker.addListener('click', () => {
-      const area = d.area ? `${d.area}a` : '';
-      const qtyKg = parseFloat(d.qty) < 1 ? `${Math.round(parseFloat(d.qty)*1000)}kg` : `${d.qty}t`;
-      infoWindow.setContent(`
-        <div style="font-family:'Noto Sans JP',sans-serif;font-size:0.84rem;min-width:180px;padding:4px;">
-          <div style="font-weight:700;color:#3d2b1a;margin-bottom:6px;">👤 ${d.name}様</div>
-          <div style="margin-bottom:3px;">📍 ${d.fieldName}</div>
-          <div style="margin-bottom:3px;">📦 散布量：<strong>${qtyKg}</strong>${area ? `　面積：${area}` : ''}</div>
-          <div style="margin-bottom:3px;">🚜 ${d.service?.slice(0,8)||''}</div>
-          <div style="margin-bottom:3px;">📅 ${d.dateFrom||''}〜${d.dateTo||''}</div>
-          ${d.address?`<div style="font-size:0.76rem;color:#5a4433;margin-top:4px;">${d.address}</div>`:''}
-          <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank"
-            style="display:inline-block;margin-top:8px;font-size:0.76rem;color:#1a6b8a;">Googleマップで開く →</a>
-        </div>`);
-      infoWindow.open(bulkMapInstance, marker);
-    });
-    bulkMarkers.push(marker);
-    bounds.extend({ lat: d.lat, lng: d.lng });
-  });
-
-  if (data.length > 0) {
-    bulkMapInstance.fitBounds(bounds);
-    if (data.length === 1) bulkMapInstance.setZoom(15);
-  }
-}
-
-function filterBulkMap(nameFilter, btn) {
-  document.querySelectorAll('.map-filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  const filtered = nameFilter === 'all' ? allBulkData : allBulkData.filter(d => d.name === nameFilter);
-  renderBulkMarkers(filtered);
-}
-
-function closeBulkMap() {
-  document.getElementById('bulkMapModal').classList.remove('show');
-}
-document.getElementById('bulkMapModal').addEventListener('click', e => {
-  if (e.target === document.getElementById('bulkMapModal')) closeBulkMap();
-});
-
-// ===== 統計 =====
-function renderStats() {
-  const store=getStore();
-  const now=new Date();
-  const ym=`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}`;
-  const mo=store.orders.filter(o=>o.submittedAt?.startsWith(ym.replace('/','')));
-  const totalTon=store.orders.reduce((s,o)=>s+(parseFloat(o.totalQty)||0),0);
-  const moTon=mo.reduce((s,o)=>s+(parseFloat(o.totalQty)||0),0);
-  document.getElementById('statsGrid').innerHTML=`
-    <div class="stat-card"><div class="stat-label">今月の発注件数</div>
-      <div class="stat-value">${mo.length}<span class="stat-unit">件</span></div>
-      <div class="stat-sub">${now.getMonth()+1}月</div></div>
-    <div class="stat-card"><div class="stat-label">今月の合計数量</div>
-      <div class="stat-value">${moTon.toFixed(1)}<span class="stat-unit">t</span></div></div>
-    <div class="stat-card"><div class="stat-label">累計発注件数</div>
-      <div class="stat-value">${store.orders.length}<span class="stat-unit">件</span></div></div>
-    <div class="stat-card"><div class="stat-label">累計数量</div>
-      <div class="stat-value">${totalTon.toFixed(1)}<span class="stat-unit">t</span></div></div>
-    <div class="stat-card"><div class="stat-label">顧客数</div>
-      <div class="stat-value">${store.customers.length}<span class="stat-unit">名</span></div></div>
-  `;
-}
-
-// ===== 発注一覧 =====
-function renderOrders(q='',month='') {
-  const store=getStore();
-  let list=store.orders;
-  if(q) list=list.filter(o=>o.name?.includes(q)||o.usage?.includes(q)||(o.fields||[]).some(f=>f.address?.includes(q)||f.name?.includes(q)));
-  if(month) list=list.filter(o=>o.submittedAt?.includes(month.replace('/','')));
-  const tbody=document.getElementById('ordersTableBody');
-  if(!list.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-mid);">発注データがありません</td></tr>';return;}
-  tbody.innerHTML=list.map(o=>{
-    const svc=[...new Set((o.fields||[]).map(f=>f.service?.slice(0,5)))].join('・')||'−';
-    const statusBadge = o.status === 'confirmed'
-      ? '<span style="font-size:0.7rem;background:#e6f4e4;color:#4a6741;padding:2px 7px;border-radius:10px;font-weight:600;">確認済</span>'
-      : '<span style="font-size:0.7rem;background:#fdf0ea;color:#c85a2a;padding:2px 7px;border-radius:10px;font-weight:600;">未確認</span>';
-    return `<tr onclick="openOrderModal('${o.id}')">
-      <td style="font-size:0.74rem;white-space:nowrap;">${o.submittedAt||''}</td>
-      <td style="font-weight:600;">${o.name||''}<br>${statusBadge}</td>
-      <td style="text-align:right;font-weight:600;">${o.totalQty||''}t</td>
-      <td>${o.usage||''}</td>
-      <td style="font-size:0.74rem;">${o.dateFrom||''}〜</td>
-      <td style="font-size:0.74px;">${svc}</td>
-      <td style="display:flex;gap:4px;flex-wrap:wrap;">
-        ${o.status !== 'confirmed' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();confirmOrder('${o.id}')" style="background:linear-gradient(135deg,#4a6741,#6b9162);">✅ 確認</button>` : ''}
-        <button class="btn btn-green btn-sm" onclick="event.stopPropagation();invoiceFromOrder('${o.id}','請求書',true)">🖨 請求書</button>
-        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();invoiceFromOrder('${o.id}','納品書',true)">📦 納品書</button>
-        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteOrder('${o.id}')">🗑</button>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-// ===== 発注削除 =====
-function deleteOrder(id) {
-  const store = getStore();
-  const o = store.orders.find(x => x.id === id);
-  if (!o) return;
-  if (!confirm(`【${o.name||''}様】の発注を削除しますか？\n（この操作は元に戻せません）`)) return;
-  store.orders = store.orders.filter(x => x.id !== id);
-  saveStore(store);
-  renderOrders();
-  renderStats();
-  showToast('🗑 発注を削除しました');
-}
-
-// ===== 発注確認（ワンクリック処理）=====
-function confirmOrder(id) {
-  const store = getStore();
-  const o = store.orders.find(x => x.id === id);
-  if (!o) return;
-  if (o.status === 'confirmed') { showToast('この発注はすでに確認済みです'); return; }
-
-  // 出荷拠点選択ダイアログ
-  const base = window.confirm(
-    `【${o.name}様】${o.totalQty}トンの発注を確認します。\n\n出荷拠点を選択してください：\n\n「OK」→ 🏔 前山から出荷\n「キャンセル」→ 🌿 夜久野から出荷`
-  ) ? 'maeyama' : 'yakuno';
-
-  const baseLabel = base === 'maeyama' ? '🏔 前山' : '🌿 夜久野';
-
-  if (!confirm(`${baseLabel}から ${o.totalQty}トン出荷します。よろしいですか？\n\n✅ ステータスを「確認済」に更新\n📦 ${baseLabel}の在庫から${o.totalQty}トンを引く\n🧾 請求書を自動発行記録に保存`)) return;
-
-  // ① ステータス・出荷拠点を更新
-  o.status = 'confirmed';
-  o.shipBase = base;
-  o.confirmedAt = new Date().toLocaleString('ja-JP', {timeZone:'Asia/Tokyo'});
-
-  // ② 該当拠点の在庫から引く
-  if (!store.inventory) store.inventory = {};
-  if (!store.inventory[base]) store.inventory[base] = {current:0, prodSchedule:[]};
-  const prev = store.inventory[base].current || 0;
-  store.inventory[base].current = Math.max(0, prev - (parseFloat(o.totalQty) || 0));
-
-  // ③ 請求書を自動発行記録に保存
-  const invItems = (o.fields || []).map(f => {
-    const pi = store.prices.find(p => p.label === f.service);
-    return {desc:`牛ふん堆肥 ${f.service}（${f.name}）`, qty:f.qty, unit:'t', price:pi?pi.price:0};
-  });
-  const subtotal = invItems.reduce((s,i) => s + (parseFloat(i.qty)||0) * (parseFloat(i.price)||0), 0);
-  const tax = Math.round(subtotal * 0.1);
-  store.invoiceSeq = (store.invoiceSeq || 1);
-  const rec = {
-    id: Date.now().toString(),
-    type: '請求書',
-    number: `2026-${String(store.invoiceSeq).padStart(3,'0')}`,
-    customer: o.name,
-    date: new Date().toISOString().split('T')[0],
-    total: `¥${(subtotal+tax).toLocaleString()}`,
-    orderId: id,
-    shipBase: base,
-    savedAt: o.confirmedAt,
-  };
-  store.invoiceRecords = store.invoiceRecords || [];
-  store.invoiceRecords.unshift(rec);
-  store.invoiceSeq++;
-
-  // ④ 顧客データ更新
-  upsertCustomer(store, o);
-
-  saveStore(store);
-  renderOrders();
-  renderStats();
-  updateInventoryChart();
-
-  const newStock = store.inventory[base].current.toFixed(1);
-  showToast(`✅ ${o.name}様の発注を確認。${baseLabel}在庫：${prev}t → ${newStock}t`, 5000);
-
-  if (confirm('請求書プレビューを開きますか？')) {
-    invoiceFromOrder(id, '請求書');
-  }
-}
-
-function initMonthFilter() {
-  const store=getStore();
-  const months=[...new Set(store.orders.map(o=>{
-    if(!o.submittedAt) return null;
-    const m=o.submittedAt.match(/(\d{4})\/(\d{1,2})/);
-    return m?`${m[1]}/${m[2].padStart(2,'0')}`:null;
-  }).filter(Boolean))].sort().reverse();
-  const sel=document.getElementById('monthFilter');
-  months.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);});
-}
-
-function exportOrdersCSV() {
-  const store=getStore();
-  const rows=[['受付日時','氏名','電話','メール','合計(t)','用途','配送開始','配送終了','作業形態']];
-  store.orders.forEach(o=>{
-    const svc=(o.fields||[]).map(f=>f.service).join('/');
-    rows.push([o.submittedAt||'',o.name||'',o.phone||'',o.email||'',o.totalQty||'',o.usage||'',o.dateFrom||'',o.dateTo||'',svc]);
-  });
-  const csv=rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv'}));
-  a.download='発注一覧.csv'; a.click();
-}
-
-// ===== 発注詳細モーダル =====
-let _modalOrderId=null;
-function openOrderModal(id) {
-  const store=getStore();
-  const o=store.orders.find(x=>x.id===id);
-  if(!o) return;
-  _modalOrderId=id;
-  document.getElementById('modalTitle').textContent=`${o.name}様 の発注詳細`;
-  const fHtml=(o.fields||[]).map(f=>`
-    <div style="padding:7px 11px;background:#fdfaf5;border-radius:6px;margin-bottom:5px;font-size:0.81rem;">
-      <strong>${f.num}. ${f.name}</strong>　${f.qty}t　${f.service}
-      ${f.address?`<div style="font-size:0.72rem;color:var(--text-mid);">📍 ${f.address}</div>`:''}
-    </div>`).join('');
-  document.getElementById('modalContent').innerHTML=`
-    <div style="font-size:0.83rem;line-height:1.9;">
-      <p><strong>受付：</strong>${o.submittedAt}</p>
-      <p><strong>電話：</strong>${o.phone||'未記入'}　<strong>メール：</strong>${o.email||'未記入'}</p>
-      <p><strong>堆肥：</strong>${o.compostType} 合計 ${o.totalQty}t</p>
-      <p><strong>用途：</strong>${o.usage} ${o.vegType?'('+o.vegType+')':''}</p>
-      <p><strong>配送希望：</strong>${o.dateFrom}〜${o.dateTo}</p>
-      ${o.confirmedAt?`<p style="color:var(--leaf);font-weight:600;">✅ 確認済み：${o.confirmedAt}</p>`:''}
-      ${o.remarks?`<p><strong>備考：</strong>${o.remarks}</p>`:''}
-    </div>
-    <div style="margin-top:10px;font-size:0.8rem;font-weight:600;">圃場：</div>
-    <div style="margin-top:6px;">${fHtml}</div>`;
-
-  // 確認済みならボタンを切り替え
-  const confirmBtn = document.getElementById('modalConfirmBtn');
-  if (confirmBtn) {
-    if (o.status === 'confirmed') {
-      confirmBtn.style.display = 'none';
-    } else {
-      confirmBtn.style.display = '';
-      confirmBtn.onclick = () => { closeModal(); confirmOrder(id); };
-    }
-  }
-  document.getElementById('orderModal').classList.add('show');
-}
-function closeModal(){document.getElementById('orderModal').classList.remove('show');}
-function invoiceFromModal(){if(_modalOrderId){closeModal();invoiceFromOrder(_modalOrderId,'請求書');}}
-function generateDeliveryFromModal(){if(_modalOrderId){closeModal();invoiceFromOrder(_modalOrderId,'納品書');}}
-document.getElementById('orderModal').addEventListener('click',e=>{if(e.target===document.getElementById('orderModal'))closeModal();});
-
-// ===== 代行入力 =====
-let proxyFieldCount=0;
-const SVC_OPTS=['フルサービス（運搬＋散布）','ダンプ下ろし（運搬のみ）','積込み付き（スタッフ対応）','自分で取りに来る'];
-
-function initProxyForm(){proxyFieldCount=0;document.getElementById('proxyFieldRows').innerHTML='';addProxyField();}
-
-function addProxyField(preset){
-  if(proxyFieldCount>=10){showToast('最大10か所');return;}
-  const idx=++proxyFieldCount;
-  const row=document.createElement('div');
-  row.className='field-row'; row.id=`prow-${idx}`;
-  const opts=SVC_OPTS.map(s=>`<option${preset?.service===s?' selected':''}>${s}</option>`).join('');
-  row.innerHTML=`
-    <div class="field-row-num">${idx}</div>
-    <input type="text" placeholder="圃場名・住所" style="font-size:0.81rem;" value="${preset?.name||''}">
-    <input type="number" placeholder="0.0" min="0" step="0.5" style="text-align:right;font-size:0.81rem;" value="${preset?.qty||''}" oninput="updateProxyTotal()">
-    <select style="font-size:0.76rem;padding:6px 7px;">${opts}</select>
-    <button class="btn btn-danger btn-sm" onclick="document.getElementById('prow-${idx}').remove();updateProxyTotal()">✕</button>`;
-  document.getElementById('proxyFieldRows').appendChild(row);
-  updateProxyTotal();
-}
-
-function updateProxyTotal(){
-  const store=getStore();
-  let total=0;
-  document.querySelectorAll('#proxyFieldRows .field-row').forEach(r=>{
-    total+=parseFloat(r.querySelectorAll('input')[1]?.value)||0;
-  });
-  document.getElementById('proxyTotalQty').textContent=total.toFixed(1);
-  let price=0;
-  document.querySelectorAll('#proxyFieldRows .field-row').forEach(r=>{
-    const q=parseFloat(r.querySelectorAll('input')[1]?.value)||0;
-    const svc=r.querySelector('select')?.value||'';
-    const pi=store.prices.find(p=>p.label===svc);
-    price+=q*(pi?pi.price:0);
-  });
-  if(total<MIN_LOT&&total>0) price*=1.2;
-  document.getElementById('proxyTotalPrice').textContent=price>0?`¥${Math.floor(price/10)*10*1.1|0 > 0 ? (Math.round(price*1.1/10)*10).toLocaleString():'---'}`:'¥ ---';
-}
-
-function searchCustomers(q){
-  const store=getStore(); const dd=document.getElementById('customerDropdown');
-  if(!q.trim()){dd.classList.remove('show');return;}
-  const res=store.customers.filter(c=>c.name.includes(q)||(c.phone&&c.phone.includes(q)));
-  if(!res.length){dd.classList.remove('show');return;}
-  dd.innerHTML=res.map(c=>`<div class="customer-option" onclick="fillCustomer('${c.id}')">
-    <div class="co-name">${c.name}</div><div class="co-sub">${c.phone||''} ${c.email||''}</div></div>`).join('');
-  dd.classList.add('show');
-}
-function fillCustomer(id){
-  const store=getStore(); const c=store.customers.find(x=>x.id===id); if(!c) return;
-  document.getElementById('p_name').value=c.name;
-  document.getElementById('p_phone').value=c.phone||'';
-  document.getElementById('p_email').value=c.email||'';
-  document.getElementById('customerSearch').value=c.name;
-  document.getElementById('customerDropdown').classList.remove('show');
-  if(c.fields?.length){document.getElementById('proxyFieldRows').innerHTML='';proxyFieldCount=0;c.fields.forEach(f=>addProxyField(f));}
-  showToast(`✅ ${c.name}様のデータを読み込みました`);
-}
-
-function getProxyFields(){
-  return Array.from(document.querySelectorAll('#proxyFieldRows .field-row')).map((r,i)=>{
-    const ins=r.querySelectorAll('input');
-    return{num:i+1,name:ins[0]?.value.trim()||`圃場${i+1}`,qty:ins[1]?.value||'',
-      service:r.querySelector('select')?.value||'',lat:'',lng:'',address:ins[0]?.value.trim()||''};
-  });
-}
-
-function submitProxyOrder(){
-  const name=document.getElementById('p_name').value.trim();
-  if(!name){showToast('⚠️ お名前を入力してください');return;}
-  const fields=getProxyFields();
-  const totalQty=fields.reduce((s,f)=>s+(parseFloat(f.qty)||0),0);
-  const store=getStore();
-  const order={id:Date.now().toString(),
-    submittedAt:new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}),
-    name,phone:document.getElementById('p_phone').value.trim(),
-    email:document.getElementById('p_email').value.trim(),
-    compostType:'牛ふん堆肥',fields,totalQty:totalQty.toFixed(1),
-    usage:document.getElementById('p_usage').value,
-    vegType:document.getElementById('p_vegtype').value.trim(),
-    organicJAS:document.getElementById('p_organicJAS').value,
-    keical:document.getElementById('p_keical').value,
-    dateFrom:document.getElementById('p_dateFrom').value,
-    dateTo:document.getElementById('p_dateTo').value,
-    remarks:document.getElementById('p_remarks').value.trim(),source:'代行'};
-  store.orders.unshift(order);
-  upsertCustomer(store,order);
-  saveStore(store);
-  showToast(`✅ ${name}様の発注を登録しました`);
-  clearProxyForm();
-}
-
-function upsertCustomer(store,order){
-  let c=store.customers.find(x=>x.name===order.name&&x.phone===order.phone);
-  if(c){c.email=order.email||c.email;c.fields=order.fields;c.updatedAt=order.submittedAt;}
-  else store.customers.push({id:Date.now().toString(),name:order.name,phone:order.phone,email:order.email,fields:order.fields,createdAt:order.submittedAt});
-}
-
-function clearProxyForm(){
-  ['p_name','p_phone','p_email','p_vegtype','p_remarks','customerSearch'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('p_usage').value='水稲';
-  initProxyForm();
-}
-
-function generateInvoiceFromProxy(){
-  const name=document.getElementById('p_name').value.trim();
-  const fields=getProxyFields();
-  if(!name||!fields.length){showToast('⚠️ お名前と圃場情報を入力してください');return;}
-  switchTab('invoice');
-  document.getElementById('inv_customer').value=name;
-  document.getElementById('invItems').innerHTML='';invItemCount=0;
-  const store=getStore();
-  fields.forEach(f=>{
-    if(!f.qty) return;
-    const pi=store.prices.find(p=>p.label===f.service);
-    addInvItem({desc:`牛ふん堆肥 ${f.service}（${f.name}）`,qty:f.qty,unit:'t',price:pi?pi.price:0});
-  });
-  updateInvoiceCalc();updateInvoicePreview();showToast('🧾 請求書タブに移動しました');
-}
-
-// 固定情報
 const COMPANY_INFO = {
   name: '株式会社丹波農商',
   zip: '〒669-4341',
@@ -1226,439 +554,857 @@ const COMPANY_INFO = {
   bank: '丹波ひかみ農業協同組合 市島支店（019）\n　口座種別：普通\n　口座番号：0091205\n　口座名義：カ）タンバノウショウ',
 };
 
-function invoiceFromOrder(id, type='請求書') {
-  const store = getStore();
-  const o = store.orders.find(x => x.id === id);
-  if (!o) return;
+// ============================================================
+// 状態
+// ============================================================
+let S = {orders:[], statuses:{}, records:[], invoices:[], stock:{}, stockHistory:[], settings:{}};
+let loaded = false;
 
-  // 明細を計算
-  const items = (o.fields||[]).filter(f=>f.qty).map(f=>{
-    const pi = store.prices.find(p=>p.label===f.service);
-    const price = pi ? pi.price : 0;
-    return { desc:`牛ふん堆肥 ${f.service}（${f.name}）`, qty: parseFloat(f.qty)||0, unit:'t', price };
+// ============================================================
+// ユーティリティ
+// ============================================================
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function yen(n){return '¥'+Math.round(Number(n)||0).toLocaleString();}
+function num(v){const n=parseFloat(String(v).replace(/,/g,''));return isNaN(n)?0:n;}
+function pad(n){return String(n).padStart(2,'0');}
+function localDate(d=new Date()){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+function ymOf(s){ // "2026/4/8 6:17" / "2026-04-08" → "2026-04"
+  const m=String(s||'').match(/(\d{4})[\/\-](\d{1,2})/);return m?`${m[1]}-${pad(m[2])}`:'';}
+function normDate(s){const m=String(s||'').match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);return m?`${m[1]}-${pad(m[2])}-${pad(m[3])}`:String(s||'');}
+function addDays(dateStr,n){const d=new Date(dateStr+'T00:00:00');d.setDate(d.getDate()+n);return localDate(d);}
+function endOfNextMonth(dateStr){const d=new Date(dateStr+'T00:00:00');return localDate(new Date(d.getFullYear(),d.getMonth()+2,0));}
+function showToast(msg,dur=3500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),dur);}
+function setStatus(msg,color){const el=document.getElementById('gasStatus');el.textContent=msg;el.style.color=color||'#666';}
+function prices(){return (S.settings.prices&&S.settings.prices.length)?S.settings.prices:DEFAULT_PRICES;}
+function discounts(){return S.settings.discounts||DEFAULT_DISCOUNTS;}
+function locations(){return (S.settings.locations&&S.settings.locations.length)?S.settings.locations:DEFAULT_LOCATIONS;}
+function custExtras(){return S.settings.customers||{};}
+function priceOf(service,customer){
+  const ex=custExtras()[customer];
+  if(ex&&ex.specialPrice&&ex.specialService===service) return num(ex.specialPrice);
+  const p=prices().find(x=>x.label===service);return p?num(p.price):0;}
+function serviceDeducts(service){const p=prices().find(x=>x.label===service);return p?p.stock!==false:true;}
+function optionList(list,selected){return list.map(v=>`<option${v===selected?' selected':''}>${esc(v)}</option>`).join('');}
+
+// ============================================================
+// GAS 通信
+// ============================================================
+function jsonp(params){
+  return new Promise((resolve,reject)=>{
+    const cb='gasCb_'+Date.now()+'_'+Math.floor(Math.random()*1e6);
+    const s=document.createElement('script');
+    const timer=setTimeout(()=>{cleanup();reject(new Error('タイムアウト'));},30000);
+    function cleanup(){clearTimeout(timer);delete window[cb];s.remove();}
+    window[cb]=d=>{cleanup();resolve(d);};
+    s.onerror=()=>{cleanup();reject(new Error('接続エラー'));};
+    const q=new URLSearchParams({...params,callback:cb,t:Date.now()});
+    s.src=`${GAS_URL}?${q}`;
+    document.head.appendChild(s);
   });
-  const subtotal = items.reduce((s,i)=>s+i.qty*i.price,0);
-  const tax = Math.round(subtotal*0.1);
-  const total = subtotal + tax;
+}
+// 書き込み：POST（no-cors のため結果は読めない）→ 読み直して反映を確認
+async function post(action,data){
+  setStatus('💾 保存中...');
+  await fetch(GAS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({...data,action,password:sessionStorage.getItem(PW_KEY)||''})});
+  await loadAll();
+}
 
-  // 書類番号
-  const today = new Date().toISOString().split('T')[0];
-  const docNo = `${today.replace(/-/g,'')}-${o.id.slice(-4)}`;
+// ============================================================
+// ログイン
+// ============================================================
+async function login(){
+  const pw=document.getElementById('passwordInput').value;
+  const err=document.getElementById('loginError');
+  if(!pw){err.textContent='パスワードを入力してください';return;}
+  err.textContent='確認中...';
+  try{
+    const r=await jsonp({action:'login',pw});
+    if(r.result!=='ok'){err.textContent=r.message||'パスワードが違います';return;}
+    sessionStorage.setItem(PW_KEY,pw);
+    err.textContent='';
+    enterAdmin();
+  }catch(e){err.textContent='サーバーに接続できません（'+e.message+'）';}
+}
+function logout(){sessionStorage.removeItem(PW_KEY);location.reload();}
+function enterAdmin(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('adminScreen').style.display='block';
+  const today=localDate();
+  document.getElementById('r_date').value=today;
+  document.getElementById('i_date').value=today;
+  document.getElementById('i_due').value=endOfNextMonth(today);
+  document.getElementById('p_dateFrom').value=today;
+  document.getElementById('p_dateTo').value=addDays(today,14);
+  showLegacyNotice();
+  loadAll();
+}
 
-  // 印刷用ウィンドウを直接開く
-  const win = window.open('', '_blank');
-  const itemsHtml = items.map(i=>`
-    <tr>
-      <td style="text-align:left;padding:8px 12px;border:1px solid #e0d5c5;">${i.desc}</td>
-      <td style="text-align:center;padding:8px 12px;border:1px solid #e0d5c5;">${i.qty} ${i.unit}</td>
-      <td style="text-align:right;padding:8px 12px;border:1px solid #e0d5c5;">¥${i.price.toLocaleString()}</td>
-      <td style="text-align:right;padding:8px 12px;border:1px solid #e0d5c5;">¥${(i.qty*i.price).toLocaleString()}</td>
-    </tr>`).join('');
-
-  win.document.write(`<!DOCTYPE html>
-<html lang="ja"><head><meta charset="UTF-8">
-<title>${type}｜${o.name}様｜丹波農商</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Noto Sans JP',sans-serif;color:#2a1f14;background:#fff;
-    width:210mm;min-height:297mm;padding:14mm 16mm 12mm;font-size:11px;
-    margin:0 auto;}
-  .doc-title{font-family:'Noto Serif JP',serif;font-size:22px;font-weight:700;
-    color:#3d2b1a;letter-spacing:0.15em;text-align:center;margin-bottom:14px;
-    padding-bottom:8px;border-bottom:2.5px solid #c8a96e;}
-  .header-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;}
-  .to-box{border-bottom:1.5px solid #3d2b1a;padding-bottom:6px;}
-  .to-name{font-size:16px;font-weight:700;color:#3d2b1a;}
-  .from-box{text-align:right;font-size:10px;line-height:1.7;color:#5a4433;}
-  .from-company{font-size:12px;font-weight:700;color:#3d2b1a;margin-bottom:2px;}
-  .invoice-badge{display:inline-block;background:#f5f0e8;border:1px solid #c8a96e;
-    border-radius:3px;padding:1px 6px;font-size:9px;color:#5a4433;margin-top:2px;}
-  .meta-row{display:flex;gap:20px;margin-bottom:12px;font-size:10px;color:#5a4433;}
-  table{width:100%;border-collapse:collapse;margin:10px 0;}
-  thead th{background:#3d2b1a;color:#c8a96e;padding:6px 10px;font-size:10px;}
-  thead th:first-child{text-align:left;}
-  thead th:not(:first-child){text-align:right;}
-  tbody td{padding:6px 10px;border-bottom:1px solid #e8dfc8;font-size:10px;}
-  tbody td:first-child{text-align:left;}
-  tbody td:not(:first-child){text-align:right;}
-  .total-section{display:flex;justify-content:flex-end;margin-top:6px;}
-  .total-table{width:220px;}
-  .total-table td{padding:4px 10px;font-size:10px;border-bottom:1px solid #e8dfc8;}
-  .total-table td:first-child{color:#5a4433;}
-  .total-table td:last-child{text-align:right;font-weight:600;}
-  .grand-row td{background:#f5f0e8;font-size:13px;font-weight:700;color:#3d2b1a;padding:7px 10px;border-bottom:none;}
-  .bank-box{margin-top:12px;padding:10px 13px;background:#f8f4ee;border-radius:6px;
-    border-left:3px solid #c8a96e;font-size:10px;line-height:1.7;}
-  .bank-title{font-weight:700;color:#3d2b1a;margin-bottom:4px;font-size:11px;}
-  .note{margin-top:10px;font-size:9px;color:#8b5e3c;line-height:1.7;}
-  @media print{
-    body{width:210mm;padding:12mm 15mm 10mm;}
-    @page{size:A4 portrait;margin:0;}
+async function loadAll(){
+  setStatus('🔄 スプレッドシートから読み込み中...');
+  try{
+    const d=await jsonp({action:'getAll',pw:sessionStorage.getItem(PW_KEY)||''});
+    if(d.result!=='ok'){
+      if(d.message==='認証エラー'){sessionStorage.removeItem(PW_KEY);location.reload();return;}
+      throw new Error(d.message||'不明なエラー');}
+    S.orders=parseOrders(d.orders||[]);
+    S.statuses={};(d.statuses||[]).forEach(s=>S.statuses[s['発注キー']]=s);
+    S.records=(d.records||[]).map(r=>({id:r['ID'],date:normDate(r['散布日']),customer:r['取引先'],place:r['散布先'],qty:num(r['数量(t)']),
+      service:r['作業形態'],price:num(r['単価(円/t・税込)']),amount:num(r['金額(税込)']),location:r['出荷拠点'],staff:r['担当'],
+      orderKey:r['発注キー'],memo:r['メモ'],invoiceNo:r['請求書番号'],deducted:r['在庫から引いた']==='はい',createdAt:r['登録日時']}));
+    S.invoices=(d.invoices||[]).map(v=>{let lines=[];try{lines=JSON.parse(v['明細JSON']||'[]');}catch(e){}
+      return {number:v['請求書番号'],date:normDate(v['発行日']),customer:v['取引先'],period:ymOf(v['対象期間']),total:num(v['合計(税込)']),
+        status:v['状態'],recordIds:String(v['散布実績ID']||'').split(',').filter(Boolean),lines,due:normDate(v['支払期限']),memo:v['メモ'],updatedAt:v['更新日時']};});
+    S.stock=d.stock||{};S.stockHistory=d.stockHistory||[];S.settings=d.settings||{};
+    loaded=true;
+    setStatus(`✅ 読み込み完了（発注${S.orders.length}件・実績${S.records.length}件・請求書${S.invoices.length}件）${d.serverTime?'　'+d.serverTime:''}`,'#2e7d32');
+    renderAll();
+  }catch(e){
+    if(String(e.message).includes('接続')||String(e.message).includes('タイムアウト'))
+      setStatus('⚠️ スプレッドシートに接続できません（'+e.message+'）。GASの更新・デプロイを確認してください。','#c0392b');
+    else setStatus('⚠️ 読み込みエラー：'+e.message,'#c0392b');
   }
-</style></head><body>
-<div class="doc-title">${type}</div>
-<div class="header-grid">
-  <div class="to-box">
-    <div style="font-size:10px;color:#5a4433;margin-bottom:3px;">お客様</div>
-    <div class="to-name">${o.name} 様</div>
-    ${o.phone?`<div style="font-size:10px;color:#5a4433;margin-top:3px;">TEL: ${o.phone}</div>`:''}
-  </div>
-  <div class="from-box">
-    <div class="from-company">${COMPANY_INFO.name}</div>
-    <div>${COMPANY_INFO.zip} ${COMPANY_INFO.address}</div>
-    <div>TEL: ${COMPANY_INFO.tel}</div>
-    <div class="invoice-badge">適格請求書発行事業者 登録番号 ${COMPANY_INFO.invoice_no}</div>
-  </div>
-</div>
-<div class="meta-row">
-  <span>📄 書類番号：${docNo}</span>
-  <span>📅 発行日：${today}</span>
-  <span>📦 配送希望：${o.dateFrom||''}〜${o.dateTo||''}</span>
-</div>
-<table>
-  <thead>
-    <tr>
-      <th style="width:50%;">品目</th>
-      <th style="width:15%;">数量</th>
-      <th style="width:17%;">単価（税込）</th>
-      <th style="width:18%;">金額</th>
-    </tr>
-  </thead>
-  <tbody>${itemsHtml}</tbody>
-</table>
-<div class="total-section">
-  <table class="total-table">
-    <tr><td>小計</td><td>¥${subtotal.toLocaleString()}</td></tr>
-    <tr><td>消費税（10%）</td><td>¥${tax.toLocaleString()}</td></tr>
-    <tr class="grand-row"><td>合計金額</td><td>¥${total.toLocaleString()}</td></tr>
-  </table>
-</div>
-<div class="bank-box">
-  <div class="bank-title">■ お振込先</div>
-  <div style="white-space:pre-line;">${COMPANY_INFO.bank}</div>
-</div>
-<div class="note">
-  ※ お振込手数料はご負担いただきますようお願いいたします。　※ ご不明な点はお気軽にご連絡ください。
-</div>
-<script>window.onload=()=>{window.print();}<\/script>
-</body></html>`);
-  win.document.close();
+}
 
-  // 発行記録を保存
-  store.invoiceSeq = (store.invoiceSeq||1);
-  store.invoiceRecords = store.invoiceRecords||[];
-  store.invoiceRecords.unshift({
-    id: Date.now().toString(), type, number: docNo,
-    customer: o.name, date: today,
-    total: `¥${total.toLocaleString()}`, orderId: id,
-    savedAt: new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}),
+// ============================================================
+// 発注一覧シートの行 → 発注
+// 列: A受付日時 B氏名 C電話 Dメール E圃場No F圃場数 G種類 H数量 I面積 J用途 K野菜 L前作
+//     M有機JAS N珪カル O作業形態 P開始 Q終了 Rピン情報 S住所 T合計 U備考 V LINE名 W受付経路
+// ============================================================
+function parsePins(text){
+  return String(text||'').split('／').map(s=>s.trim()).filter(Boolean).map(part=>{
+    const m=part.match(/\((-?[\d.]+),\s*(-?[\d.]+)\)\s*$/);
+    const idx=part.indexOf(': ');
+    const name=idx>=0?part.slice(0,idx).trim():'';
+    const addr=(idx>=0?part.slice(idx+2):part).replace(/\((-?[\d.]+),\s*(-?[\d.]+)\)\s*$/,'').trim();
+    return {name,addr,lat:m?parseFloat(m[1]):null,lng:m?parseFloat(m[2]):null};
   });
-  store.invoiceSeq++;
-  saveStore(store);
-  renderInvoiceRecords();
-  showToast(`🧾 ${type}を印刷ダイアログで開きました`);
+}
+function parseOrders(rows){
+  const map={},list=[];
+  rows.forEach(r=>{
+    if(!r[1]) return;
+    const key=`${r[0]}|${r[1]}`;
+    if(!map[key]){
+      map[key]={key,date:r[0],name:r[1],phone:r[2],email:r[3],compostType:r[6]||'牛ふん堆肥',
+        usage:r[9],vegType:r[10],prevCrop:r[11],organicJAS:r[12],keical:r[13],
+        dateFrom:normDate(r[15]),dateTo:normDate(r[16]),remarks:r[20],lineName:r[21]||'',source:r[22]||'フォーム',pins:parsePins(r[17]),fields:[],sheetTotal:num(r[19])};
+      list.push(map[key]);
+    }
+    const o=map[key];
+    const addr=String(r[18]||'');
+    const used=o.fields.map(f=>f._pin);
+    const pinIdx=o.pins.findIndex((p,i)=>!used.includes(i)&&p.addr===addr);
+    const pin=pinIdx>=0?o.pins[pinIdx]:null;
+    o.fields.push({num:r[4]||o.fields.length+1,name:(pin&&pin.name)||addr.replace(/^日本、/,'').slice(0,24)||`圃場${o.fields.length+1}`,
+      address:addr,qty:num(r[7]),area:r[8],service:r[14]||'',lat:pin?pin.lat:null,lng:pin?pin.lng:null,_pin:pinIdx});
+  });
+  list.forEach(o=>{
+    o.totalQty=Math.round(o.fields.reduce((s,f)=>s+f.qty,0)*100)/100||o.sheetTotal;
+  });
+  return list.reverse(); // 新しい順
+}
+function orderStatus(o){return (S.statuses[o.key]&&S.statuses[o.key]['状態'])||'未確認';}
+function orderBase(o){return (S.statuses[o.key]&&S.statuses[o.key]['出荷拠点'])||'';}
+function statusBadge(st){
+  const cls={未確認:'b-new',確認済:'b-ok',散布済:'b-done',キャンセル:'b-cancel',下書き:'b-draft',栗原OK:'b-ok',送付済:'b-sent',入金済:'b-done'}[st]||'b-new';
+  return `<span class="badge ${cls}">${esc(st)}</span>`;}
+
+// ============================================================
+// 描画
+// ============================================================
+function renderAll(){
+  renderCustomerDatalist();renderStats();initMonthSelects();renderOrders();
+  renderRecordForm();renderRecords();renderInvoiceBuilder();renderInvoices();
+  renderStock();renderCustomers();renderPriceTable();renderDiscounts();
+  document.getElementById('locationsInput').value=locations().join(',');
+}
+
+document.getElementById('tabs').addEventListener('click',e=>{
+  const b=e.target.closest('.tab-btn');if(!b) return;switchTab(b.dataset.tab);});
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
+  window.scrollTo({top:0});
+}
+
+function renderStats(){
+  const ym=localDate().slice(0,7);
+  const active=S.orders.filter(o=>orderStatus(o)!=='キャンセル');
+  const mo=active.filter(o=>ymOf(o.date)===ym);
+  const recMo=S.records.filter(r=>ymOf(r.date)===ym);
+  const open=active.filter(o=>['未確認','確認済'].includes(orderStatus(o)));
+  const unbilled=S.records.filter(r=>!r.invoiceNo).reduce((s,r)=>s+r.amount,0);
+  const stockTotal=Object.values(S.stock).reduce((s,v)=>s+num(v),0);
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="stat-card"><div class="stat-label">今月の発注</div><div class="stat-value">${mo.length}<span class="stat-unit">件</span></div>
+      <div class="stat-sub">${mo.reduce((s,o)=>s+o.totalQty,0).toFixed(1)} t</div></div>
+    <div class="stat-card"><div class="stat-label">未完了の発注</div><div class="stat-value">${open.length}<span class="stat-unit">件</span></div>
+      <div class="stat-sub">${open.reduce((s,o)=>s+o.totalQty,0).toFixed(1)} t 残り</div></div>
+    <div class="stat-card"><div class="stat-label">今月の散布実績（売上）</div><div class="stat-value">${recMo.reduce((s,r)=>s+r.qty,0).toFixed(1)}<span class="stat-unit">t</span></div>
+      <div class="stat-sub">${yen(recMo.reduce((s,r)=>s+r.amount,0))}（税込）</div></div>
+    <div class="stat-card"><div class="stat-label">未請求の実績</div><div class="stat-value" style="font-size:1.3rem;">${yen(unbilled)}</div></div>
+    <div class="stat-card"><div class="stat-label">在庫合計</div><div class="stat-value">${stockTotal.toFixed(1)}<span class="stat-unit">t</span></div></div>`;
+}
+
+function initMonthSelects(){
+  const months=new Set([localDate().slice(0,7)]);
+  S.orders.forEach(o=>{const m=ymOf(o.date);if(m)months.add(m);});
+  S.records.forEach(r=>{const m=ymOf(r.date);if(m)months.add(m);});
+  const sorted=[...months].sort().reverse();
+  const fill=(id,withAll,keep)=>{const el=document.getElementById(id);const cur=keep?el.value:'';
+    el.innerHTML=(withAll?'<option value="">すべての月</option>':'')+sorted.map(m=>`<option value="${m}">${m.replace('-','年')}月</option>`).join('');
+    if(cur&&[...el.options].some(o=>o.value===cur)) el.value=cur;};
+  fill('orderMonth',true,true);fill('recMonth',true,true);
+  const im=document.getElementById('i_month');const keepI=im.value;
+  fill('i_month',false,false);
+  if(keepI&&[...im.options].some(o=>o.value===keepI)) im.value=keepI;
+  else { // 既定は先月（月末締めの請求）
+    const d=new Date();const prev=`${d.getMonth()===0?d.getFullYear()-1:d.getFullYear()}-${pad(d.getMonth()===0?12:d.getMonth())}`;
+    if([...im.options].some(o=>o.value===prev)) im.value=prev;}
+  if(!document.getElementById('recMonth').dataset.init){document.getElementById('recMonth').value=localDate().slice(0,7);document.getElementById('recMonth').dataset.init='1';}
+}
+
+// ===== 発注一覧 =====
+function filteredOrders(){
+  const q=document.getElementById('orderSearch').value.trim();
+  const month=document.getElementById('orderMonth').value;
+  const sf=document.getElementById('orderStatusFilter').value;
+  return S.orders.filter(o=>{
+    const st=orderStatus(o);
+    if(sf==='open'&&!['未確認','確認済'].includes(st)) return false;
+    if(sf===''&&st==='キャンセル') return false;
+    if(sf&&sf!=='open'&&st!==sf) return false;
+    if(month&&ymOf(o.date)!==month) return false;
+    if(q&&!(o.name.includes(q)||(o.usage||'').includes(q)||(o.vegType||'').includes(q)||o.fields.some(f=>f.address.includes(q)||f.name.includes(q)))) return false;
+    return true;});
+}
+function renderOrders(){
+  const list=filteredOrders();
+  const tbody=document.getElementById('ordersTableBody');
+  if(!list.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-mid);">該当する発注はありません</td></tr>';return;}
+  tbody.innerHTML=list.map(o=>{
+    const i=S.orders.indexOf(o);const st=orderStatus(o);
+    const svc=[...new Set(o.fields.map(f=>f.service.replace(/（.*$/,'')))].join('・')||'−';
+    const base=orderBase(o);
+    return `<tr onclick="openOrderModal(${i})">
+      <td style="font-size:0.74rem;white-space:nowrap;">${esc(o.date)}${o.source==='代行'?'<br><span class="muted">代行</span>':''}</td>
+      <td style="font-weight:600;">${esc(o.name)}<br>${statusBadge(st)}${base?` <span class="muted">${esc(base)}</span>`:''}</td>
+      <td class="num" style="font-weight:600;">${o.totalQty}t<br><span class="muted">${o.fields.length}圃場</span></td>
+      <td>${esc(o.usage)}${o.vegType?`<br><span class="muted">${esc(o.vegType)}</span>`:''}</td>
+      <td style="font-size:0.74rem;white-space:nowrap;">${esc(o.dateFrom)}<br>〜${esc(o.dateTo)}</td>
+      <td style="font-size:0.74rem;">${esc(svc)}</td>
+      <td><div style="display:flex;gap:4px;flex-wrap:wrap;">
+        ${st==='未確認'?`<button class="btn btn-green btn-sm" onclick="event.stopPropagation();confirmOrder(${i})">✅ 確認</button>`:''}
+        ${['未確認','確認済'].includes(st)?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();recordFromOrder(${i})">🚜 実績</button>`:''}
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();printEstimate(${i})">見積書</button>
+      </div></td></tr>`;}).join('');
+}
+
+function openModal(title,html,buttons){
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalContent').innerHTML=html;
+  const wrap=document.getElementById('modalButtons');wrap.innerHTML='';
+  buttons.concat([{label:'閉じる',cls:'btn-outline',fn:closeModal}]).forEach(b=>{
+    const el=document.createElement('button');el.className='btn btn-sm '+(b.cls||'btn-primary');el.textContent=b.label;
+    el.onclick=b.fn;wrap.appendChild(el);});
+  document.getElementById('modal').classList.add('show');
+}
+function closeModal(){document.getElementById('modal').classList.remove('show');}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
+
+function openOrderModal(i){
+  const o=S.orders[i];if(!o) return;const st=orderStatus(o);
+  const recs=S.records.filter(r=>r.orderKey===o.key);
+  const fHtml=o.fields.map((f,k)=>`<div style="padding:7px 11px;background:#fdfaf5;border-radius:6px;margin-bottom:5px;font-size:0.81rem;">
+      <strong>${k+1}. ${esc(f.name)}</strong>　${f.qty}t${f.area?`（${esc(f.area)}a）`:''}　${esc(f.service)}
+      ${f.address?`<div class="muted">📍 ${esc(f.address)}${f.lat?` <a href="https://maps.google.com/?q=${f.lat},${f.lng}" target="_blank">地図</a>`:''}</div>`:''}</div>`).join('');
+  const html=`<div style="font-size:0.83rem;line-height:1.9;">
+      <p><strong>状態：</strong>${statusBadge(st)} ${orderBase(o)?'出荷拠点：'+esc(orderBase(o)):''}</p>
+      <p><strong>受付：</strong>${esc(o.date)}（${esc(o.source)}）</p>
+      <p><strong>電話：</strong>${esc(o.phone||'未記入')}　<strong>メール：</strong>${esc(o.email||'未記入')}　<strong>LINE：</strong>${esc(o.lineName||custExtras()[o.name]?.line||'未記入')}</p>
+      <p><strong>堆肥：</strong>${esc(o.compostType)} 合計 ${o.totalQty}t</p>
+      <p><strong>用途：</strong>${esc(o.usage)} ${o.vegType?'('+esc(o.vegType)+')':''}　<strong>有機JAS：</strong>${esc(o.organicJAS)}　<strong>珪カル：</strong>${esc(o.keical)}</p>
+      <p><strong>散布希望：</strong>${esc(o.dateFrom)}〜${esc(o.dateTo)}</p>
+      ${o.remarks?`<p><strong>備考：</strong>${esc(o.remarks)}</p>`:''}
+    </div>
+    <div style="margin-top:10px;font-size:0.8rem;font-weight:600;">圃場：</div><div style="margin-top:6px;">${fHtml}</div>
+    ${recs.length?`<div style="margin-top:10px;font-size:0.8rem;font-weight:600;">この発注の散布実績：</div>
+      ${recs.map(r=>`<div class="muted">${esc(r.date)} ${esc(r.place)} ${r.qty}t ${yen(r.amount)}</div>`).join('')}`:''}`;
+  const btns=[];
+  if(st==='未確認') btns.push({label:'✅ 確認する',cls:'btn-green',fn:()=>{closeModal();confirmOrder(i);}});
+  if(['未確認','確認済'].includes(st)) btns.push({label:'🚜 散布実績を記録',fn:()=>{closeModal();recordFromOrder(i);}});
+  btns.push({label:'見積書',cls:'btn-outline',fn:()=>printEstimate(i)});
+  if(st==='キャンセル') btns.push({label:'↩ キャンセルを取り消す',cls:'btn-outline',fn:()=>{closeModal();post('setOrderStatus',{key:o.key,status:'未確認'});}});
+  else btns.push({label:'キャンセルにする',cls:'btn-danger',fn:()=>{
+    if(!confirm(`${o.name}様の発注をキャンセル扱いにしますか？（スプレッドシートの行は消さずに残します。取り消しもできます）`))return;
+    closeModal();post('setOrderStatus',{key:o.key,status:'キャンセル',shipBase:orderBase(o)});}});
+  if(st==='散布済') btns.push({label:'「確認済」に戻す',cls:'btn-outline',fn:()=>{closeModal();post('setOrderStatus',{key:o.key,status:'確認済',shipBase:orderBase(o)});}});
+  openModal(`${o.name}様 の発注`,html,btns);
+}
+
+function confirmOrder(i){
+  const o=S.orders[i];
+  openModal(`${o.name}様 ${o.totalQty}t の発注を確認`,`
+    <p style="font-size:0.84rem;margin-bottom:8px;">出荷する拠点を選んでください。在庫はまだ減りません（散布実績を登録した時に減ります）。</p>
+    <label>出荷拠点</label><select id="cf_base">${optionList(locations(),orderBase(o)||locations()[0])}</select>
+    <label>メモ</label><input type="text" id="cf_memo">`,
+    [{label:'✅ 確認済にする',cls:'btn-green',fn:()=>{
+      const base=document.getElementById('cf_base').value,memo=document.getElementById('cf_memo').value;
+      closeModal();post('setOrderStatus',{key:o.key,status:'確認済',shipBase:base,memo});}}]);
+}
+
+function exportOrdersCSV(){
+  const rows=[['受付日時','状態','出荷拠点','氏名','電話','メール','LINE名','合計(t)','用途','散布希望開始','散布希望終了','圃場','作業形態','備考']];
+  filteredOrders().forEach(o=>rows.push([o.date,orderStatus(o),orderBase(o),o.name,o.phone,o.email,o.lineName,o.totalQty,o.usage,o.dateFrom,o.dateTo,
+    o.fields.map(f=>`${f.name}(${f.qty}t)`).join(' / '),[...new Set(o.fields.map(f=>f.service))].join(' / '),o.remarks]));
+  downloadCSV(rows,'発注一覧.csv');
+}
+function downloadCSV(rows,name){
+  const csv=rows.map(r=>r.map(v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));a.download=name;a.click();
+}
+
+// ===== 顧客 =====
+function customerList(){
+  const map={};
+  const touch=n=>map[n]||(map[n]={name:n,phone:'',email:'',line:'',orders:0,orderT:0,recT:0,recY:0,unbilled:0,last:''});
+  S.orders.forEach(o=>{if(orderStatus(o)==='キャンセル')return;const c=touch(o.name);c.orders++;c.orderT+=o.totalQty;
+    c.phone=c.phone||o.phone;c.email=c.email||o.email;c.line=c.line||o.lineName;if(o.date>c.last)c.last=o.date;});
+  S.records.forEach(r=>{const c=touch(r.customer);c.recT+=r.qty;c.recY+=r.amount;if(!r.invoiceNo)c.unbilled+=r.amount;});
+  Object.entries(custExtras()).forEach(([n,ex])=>{const c=touch(n);if(ex.line)c.line=ex.line;c.extra=ex;});
+  return Object.values(map).sort((a,b)=>a.name.localeCompare(b.name,'ja'));
+}
+function renderCustomerDatalist(){
+  document.getElementById('customerNames').innerHTML=customerList().map(c=>`<option value="${esc(c.name)}">`).join('');}
+function renderCustomers(){
+  const q=document.getElementById('custSearch').value.trim();
+  const list=customerList().filter(c=>!q||c.name.includes(q)||(c.phone||'').includes(q));
+  const el=document.getElementById('customerList');
+  if(!list.length){el.innerHTML='<p class="muted" style="padding:14px;">顧客データがありません</p>';return;}
+  window._custList=list;
+  el.innerHTML=`<table class="orders-table"><thead><tr><th>お名前</th><th>電話 / メール</th><th>LINE名</th><th>発注</th><th>散布実績</th><th>未請求</th><th>特別単価</th><th>操作</th></tr></thead>
+    <tbody>${list.map((c,i)=>`<tr>
+      <td style="font-weight:600;">${esc(c.name)}${c.extra?.memo?`<br><span class="muted">${esc(c.extra.memo)}</span>`:''}</td>
+      <td style="font-size:0.74rem;">${esc(c.phone||'−')}<br>${esc(c.email||'')}</td>
+      <td>${esc(c.line||'−')}</td>
+      <td class="num">${c.orders}件<br><span class="muted">${c.orderT.toFixed(1)}t</span></td>
+      <td class="num">${c.recT.toFixed(1)}t<br><span class="muted">${yen(c.recY)}</span></td>
+      <td class="num">${c.unbilled?yen(c.unbilled):'−'}</td>
+      <td style="font-size:0.74rem;">${c.extra?.specialPrice?`${esc(c.extra.specialService)}<br>${yen(c.extra.specialPrice)}/t`:'−'}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="editCustomer(${i})">編集</button></td></tr>`).join('')}</tbody></table>`;
+}
+function editCustomer(i){
+  const c=window._custList[i];const ex=custExtras()[c.name]||{};
+  openModal(`${c.name}様`,`
+    <label>LINE名</label><input type="text" id="ce_line" value="${esc(ex.line||c.line||'')}">
+    <label>特別単価の作業形態</label><select id="ce_svc"><option value="">（なし）</option>${optionList(prices().map(p=>p.label),ex.specialService||'')}</select>
+    <label>特別単価（税込・円/t）</label><input type="number" id="ce_price" value="${esc(ex.specialPrice||'')}">
+    <label>メモ（請求の送り方など）</label><textarea id="ce_memo">${esc(ex.memo||'')}</textarea>`,
+    [{label:'💾 保存',fn:()=>{
+      const all={...custExtras()};
+      all[c.name]={line:document.getElementById('ce_line').value.trim(),specialService:document.getElementById('ce_svc').value,
+        specialPrice:num(document.getElementById('ce_price').value)||'',memo:document.getElementById('ce_memo').value.trim()};
+      closeModal();post('saveSettings',{key:'customers',value:all});}}]);
+}
+function exportCustomersCSV(){
+  const rows=[['氏名','電話','メール','LINE名','発注件数','発注t','実績t','実績金額','未請求','メモ']];
+  customerList().forEach(c=>rows.push([c.name,c.phone,c.email,c.line,c.orders,c.orderT.toFixed(1),c.recT.toFixed(1),c.recY,c.unbilled,c.extra?.memo||'']));
+  downloadCSV(rows,'顧客一覧.csv');
+}
+
+// ===== 散布実績 =====
+let recLineSeq=0;
+function renderRecordForm(){
+  const loc=document.getElementById('r_location');const cur=loc.value;
+  loc.innerHTML=optionList(locations(),cur||locations()[0]);
+  if(!document.querySelector('#recordLines .rec-row')) addRecordLine();
+  updateRecordOrders();
+}
+function addRecordLine(preset={}){
+  const id=++recLineSeq;const svc=preset.service||prices()[0].label;
+  const svcList=prices().map(p=>p.label);if(!svcList.includes(svc))svcList.push(svc);
+  const row=document.createElement('div');row.className='rec-row';row.id='rl-'+id;
+  row.innerHTML=`<input type="text" class="rl-place" placeholder="散布先（圃場・住所）" value="${esc(preset.place||'')}">
+    <input type="number" class="rl-qty" placeholder="t" step="0.1" min="0" value="${esc(preset.qty||'')}" oninput="updateRecordTotal()">
+    <select class="rl-svc" onchange="onRecordSvc(${id})">${optionList(svcList,svc)}</select>
+    <input type="number" class="rl-price" placeholder="円/t" min="0" value="${esc(preset.price!=null?preset.price:priceOf(svc,document.getElementById('r_customer').value))}" oninput="updateRecordTotal()">
+    <button class="btn btn-danger btn-sm" onclick="document.getElementById('rl-${id}').remove();updateRecordTotal()">✕</button>`;
+  document.getElementById('recordLines').appendChild(row);updateRecordTotal();
+}
+function onRecordSvc(id){const row=document.getElementById('rl-'+id);
+  row.querySelector('.rl-price').value=priceOf(row.querySelector('.rl-svc').value,document.getElementById('r_customer').value);updateRecordTotal();}
+function onRecordCustomer(){updateRecordOrders();
+  document.querySelectorAll('#recordLines .rec-row').forEach(row=>{
+    row.querySelector('.rl-price').value=priceOf(row.querySelector('.rl-svc').value,document.getElementById('r_customer').value);});
+  updateRecordTotal();}
+function updateRecordOrders(){
+  const name=document.getElementById('r_customer').value.trim();const sel=document.getElementById('r_order');const cur=sel.value;
+  const list=S.orders.filter(o=>['未確認','確認済'].includes(orderStatus(o))&&(!name||o.name===name));
+  sel.innerHTML='<option value="">（なし）</option>'+list.map(o=>`<option value="${esc(o.key)}">${esc(o.name)} ${esc(o.date)} ${o.totalQty}t</option>`).join('');
+  if([...sel.options].some(x=>x.value===cur)) sel.value=cur;
+}
+function recordLines(){
+  return [...document.querySelectorAll('#recordLines .rec-row')].map(row=>({place:row.querySelector('.rl-place').value.trim(),
+    qty:num(row.querySelector('.rl-qty').value),service:row.querySelector('.rl-svc').value,price:num(row.querySelector('.rl-price').value)}));
+}
+function updateRecordTotal(){
+  const ls=recordLines();
+  document.getElementById('r_totalT').textContent=ls.reduce((s,l)=>s+l.qty,0).toFixed(1);
+  document.getElementById('r_totalY').textContent=yen(ls.reduce((s,l)=>s+Math.floor(l.qty*l.price),0));
+}
+function recordFromOrder(i){
+  const o=S.orders[i];switchTab('records');
+  document.getElementById('r_customer').value=o.name;updateRecordOrders();
+  document.getElementById('r_order').value=o.key;
+  if(orderBase(o)) document.getElementById('r_location').value=orderBase(o);
+  document.getElementById('recordLines').innerHTML='';
+  // まだ実績がない圃場だけ
+  const done=S.records.filter(r=>r.orderKey===o.key).map(r=>r.place);
+  o.fields.filter(f=>!done.includes(f.name)).forEach(f=>addRecordLine({place:f.name,qty:f.qty,service:f.service,price:priceOf(f.service,o.name)}));
+  if(!document.querySelector('#recordLines .rec-row')) addRecordLine();
+  showToast('発注の内容を入れました。実際に撒いた量に直してから登録してください',5000);
+}
+async function submitRecords(){
+  const date=document.getElementById('r_date').value,customer=document.getElementById('r_customer').value.trim();
+  const location=document.getElementById('r_location').value,staff=document.getElementById('r_staff').value.trim();
+  const orderKey=document.getElementById('r_order').value,memo=document.getElementById('r_memo').value.trim();
+  const ls=recordLines().filter(l=>l.qty>0||l.place);
+  if(!date||!customer){showToast('⚠️ 散布日と取引先を入れてください');return;}
+  if(!ls.length||ls.some(l=>l.qty<=0)){showToast('⚠️ 数量（t）を入れてください');return;}
+  const total=ls.reduce((s,l)=>s+Math.floor(l.qty*l.price),0);
+  if(!confirm(`${customer}様 ${date}\n${ls.map(l=>`・${l.place||'(散布先なし)'} ${l.qty}t ${l.service} ${yen(l.price)}/t`).join('\n')}\n合計 ${yen(total)}（税込）\n\nこの内容で実績を登録しますか？`))return;
+  const btn=document.getElementById('r_submit');btn.disabled=true;
+  try{
+    await post('addRecord',{orderKey,markOrderDone:!!orderKey&&document.getElementById('r_markDone').checked,
+      records:ls.map(l=>({...l,date,customer,location,staff,orderKey,memo,deductStock:serviceDeducts(l.service)}))});
+    document.getElementById('recordLines').innerHTML='';addRecordLine();
+    document.getElementById('r_memo').value='';document.getElementById('r_order').value='';
+    showToast('✅ 実績を登録しました');
+  }finally{btn.disabled=false;}
+}
+function filteredRecords(){
+  const m=document.getElementById('recMonth').value,q=document.getElementById('recSearch').value.trim();
+  return S.records.filter(r=>(!m||ymOf(r.date)===m)&&(!q||r.customer.includes(q)||r.place.includes(q)))
+    .sort((a,b)=>b.date.localeCompare(a.date));
+}
+function renderRecords(){
+  const list=filteredRecords();
+  const by={};list.forEach(r=>{const c=by[r.customer]||(by[r.customer]={t:0,y:0,un:0});c.t+=r.qty;c.y+=r.amount;if(!r.invoiceNo)c.un+=r.amount;});
+  document.getElementById('recSummary').innerHTML=Object.keys(by).length?`<table class="small-table"><thead><tr><th>取引先</th><th class="num">数量</th><th class="num">金額（税込）</th><th class="num">未請求</th></tr></thead>
+    <tbody>${Object.entries(by).map(([n,c])=>`<tr><td>${esc(n)}</td><td class="num">${c.t.toFixed(1)}t</td><td class="num">${yen(c.y)}</td><td class="num">${c.un?yen(c.un):'−'}</td></tr>`).join('')}
+    <tr style="font-weight:700;"><td>合計</td><td class="num">${list.reduce((s,r)=>s+r.qty,0).toFixed(1)}t</td><td class="num">${yen(list.reduce((s,r)=>s+r.amount,0))}</td><td></td></tr></tbody></table>`:'';
+  const el=document.getElementById('recordsTable');
+  if(!list.length){el.innerHTML='<p class="muted" style="padding:14px;">この条件の実績はありません</p>';return;}
+  el.innerHTML=`<table class="orders-table"><thead><tr><th>散布日</th><th>取引先</th><th>散布先</th><th>数量</th><th>作業形態</th><th>単価</th><th>金額</th><th>拠点/担当</th><th>請求書</th><th></th></tr></thead>
+    <tbody>${list.map(r=>{const i=S.records.indexOf(r);return `<tr>
+      <td style="white-space:nowrap;">${esc(r.date)}</td><td style="font-weight:600;">${esc(r.customer)}</td>
+      <td style="font-size:0.74rem;">${esc(r.place)}${r.memo?`<br><span class="muted">${esc(r.memo)}</span>`:''}</td>
+      <td class="num">${r.qty}t</td><td style="font-size:0.74rem;">${esc(r.service)}</td>
+      <td class="num">${yen(r.price)}</td><td class="num">${yen(r.amount)}</td>
+      <td style="font-size:0.74rem;">${esc(r.location)}${r.deducted?'':'（在庫引かず）'}<br>${esc(r.staff)}</td>
+      <td style="font-size:0.74rem;">${r.invoiceNo?esc(r.invoiceNo):'<span class="badge b-new">未請求</span>'}</td>
+      <td>${r.invoiceNo?'':`<div style="display:flex;gap:4px;"><button class="btn btn-outline btn-sm" onclick="editRecord(${i})">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRecord(${i})">🗑</button></div>`}</td></tr>`;}).join('')}</tbody></table>`;
+}
+function editRecord(i){
+  const r=S.records[i];const svcList=prices().map(p=>p.label);if(!svcList.includes(r.service))svcList.push(r.service);
+  openModal('散布実績を修正',`
+    <label>散布日</label><input type="date" id="er_date" value="${esc(r.date)}">
+    <label>取引先</label><input type="text" id="er_customer" list="customerNames" value="${esc(r.customer)}">
+    <label>散布先</label><input type="text" id="er_place" value="${esc(r.place)}">
+    <label>数量（t）</label><input type="number" id="er_qty" step="0.1" value="${r.qty}">
+    <label>作業形態</label><select id="er_svc">${optionList(svcList,r.service)}</select>
+    <label>単価（税込・円/t）</label><input type="number" id="er_price" value="${r.price}">
+    <label>出荷拠点</label><select id="er_loc">${optionList(locations(),r.location)}</select>
+    <label>担当</label><input type="text" id="er_staff" list="staffNames" value="${esc(r.staff)}">
+    <label>メモ</label><input type="text" id="er_memo" value="${esc(r.memo)}">
+    <p class="muted" style="margin-top:8px;">在庫は一度戻してから、修正後の数量で引き直します。</p>`,
+    [{label:'💾 保存',fn:()=>{const g=id=>document.getElementById(id).value;const svc=g('er_svc');
+      closeModal();post('updateRecord',{id:r.id,date:g('er_date'),customer:g('er_customer').trim(),place:g('er_place').trim(),qty:num(g('er_qty')),
+        service:svc,price:num(g('er_price')),location:g('er_loc'),staff:g('er_staff').trim(),memo:g('er_memo').trim(),orderKey:r.orderKey,deductStock:serviceDeducts(svc)});}}]);
+}
+function deleteRecord(i){
+  const r=S.records[i];
+  if(!confirm(`${r.date} ${r.customer}様 ${r.place} ${r.qty}t の実績を削除しますか？\n（在庫は元に戻します）`))return;
+  post('deleteRecord',{id:r.id});
+}
+function exportRecordsCSV(){
+  const rows=[['散布日','取引先','散布先','数量(t)','作業形態','単価(税込)','金額(税込)','拠点','担当','請求書番号','メモ']];
+  filteredRecords().forEach(r=>rows.push([r.date,r.customer,r.place,r.qty,r.service,r.price,r.amount,r.location,r.staff,r.invoiceNo,r.memo]));
+  downloadCSV(rows,'散布実績.csv');
 }
 
 // ===== 請求書 =====
-let invItemCount=0;
-function initInvItems(){invItemCount=0;document.getElementById('invItems').innerHTML='';addInvItem({desc:'牛ふん堆肥 フルサービス',qty:'',unit:'t',price:''});updateInvoicePreview();}
-
-function addInvItem(preset){
-  const idx=++invItemCount;
-  const wrap=document.createElement('div');
-  wrap.id=`ii-${idx}`;
-  wrap.style.cssText='display:grid;grid-template-columns:2.5fr 65px 50px 100px auto;gap:6px;align-items:center;margin-bottom:6px;';
-  wrap.innerHTML=`
-    <input type="text" placeholder="品目" value="${preset?.desc||''}" oninput="updateInvoiceCalc()" style="font-size:0.81rem;">
-    <input type="number" placeholder="数量" value="${preset?.qty||''}" step="0.1" min="0" oninput="updateInvoiceCalc()" style="text-align:right;font-size:0.81rem;">
-    <input type="text" placeholder="単位" value="${preset?.unit||'t'}" style="font-size:0.81rem;">
-    <input type="number" placeholder="単価" value="${preset?.price||''}" min="0" oninput="updateInvoiceCalc()" style="text-align:right;font-size:0.81rem;">
-    <button class="btn btn-danger btn-sm" onclick="document.getElementById('ii-${idx}').remove();updateInvoiceCalc()">✕</button>`;
-  document.getElementById('invItems').appendChild(wrap);
-  if(preset?.qty) updateInvoiceCalc();
+let extraSeq=0;
+function renderInvoiceBuilder(){
+  const month=document.getElementById('i_month').value;
+  const custSel=document.getElementById('i_customer');const cur=custSel.value;
+  const unbilled=S.records.filter(r=>!r.invoiceNo&&ymOf(r.date)===month);
+  const names=[...new Set(unbilled.map(r=>r.customer))].sort((a,b)=>a.localeCompare(b,'ja'));
+  custSel.innerHTML=names.length?names.map(n=>{const s=unbilled.filter(r=>r.customer===n).reduce((a,r)=>a+r.amount,0);
+    return `<option value="${esc(n)}">${esc(n)}（${yen(s)}）</option>`;}).join(''):'<option value="">（未請求の実績なし）</option>';
+  if(names.includes(cur)) custSel.value=cur;
+  const recs=unbilled.filter(r=>r.customer===custSel.value).sort((a,b)=>a.date.localeCompare(b.date));
+  document.getElementById('i_records').innerHTML=recs.length?`<table class="small-table"><thead><tr><th></th><th>散布日</th><th>散布先</th><th class="num">数量</th><th class="num">単価</th><th class="num">金額</th></tr></thead>
+    <tbody>${recs.map(r=>`<tr><td><input type="checkbox" class="i-rec" value="${esc(r.id)}" checked onchange="updateBuilderTotal()"></td>
+      <td>${esc(r.date)}</td><td>${esc(r.place)}<br><span class="muted">${esc(r.service)}</span></td><td class="num">${r.qty}t</td><td class="num">${yen(r.price)}</td><td class="num">${yen(r.amount)}</td></tr>`).join('')}</tbody></table>`
+    :'<p class="muted">この月・取引先の未請求の実績はありません。</p>';
+  updateBuilderTotal();
+}
+function addExtraLine(preset={}){
+  const id=++extraSeq;const row=document.createElement('div');row.className='rec-row';row.id='ex-'+id;
+  row.style.gridTemplateColumns='2fr 70px 60px 100px auto';
+  row.innerHTML=`<input type="text" class="ex-desc" placeholder="品目（例：珪カル資材 50kg）" value="${esc(preset.desc||'')}">
+    <input type="number" class="ex-qty" placeholder="数量" step="0.1" value="${esc(preset.qty!=null?preset.qty:1)}" oninput="updateBuilderTotal()">
+    <input type="text" class="ex-unit" placeholder="単位" value="${esc(preset.unit||'式')}">
+    <input type="number" class="ex-price" placeholder="単価(税込)" value="${esc(preset.price||'')}" oninput="updateBuilderTotal()">
+    <button class="btn btn-danger btn-sm" onclick="document.getElementById('ex-${id}').remove();updateBuilderTotal()">✕</button>`;
+  document.getElementById('i_extra').appendChild(row);updateBuilderTotal();
+}
+function builderLines(){
+  const ids=[...document.querySelectorAll('.i-rec:checked')].map(c=>c.value);
+  const recs=S.records.filter(r=>ids.includes(r.id)).sort((a,b)=>a.date.localeCompare(b.date));
+  const lines=recs.map(r=>({desc:`牛ふん堆肥 ${r.service}（${r.date.slice(5).replace('-','/')} ${r.place}）`,qty:r.qty,unit:'t',price:r.price,amount:r.amount}));
+  document.querySelectorAll('#i_extra .rec-row').forEach(row=>{
+    const desc=row.querySelector('.ex-desc').value.trim(),qty=num(row.querySelector('.ex-qty').value),price=num(row.querySelector('.ex-price').value);
+    if(desc||price) lines.push({desc,qty,unit:row.querySelector('.ex-unit').value.trim(),price,amount:Math.floor(qty*price)});});
+  return {ids,recs,lines,total:lines.reduce((s,l)=>s+l.amount,0)};
+}
+function updateBuilderTotal(){
+  const b=builderLines();document.getElementById('i_total').textContent=yen(b.total);
+  const t=b.recs.reduce((s,r)=>s+r.qty,0);const sub=b.recs.reduce((s,r)=>s+r.amount,0);
+  const d=discounts().filter(x=>t>=num(x.minTon)).sort((a,b)=>num(b.minTon)-num(a.minTon))[0];
+  const hint=document.getElementById('i_discountHint');
+  if(d&&sub>0){const v=-Math.floor(sub*num(d.rate)/100);
+    hint.innerHTML=`<div class="warn-box" style="margin:0;">合計 ${t.toFixed(1)}t で割引条件「${esc(d.note||d.minTon+'t以上'+d.rate+'%引き')}」に当てはまります（${yen(v)}）。
+      <button class="btn btn-outline btn-sm" onclick="addExtraLine({desc:'数量割引（${esc(d.note||d.rate+'%')}）',qty:1,unit:'式',price:${v}})">値引き行を入れる</button></div>`;}
+  else hint.innerHTML='';
+}
+function previewBuilder(){
+  const b=builderLines();if(!b.lines.length){showToast('⚠️ 明細がありません');return;}
+  printDoc({type:'請求書',number:'（作成前の下書き）',date:document.getElementById('i_date').value,due:document.getElementById('i_due').value,
+    customer:document.getElementById('i_customer').value,period:document.getElementById('i_month').value,lines:b.lines,memo:document.getElementById('i_memo').value});
+}
+async function createInvoice(){
+  const b=builderLines();const customer=document.getElementById('i_customer').value;
+  if(!customer||!b.ids.length){showToast('⚠️ 請求する実績を選んでください');return;}
+  if(!confirm(`${customer}様 ${document.getElementById('i_month').value} 分\n明細 ${b.lines.length} 行・合計 ${yen(b.total)}（税込）\n\n請求書を「下書き」で作成しますか？`))return;
+  const btn=document.getElementById('i_create');btn.disabled=true;
+  try{
+    await post('createInvoice',{customer,recordIds:b.ids,lines:b.lines,total:b.total,issueDate:document.getElementById('i_date').value,
+      dueDate:document.getElementById('i_due').value,period:document.getElementById('i_month').value,memo:document.getElementById('i_memo').value.trim()});
+    document.getElementById('i_extra').innerHTML='';document.getElementById('i_memo').value='';
+    showToast('✅ 請求書（下書き）を作成しました。栗原さんの確認待ちです',5000);
+  }finally{btn.disabled=false;}
+}
+function renderInvoices(){
+  const f=document.getElementById('invStatusFilter').value;
+  const list=S.invoices.filter(v=>!f||v.status===f).sort((a,b)=>b.number.localeCompare(a.number));
+  const el=document.getElementById('invoiceList');
+  if(!list.length){el.innerHTML='<p class="muted">まだ請求書はありません</p>';return;}
+  el.innerHTML=list.map(v=>{const i=S.invoices.indexOf(v);return `<div style="padding:10px 12px;border:1px solid rgba(200,169,110,0.25);border-radius:10px;margin-bottom:8px;">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
+      <div><strong>${esc(v.customer)}様</strong> ${statusBadge(v.status)}<br><span class="muted">No.${esc(v.number)}　${esc(v.period)}分　発行 ${esc(v.date)}</span></div>
+      <strong style="font-size:1.05rem;">${yen(v.total)}</strong></div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">
+      <button class="btn btn-outline btn-sm" onclick="printInvoice(${i},'請求書')">🖨 請求書</button>
+      <button class="btn btn-outline btn-sm" onclick="printInvoice(${i},'納品書')">📦 納品書</button>
+      ${v.status==='下書き'?`<button class="btn btn-green btn-sm" onclick="setInvStatus(${i},'栗原OK')">👍 栗原OK</button>`:''}
+      ${v.status==='栗原OK'?`<button class="btn btn-primary btn-sm" onclick="setInvStatus(${i},'送付済')">📨 送付済にする</button>`:''}
+      ${v.status==='送付済'?`<button class="btn btn-primary btn-sm" onclick="setInvStatus(${i},'入金済')">💰 入金済</button>`:''}
+      ${['下書き','栗原OK'].includes(v.status)?`<button class="btn btn-danger btn-sm" onclick="deleteInvoice(${i})">🗑 取り消し</button>`:''}
+    </div></div>`;}).join('');
+}
+function setInvStatus(i,st){
+  const v=S.invoices[i];
+  const msg={栗原OK:'栗原さんが内容を確認してOKしましたか？',送付済:'お客さんへ送りましたか？（LINE・郵送など）',入金済:'入金を確認しましたか？'}[st];
+  if(!confirm(`${v.customer}様 No.${v.number}\n${msg}`))return;
+  post('setInvoiceStatus',{number:v.number,status:st});
+}
+function deleteInvoice(i){
+  const v=S.invoices[i];
+  if(!confirm(`No.${v.number} ${v.customer}様の請求書を取り消しますか？\n（実績は「未請求」に戻ります）`))return;
+  post('deleteInvoice',{number:v.number});
+}
+function printInvoice(i,type){const v=S.invoices[i];printDoc({...v,type});}
+function printEstimate(i){
+  const o=S.orders[i];
+  const lines=o.fields.filter(f=>f.qty).map(f=>{const p=priceOf(f.service,o.name);
+    return {desc:`牛ふん堆肥 ${f.service}（${f.name}）`,qty:f.qty,unit:'t',price:p,amount:Math.floor(f.qty*p)};});
+  const small=o.totalQty>0&&o.totalQty<MIN_LOT;
+  if(small){const base=lines.reduce((s,l)=>s+l.amount,0);lines.push({desc:`少量割増（合計${MIN_LOT}t未満 +20%）`,qty:1,unit:'式',price:Math.floor(base*0.2/10)*10,amount:Math.floor(base*0.2/10)*10});}
+  printDoc({type:'見積書',number:'',date:localDate(),customer:o.name,period:'',lines,
+    memo:`散布希望：${o.dateFrom}〜${o.dateTo}\n※距離・朝来市の割増、珪カル資材は含みません。確定金額は散布後にご請求します。`});
 }
 
-function updateInvoiceCalc(){
-  const rate=parseFloat(document.getElementById('inv_taxrate')?.value)||0.1;
-  let sub=0;
-  document.querySelectorAll('#invItems > div').forEach(r=>{
-    const ins=r.querySelectorAll('input');
-    sub+=(parseFloat(ins[1]?.value)||0)*(parseFloat(ins[3]?.value)||0);
-  });
-  const tax=Math.round(sub*rate);
-  document.getElementById('inv_subtotal').textContent=`¥${sub.toLocaleString()}`;
-  document.getElementById('inv_tax').textContent=`¥${tax.toLocaleString()}`;
-  document.getElementById('inv_total').textContent=`¥${(sub+tax).toLocaleString()}`;
-  updateInvoicePreview();
+// 印刷（単価は税込。消費税は内税で表示）
+function printDoc(d){
+  const total=d.lines.reduce((s,l)=>s+(num(l.amount)||Math.floor(num(l.qty)*num(l.price))),0);
+  const tax=Math.floor(total*10/110);
+  const itemsHtml=d.lines.map(l=>`<tr><td>${esc(l.desc)}</td><td>${esc(l.qty)} ${esc(l.unit)}</td><td>${yen(l.price)}</td><td>${yen(num(l.amount)||Math.floor(num(l.qty)*num(l.price)))}</td></tr>`).join('');
+  const lead={請求書:'下記の通りご請求申し上げます。',納品書:'下記の通り納品いたしました。',見積書:'下記の通りお見積り申し上げます。'}[d.type]||'';
+  const win=window.open('','_blank');
+  if(!win){showToast('⚠️ ポップアップがブロックされました。許可してください');return;}
+  win.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${esc(d.type)}｜${esc(d.customer)}様｜丹波農商</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;color:#2a1f14;background:#fff;width:210mm;min-height:297mm;padding:14mm 16mm 12mm;font-size:11px;margin:0 auto;}
+.doc-title{font-family:'Noto Serif JP',serif;font-size:22px;font-weight:700;color:#3d2b1a;letter-spacing:0.15em;text-align:center;margin-bottom:14px;padding-bottom:8px;border-bottom:2.5px solid #c8a96e;}
+.header-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;}
+.to-box{border-bottom:1.5px solid #3d2b1a;padding-bottom:6px;}.to-name{font-size:16px;font-weight:700;color:#3d2b1a;}
+.from-box{text-align:right;font-size:10px;line-height:1.7;color:#5a4433;}.from-company{font-size:12px;font-weight:700;color:#3d2b1a;}
+.badge{display:inline-block;background:#f5f0e8;border:1px solid #c8a96e;border-radius:3px;padding:1px 6px;font-size:9px;margin-top:2px;}
+.meta{display:flex;gap:20px;margin-bottom:8px;font-size:10px;color:#5a4433;flex-wrap:wrap;}
+.big{margin:10px 0;padding:8px 12px;background:#f5f0e8;font-size:15px;font-weight:700;color:#3d2b1a;display:flex;justify-content:space-between;}
+table{width:100%;border-collapse:collapse;margin:10px 0;}
+thead th{background:#3d2b1a;color:#c8a96e;padding:6px 10px;font-size:10px;text-align:right;}thead th:first-child{text-align:left;}
+tbody td{padding:6px 10px;border-bottom:1px solid #e8dfc8;font-size:10px;text-align:right;}tbody td:first-child{text-align:left;}
+.total{display:flex;justify-content:flex-end;}.total table{width:250px;}
+.total td{padding:4px 10px;font-size:10px;border-bottom:1px solid #e8dfc8;}.total td:last-child{text-align:right;font-weight:600;}
+.grand td{background:#f5f0e8;font-size:13px;font-weight:700;}
+.box{margin-top:12px;padding:10px 13px;background:#f8f4ee;border-radius:6px;border-left:3px solid #c8a96e;font-size:10px;line-height:1.7;white-space:pre-line;}
+.note{margin-top:10px;font-size:9px;color:#8b5e3c;}
+@media print{body{width:210mm;padding:12mm 15mm 10mm;}@page{size:A4 portrait;margin:0;}}</style></head><body>
+<div class="doc-title">${esc(d.type)}</div>
+<div class="header-grid"><div class="to-box"><div style="font-size:10px;color:#5a4433;">お客様</div><div class="to-name">${esc(d.customer)} 様</div>
+<div style="font-size:10px;margin-top:6px;">${lead}</div></div>
+<div class="from-box"><div class="from-company">${COMPANY_INFO.name}</div><div>${COMPANY_INFO.zip} ${COMPANY_INFO.address}</div><div>TEL: ${COMPANY_INFO.tel}</div>
+<div class="badge">適格請求書発行事業者 登録番号 ${COMPANY_INFO.invoice_no}</div></div></div>
+<div class="meta">${d.number?`<span>書類番号：${esc(d.number)}</span>`:''}<span>発行日：${esc(d.date)}</span>${d.period?`<span>対象：${esc(String(d.period).replace('-','年'))}月分</span>`:''}${d.type==='請求書'&&d.due?`<span>お支払期限：${esc(d.due)}</span>`:''}</div>
+<div class="big"><span>${d.type==='見積書'?'お見積金額':d.type==='納品書'?'納品金額':'ご請求金額'}（税込）</span><span>${yen(total)}</span></div>
+<table><thead><tr><th style="width:50%;">品目</th><th>数量</th><th>単価（税込）</th><th>金額（税込）</th></tr></thead><tbody>${itemsHtml}</tbody></table>
+<div class="total"><table><tr><td>10%対象（税込）</td><td>${yen(total)}</td></tr><tr><td>うち消費税（10%）</td><td>${yen(tax)}</td></tr>
+<tr class="grand"><td>合計金額</td><td>${yen(total)}</td></tr></table></div>
+${d.memo?`<div class="box">${esc(d.memo)}</div>`:''}
+${d.type==='請求書'?`<div class="box"><strong>■ お振込先</strong>\n${COMPANY_INFO.bank}</div><div class="note">※ お振込手数料はご負担いただきますようお願いいたします。　※ ご不明な点はお気軽にご連絡ください。</div>`:''}
+<script>window.onload=()=>{window.print();}<\/script></body></html>`);
+  win.document.close();
 }
 
-function updateInvoicePreview(){
-  const type=document.getElementById('inv_type')?.value||'請求書';
-  const date=document.getElementById('inv_date')?.value||'';
-  const due=document.getElementById('inv_due')?.value||'';
-  const customer=document.getElementById('inv_customer')?.value||'　';
-  const number=document.getElementById('inv_number')?.value||'';
-  const note=document.getElementById('inv_note')?.value||'';
-  const rate=parseFloat(document.getElementById('inv_taxrate')?.value)||0.1;
-
-  const items=[];
-  document.querySelectorAll('#invItems > div').forEach(r=>{
-    const ins=r.querySelectorAll('input');
-    const desc=ins[0]?.value||'';const qty=parseFloat(ins[1]?.value)||0;
-    const unit=ins[2]?.value||'';const price=parseFloat(ins[3]?.value)||0;
-    if(desc||qty) items.push({desc,qty,unit,price,amount:qty*price});
-  });
-  const sub=items.reduce((s,i)=>s+i.amount,0);
-  const tax=Math.round(sub*rate);
-  const total=sub+tax;
-
-  document.getElementById('invoicePreview').innerHTML=`
-    <div style="max-width:660px;margin:0 auto;font-size:0.83rem;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;">
-        <div>
-          <div style="font-family:'Noto Serif JP',serif;font-size:1.7rem;font-weight:700;color:var(--soil);letter-spacing:0.12em;">${type}</div>
-          ${number?`<div style="font-size:0.74rem;color:var(--text-mid);margin-top:3px;">No. ${number}</div>`:''}
-        </div>
-        <div style="text-align:right;font-size:0.79rem;color:var(--text-mid);">
-          <div style="font-weight:700;color:var(--soil);font-size:0.88rem;">株式会社丹波農商</div>
-          <div>兵庫県丹波市市島町上竹田915-5</div>
-          <div>TEL: 090-7763-4337</div>
-          <div>発行日：${date}</div>
-          ${due?`<div>支払期限：${due}</div>`:''}
-        </div>
-      </div>
-      <div style="margin-bottom:18px;">
-        <div style="font-size:1.05rem;font-weight:700;color:var(--soil);border-bottom:2px solid var(--straw);padding-bottom:5px;">${customer} 様</div>
-        <div style="font-size:0.86rem;margin-top:7px;color:var(--soil);">下記の通り${type==='領収書'?'お支払いを確認しました。':'ご請求申し上げます。'}</div>
-      </div>
-      <table class="invoice-table">
-        <thead><tr><th style="text-align:left;">品目</th><th>数量</th><th>単価</th><th>金額</th></tr></thead>
-        <tbody>${items.map(i=>`<tr><td>${i.desc}</td><td>${i.qty} ${i.unit}</td><td>¥${i.price.toLocaleString()}</td><td>¥${i.amount.toLocaleString()}</td></tr>`).join('')}</tbody>
-      </table>
-      <div style="text-align:right;font-size:0.82rem;">
-        <div style="display:flex;justify-content:flex-end;gap:50px;padding:5px 0;border-bottom:1px solid #e0d5c5;"><span>小計</span><span>¥${sub.toLocaleString()}</span></div>
-        <div style="display:flex;justify-content:flex-end;gap:50px;padding:5px 0;border-bottom:1px solid #e0d5c5;"><span>消費税（${Math.round(rate*100)}%）</span><span>¥${tax.toLocaleString()}</span></div>
-        <div style="display:flex;justify-content:flex-end;gap:50px;padding:9px 14px;font-size:1rem;font-weight:700;color:var(--soil);background:#f5f0e8;border-radius:6px;margin-top:3px;"><span>合計</span><span>¥${total.toLocaleString()}</span></div>
-      </div>
-      ${note?`<div style="margin-top:14px;padding:10px;background:#f8f4ee;border-radius:7px;font-size:0.77rem;color:var(--text-mid);white-space:pre-wrap;">${note}</div>`:''}
-    </div>`;
+// ===== 在庫 =====
+function renderStock(){
+  const locs=[...new Set([...locations(),...Object.keys(S.stock)])];
+  document.getElementById('stockCards').innerHTML=locs.map(l=>{const v=num(S.stock[l]);
+    return `<div class="stat-card" style="border-left:4px solid ${v<0?'var(--accent)':'var(--leaf)'};"><div class="stat-label">${esc(l)} 現在庫</div>
+      <div class="stat-value">${v.toFixed(1)}<span class="stat-unit">t</span></div>${v<0?'<div class="stat-sub" style="color:var(--accent);">マイナス：棚卸しで実際の量に直してください</div>':''}</div>`;}).join('');
+  ['s_location','s_to'].forEach(id=>{const el=document.getElementById(id);const cur=el.value;el.innerHTML=optionList(locs,cur||locs[0]);});
+  const h=S.stockHistory;
+  document.getElementById('stockHistory').innerHTML=h.length?`<table class="small-table"><thead><tr><th>日時</th><th>種別</th><th class="num">数量</th><th>拠点・理由</th><th>メモ</th><th>残高</th></tr></thead>
+    <tbody>${h.map(r=>`<tr><td style="white-space:nowrap;">${esc(r[0])}</td><td>${esc(r[1])}</td><td class="num">${esc(r[2])}</td><td>${esc(r[3])}</td><td>${esc(r[4])}</td><td style="font-size:0.72rem;">${esc(r[5])}</td></tr>`).join('')}</tbody></table>`
+    :'<p class="muted">履歴はまだありません</p>';
+  renderProdRows();renderForecast();
 }
-
-function printInvoice(){window.print();}
-
-function saveInvoiceRecord(){
-  const store=getStore();
-  const rec={
-    id:Date.now().toString(),
-    type:document.getElementById('inv_type').value,
-    number:document.getElementById('inv_number').value,
-    customer:document.getElementById('inv_customer').value,
-    date:document.getElementById('inv_date').value,
-    total:document.getElementById('inv_total').textContent,
-    savedAt:new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})
-  };
-  store.invoiceRecords.unshift(rec);
-  store.invoiceSeq++;
-  document.getElementById('inv_number').value=`2026-${String(store.invoiceSeq).padStart(3,'0')}`;
-  saveStore(store);
-  renderInvoiceRecords();
-  showToast('✅ 発行記録を保存しました');
+function onStockType(){const t=document.getElementById('s_type').value;
+  document.getElementById('s_toWrap').style.display=t==='transfer'?'':'none';
+  document.getElementById('s_locLabel').textContent=t==='transfer'?'移動元':'拠点';
+  document.getElementById('s_qtyLabel').textContent=t==='set'?'実際の在庫量（t）':'数量（t）';}
+function submitStock(){
+  const type=document.getElementById('s_type').value,loc=document.getElementById('s_location').value,to=document.getElementById('s_to').value;
+  const qty=num(document.getElementById('s_qty').value),reason=document.getElementById('s_reason').value.trim();
+  if(document.getElementById('s_qty').value===''){showToast('⚠️ 数量を入れてください');return;}
+  if(type==='transfer'&&loc===to){showToast('⚠️ 移動元と移動先が同じです');return;}
+  const label={add:`${loc} に ${qty}t 入庫`,sub:`${loc} から ${qty}t 出庫`,set:`${loc} の在庫を ${qty}t に修正`,transfer:`${loc} → ${to} へ ${qty}t 移動`}[type];
+  if(!confirm(label+' します。よろしいですか？'))return;
+  post('stockMove',{type,location:loc,from:loc,to,quantity:qty,newStock:qty,reason,memo:reason});
+  document.getElementById('s_qty').value='';document.getElementById('s_reason').value='';
 }
-
-function renderInvoiceRecords(){
-  const store=getStore();
-  const el=document.getElementById('invoiceRecords');
-  if(!store.invoiceRecords.length){el.innerHTML='<p style="color:var(--text-mid);font-size:0.82rem;">まだ発行記録がありません</p>';return;}
-  el.innerHTML=`<table style="width:100%;font-size:0.78rem;border-collapse:collapse;">
-    <thead><tr style="background:#f5f0e8;">
-      <th style="padding:6px 10px;text-align:left;">種類</th><th style="padding:6px 10px;">番号</th>
-      <th style="padding:6px 10px;">宛先</th><th style="padding:6px 10px;">金額</th><th style="padding:6px 10px;">発行日</th>
-    </tr></thead>
-    <tbody>${store.invoiceRecords.slice(0,20).map(r=>`<tr style="border-bottom:1px solid rgba(200,169,110,0.1);">
-      <td style="padding:6px 10px;">${r.type}</td><td style="padding:6px 10px;">${r.number||'−'}</td>
-      <td style="padding:6px 10px;">${r.customer}様</td><td style="padding:6px 10px;">${r.total}</td>
-      <td style="padding:6px 10px;font-size:0.72rem;">${r.date}</td>
-    </tr>`).join('')}</tbody>
-  </table>`;
+function prodSchedule(){return S.settings.prodSchedule||[];}
+function renderProdRows(){
+  document.getElementById('prodRows').innerHTML=prodSchedule().map((r,i)=>`<div class="prod-row" style="display:grid;grid-template-columns:1fr 1fr 80px auto;gap:6px;margin-bottom:6px;">
+    <input type="date" value="${esc(r.date)}"><select>${optionList(locations(),r.location)}</select>
+    <input type="number" placeholder="t" step="0.5" value="${esc(r.ton)}">
+    <button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button></div>`).join('');
 }
-
-// ===== 在庫管理（2拠点対応）=====
-function initInventory(){
-  const store=getStore();
-  const inv=store.inventory||{};
-  document.getElementById('inv_maeyama').value=inv.maeyama?.current??60;
-  document.getElementById('inv_yakuno').value=inv.yakuno?.current??0;
-  renderProdScheduleRows('maeyama');
-  renderProdScheduleRows('yakuno');
-  updateInventoryChart();
+function addProdRow(){
+  const div=document.createElement('div');div.className='prod-row';div.style.cssText='display:grid;grid-template-columns:1fr 1fr 80px auto;gap:6px;margin-bottom:6px;';
+  div.innerHTML=`<input type="date"><select>${optionList(locations(),locations()[0])}</select><input type="number" placeholder="t" step="0.5">
+    <button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button>`;
+  document.getElementById('prodRows').appendChild(div);
 }
-
-let prodRowCount=0;
-function renderProdScheduleRows(base){
-  const store=getStore();
-  const rows=store.inventory?.[base]?.prodSchedule||[];
-  document.getElementById(`prodScheduleRows_${base}`).innerHTML=rows.map((r,i)=>`
-    <div id="prod-${base}-${i}" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-bottom:6px;">
-      <input type="date" value="${r.date||''}" oninput="updateInventoryChart()">
-      <input type="number" placeholder="完成トン数" value="${r.ton||''}" min="0" step="0.5" oninput="updateInventoryChart()">
-      <button class="btn btn-danger btn-sm" onclick="removeProdRow('${base}',${i})">✕</button>
-    </div>`).join('');
+function saveProd(){
+  const rows=[...document.querySelectorAll('#prodRows .prod-row')].map(r=>({date:r.querySelector('input[type=date]').value,
+    location:r.querySelector('select').value,ton:num(r.querySelector('input[type=number]').value)})).filter(r=>r.date&&r.ton);
+  post('saveSettings',{key:'prodSchedule',value:rows});
 }
-
-function addProdRow(base){
-  const store=getStore();
-  if(!store.inventory) store.inventory={};
-  if(!store.inventory[base]) store.inventory[base]={current:0,prodSchedule:[]};
-  store.inventory[base].prodSchedule.push({date:'',ton:''});
-  saveStore(store);renderProdScheduleRows(base);
-}
-
-function removeProdRow(base,i){
-  const store=getStore();
-  store.inventory[base].prodSchedule.splice(i,1);
-  saveStore(store);renderProdScheduleRows(base);updateInventoryChart();
-}
-
-function saveInventory(){
-  const store=getStore();
-  if(!store.inventory) store.inventory={};
-  ['maeyama','yakuno'].forEach(base=>{
-    if(!store.inventory[base]) store.inventory[base]={current:0,prodSchedule:[]};
-    store.inventory[base].current=parseFloat(document.getElementById(`inv_${base}`)?.value)||0;
-    const rows=document.querySelectorAll(`#prodScheduleRows_${base} > div`);
-    store.inventory[base].prodSchedule=Array.from(rows).map(r=>{
-      const ins=r.querySelectorAll('input');
-      return{date:ins[0]?.value||'',ton:parseFloat(ins[1]?.value)||0};
-    });
-  });
-  saveStore(store);updateInventoryChart();showToast('✅ 在庫情報を保存しました');
-}
-
-function updateInventoryChart(){
-  const store=getStore();
-  const orders=store.orders||[];
-  const now=new Date();
-
-  ['maeyama','yakuno'].forEach(base=>{
-    const color=base==='maeyama'?'var(--accent)':'var(--leaf)';
-    const current=parseFloat(document.getElementById(`inv_${base}`)?.value)||0;
-    const weeks=[];
+function renderForecast(){
+  const locs=locations();const start=new Date(localDate()+'T00:00:00');
+  const pending=S.orders.filter(o=>orderStatus(o)==='確認済');
+  const html=locs.map(loc=>{
+    let rem=num(S.stock[loc]);
+    const rows=[];
     for(let w=0;w<6;w++){
-      const start=new Date(now);start.setDate(start.getDate()+w*7);
-      const end=new Date(start);end.setDate(end.getDate()+6);
-      // その拠点から出荷予定の発注（base指定ありのもの＋未指定は按分しない）
-      const shipped=orders.reduce((s,o)=>{
-        if(!o.dateFrom) return s;
-        if(o.shipBase && o.shipBase!==base) return s;
-        if(!o.shipBase) return s; // 未確認分は含めない
-        const d=new Date(o.dateFrom);
-        if(d>=start&&d<=end) return s+(parseFloat(o.totalQty)||0);
-        return s;
-      },0);
-      const prodRows=document.querySelectorAll(`#prodScheduleRows_${base} > div`);
-      const produced=Array.from(prodRows).reduce((s,r)=>{
-        const ins=r.querySelectorAll('input');
-        const d=new Date(ins[0]?.value);
-        if(d>=start&&d<=end) return s+(parseFloat(ins[1]?.value)||0);
-        return s;
-      },0);
-      weeks.push({label:`第${w+1}週`,shipped,produced});
+      const ws=new Date(start);ws.setDate(ws.getDate()+w*7);const we=new Date(ws);we.setDate(we.getDate()+7);
+      const inW=d=>{const x=new Date(String(d)+'T00:00:00');return x>=ws&&x<we;};
+      // 期限切れ（開始日が過去）の未散布は第1週に入れる
+      const ship=pending.filter(o=>orderBase(o)===loc&&(inW(o.dateFrom)||(w===0&&new Date(o.dateFrom+'T00:00:00')<ws)))
+        .reduce((s,o)=>{const done=S.records.filter(r=>r.orderKey===o.key).reduce((a,r)=>a+r.qty,0);return s+Math.max(0,o.totalQty-done);},0);
+      const prod=prodSchedule().filter(p=>p.location===loc&&inW(p.date)).reduce((s,p)=>s+num(p.ton),0);
+      rem=rem-ship+prod;
+      rows.push(`<tr><td>${localDate(ws).slice(5)}〜</td><td class="num">${ship?'-'+ship.toFixed(1):''}</td><td class="num">${prod?'+'+prod.toFixed(1):''}</td>
+        <td class="num" style="font-weight:600;${rem<0?'color:var(--accent);':''}">${rem.toFixed(1)}</td></tr>`);
     }
-    const maxVal=Math.max(current,...weeks.map(w=>w.shipped+w.produced),1);
-    let remaining=current;
-    const chart=document.getElementById(`inventoryChart_${base}`);
-    if(!chart) return;
-    chart.innerHTML=weeks.map(w=>{
-      const shipPct=Math.min(100,(w.shipped/maxVal)*100);
-      const prodPct=Math.min(100,(w.produced/maxVal)*100);
-      remaining=remaining-w.shipped+w.produced;
-      return `<div class="inv-week-row">
-        <div class="inv-week-label">${w.label}</div>
-        <div class="inv-bar-outer">
-          <div class="inv-bar-ship" style="width:${shipPct}%;background:${color};"></div>
-          <div class="inv-bar-prod" style="width:${prodPct}%;background:${color};position:absolute;top:0;left:0;opacity:0.35;"></div>
-        </div>
-        <div class="inv-bar-val">${w.shipped>0?`出荷${w.shipped}t`:''}${w.produced>0?` +${w.produced}t`:''}</div>
-      </div>`;
-    }).join('');
-
-    // サマリー更新
-    const nowEl=document.getElementById(`${base}_now`);
-    const wkEl=document.getElementById(`${base}_4w`);
-    if(nowEl) nowEl.innerHTML=`${current}<span class="stat-unit">t</span>`;
-    const rem4=weeks.slice(0,4).reduce((s,w)=>s-w.shipped+w.produced,current);
-    if(wkEl) wkEl.textContent=`4週後残量：${rem4.toFixed(1)}t`;
-  });
+    return `<div style="font-weight:600;margin-top:8px;">${esc(loc)}</div><table class="small-table"><thead><tr><th>週</th><th class="num">出荷予定</th><th class="num">製造完成</th><th class="num">見込み在庫</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  }).join('');
+  document.getElementById('forecast').innerHTML=html;
 }
 
-// ===== 顧客管理 =====
-function renderCustomers(q=''){
-  const store=getStore();
-  let list=store.customers;
-  if(q) list=list.filter(c=>c.name.includes(q)||(c.phone&&c.phone.includes(q)));
-  const el=document.getElementById('customerList');
-  if(!list.length){el.innerHTML='<p style="color:var(--text-mid);font-size:0.82rem;padding:14px;">顧客データがありません</p>';return;}
-  el.innerHTML=`<div class="orders-table-wrap"><table class="orders-table">
-    <thead><tr><th>お名前</th><th>電話</th><th>メール</th><th>登録日</th><th>操作</th></tr></thead>
-    <tbody>${list.map(c=>`<tr>
-      <td style="font-weight:600;">${c.name}</td><td>${c.phone||'−'}</td>
-      <td style="font-size:0.74rem;">${c.email||'−'}</td>
-      <td style="font-size:0.74rem;">${c.createdAt||''}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="fillCustomerProxy('${c.id}')">📝 代行入力</button></td>
-    </tr>`).join('')}</tbody>
-  </table></div>`;
-}
-function fillCustomerProxy(id){fillCustomer(id);switchTab('proxy');}
-function exportCustomersCSV(){
-  const store=getStore();
-  const rows=[['氏名','電話','メール','登録日']];
-  store.customers.forEach(c=>rows.push([c.name,c.phone||'',c.email||'',c.createdAt||'']));
-  const csv=rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv'}));
-  a.download='顧客一覧.csv';a.click();
-}
-
-// ===== 単価設定 =====
-function initPriceTable(){
-  const store=getStore();
-  document.getElementById('priceTableBody').innerHTML=store.prices.map((p,i)=>`
-    <tr><td>${p.label}</td>
-    <td><input class="price-input" type="number" value="${p.price}" min="0" id="price-${i}"></td>
-    <td style="font-size:0.76rem;color:var(--text-mid);">${p.note||''}</td></tr>`).join('');
-  renderDiscounts();
-}
+// ===== 単価・設定 =====
+function renderPriceTable(){
+  document.getElementById('priceTableBody').innerHTML=prices().map(p=>priceRowHtml(p)).join('');}
+function priceRowHtml(p={label:'',price:'',stock:true,note:''}){
+  return `<tr class="price-row"><td><input type="text" class="search-input pr-label" style="min-width:200px;" value="${esc(p.label)}"></td>
+    <td><input class="price-input pr-price" type="number" min="0" value="${esc(p.price)}"></td>
+    <td style="text-align:center;"><input type="checkbox" class="pr-stock"${p.stock!==false?' checked':''}></td>
+    <td><input type="text" class="search-input pr-note" value="${esc(p.note||'')}"></td>
+    <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">✕</button></td></tr>`;}
+function addPriceRow(){document.getElementById('priceTableBody').insertAdjacentHTML('beforeend',priceRowHtml());}
 function savePrices(){
-  const store=getStore();
-  store.prices.forEach((p,i)=>{const el=document.getElementById(`price-${i}`);if(el)p.price=parseInt(el.value)||0;});
-  saveStore(store);showToast('✅ 単価を保存しました');
-}
-function resetPrices(){
-  if(!confirm('単価をリセットしますか？'))return;
-  const store=getStore();store.prices=DEFAULT_PRICES.map(p=>({...p}));saveStore(store);initPriceTable();
+  const list=[...document.querySelectorAll('#priceTableBody .price-row')].map(r=>({label:r.querySelector('.pr-label').value.trim(),
+    price:num(r.querySelector('.pr-price').value),stock:r.querySelector('.pr-stock').checked,note:r.querySelector('.pr-note').value.trim()})).filter(p=>p.label);
+  if(!list.length){showToast('⚠️ 単価が空です');return;}
+  if(!confirm('単価を保存します（全端末に反映。登録済みの実績・請求書の金額は変わりません）'))return;
+  post('saveSettings',{key:'prices',value:list});
 }
 function renderDiscounts(){
-  const store=getStore();
-  document.getElementById('discountRows').innerHTML=(store.discounts||[]).map((d,i)=>`
-    <div style="display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px;align-items:center;margin-bottom:7px;">
-      <div class="field"><label>${i===0?'最小数量(t以上)':''}</label><input type="number" value="${d.minTon}" min="0" id="disc-ton-${i}"></div>
-      <div class="field"><label>${i===0?'割引率(%)':''}</label><input type="number" value="${d.rate}" min="0" max="100" id="disc-rate-${i}"></div>
-      <div class="field"><label>${i===0?'説明':''}</label><input type="text" value="${d.note||''}" id="disc-note-${i}"></div>
-      <button class="btn btn-danger btn-sm" style="margin-top:${i===0?'18':0}px;" onclick="removeDiscount(${i})">✕</button>
-    </div>`).join('');
-}
-function addDiscountRow(){const store=getStore();store.discounts.push({minTon:5,rate:3,note:''});saveStore(store);renderDiscounts();}
-function removeDiscount(i){const store=getStore();store.discounts.splice(i,1);saveStore(store);renderDiscounts();}
+  document.getElementById('discountRows').innerHTML=discounts().map(d=>`<div class="disc-row" style="display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px;align-items:center;margin-bottom:7px;">
+    <input type="number" class="dc-ton" value="${esc(d.minTon)}" min="0" placeholder="t以上"><input type="number" class="dc-rate" value="${esc(d.rate)}" min="0" max="100" placeholder="%">
+    <input type="text" class="dc-note" value="${esc(d.note||'')}" placeholder="説明"><button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button></div>`).join('');}
+function addDiscountRow(){document.getElementById('discountRows').insertAdjacentHTML('beforeend',`<div class="disc-row" style="display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:8px;align-items:center;margin-bottom:7px;">
+  <input type="number" class="dc-ton" placeholder="t以上"><input type="number" class="dc-rate" placeholder="%"><input type="text" class="dc-note" placeholder="説明">
+  <button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button></div>`);}
 function saveDiscounts(){
-  const store=getStore();
-  store.discounts=(store.discounts||[]).map((_,i)=>({
-    minTon:parseFloat(document.getElementById(`disc-ton-${i}`)?.value)||0,
-    rate:parseFloat(document.getElementById(`disc-rate-${i}`)?.value)||0,
-    note:document.getElementById(`disc-note-${i}`)?.value||''
-  }));
-  saveStore(store);showToast('✅ 割引設定を保存しました');
+  const list=[...document.querySelectorAll('#discountRows .disc-row')].map(r=>({minTon:num(r.querySelector('.dc-ton').value),
+    rate:num(r.querySelector('.dc-rate').value),note:r.querySelector('.dc-note').value.trim()})).filter(d=>d.minTon&&d.rate);
+  post('saveSettings',{key:'discounts',value:list});
 }
+function saveLocations(){
+  const list=document.getElementById('locationsInput').value.split(/[,、]/).map(s=>s.trim()).filter(Boolean);
+  if(!list.length){showToast('⚠️ 拠点が空です');return;}
+  post('saveSettings',{key:'locations',value:list});
+}
+
+// ===== 代行入力 =====
+let proxySeq=0;
+function addProxyField(preset={}){
+  if(document.querySelectorAll('#proxyFieldRows .rec-row').length>=10){showToast('最大10か所');return;}
+  const id=++proxySeq;const row=document.createElement('div');row.className='rec-row';row.id='pf-'+id;
+  row.style.gridTemplateColumns='2fr 80px 1.4fr auto';
+  row.innerHTML=`<input type="text" class="pf-name" placeholder="圃場名・住所" value="${esc(preset.name||'')}">
+    <input type="number" class="pf-qty" placeholder="t" min="0" step="0.5" value="${esc(preset.qty||'')}" oninput="updateProxyTotal()">
+    <select class="pf-svc" onchange="updateProxyTotal()">${optionList(SVC_OPTS,preset.service||SVC_OPTS[0])}</select>
+    <button class="btn btn-danger btn-sm" onclick="document.getElementById('pf-${id}').remove();updateProxyTotal()">✕</button>`;
+  document.getElementById('proxyFieldRows').appendChild(row);updateProxyTotal();
+}
+function proxyFields(){
+  return [...document.querySelectorAll('#proxyFieldRows .rec-row')].map((r,i)=>{const name=r.querySelector('.pf-name').value.trim()||`圃場${i+1}`;
+    return {num:i+1,name,address:name,qty:r.querySelector('.pf-qty').value,service:r.querySelector('.pf-svc').value,lat:'',lng:''};});}
+function updateProxyTotal(){
+  const fs=proxyFields();const name=document.getElementById('p_name').value.trim();
+  const total=fs.reduce((s,f)=>s+num(f.qty),0);
+  let price=fs.reduce((s,f)=>s+Math.floor(num(f.qty)*priceOf(f.service,name)),0);
+  if(total>0&&total<MIN_LOT) price=Math.floor(price*1.2/10)*10;
+  document.getElementById('proxyTotalQty').textContent=total.toFixed(1);
+  document.getElementById('proxyTotalPrice').textContent=price>0?yen(price)+(total<MIN_LOT?'（少量割増込み）':''):'¥ ---';
+}
+function onProxyName(){
+  const n=document.getElementById('p_name').value.trim();
+  const last=S.orders.find(o=>o.name===n);
+  if(last){
+    if(!document.getElementById('p_phone').value) document.getElementById('p_phone').value=last.phone||'';
+    if(!document.getElementById('p_email').value) document.getElementById('p_email').value=last.email||'';
+    if(!document.getElementById('p_line').value) document.getElementById('p_line').value=last.lineName||custExtras()[n]?.line||'';
+    const rows=document.querySelectorAll('#proxyFieldRows .rec-row');
+    const empty=rows.length<=1&&![...rows].some(r=>r.querySelector('.pf-qty').value);
+    if(empty&&last.fields.length&&confirm(`${n}様の前回の圃場（${last.fields.length}か所）を入れますか？`)){
+      document.getElementById('proxyFieldRows').innerHTML='';last.fields.forEach(f=>addProxyField(f));}
+  }
+  updateProxyTotal();
+}
+async function submitProxyOrder(){
+  const name=document.getElementById('p_name').value.trim();
+  if(!name){showToast('⚠️ お名前を入力してください');return;}
+  const fields=proxyFields().filter(f=>num(f.qty)>0);
+  if(!fields.length){showToast('⚠️ 圃場と数量を入力してください');return;}
+  const g=id=>document.getElementById(id).value.trim();
+  if(g('p_dateFrom')&&g('p_dateTo')&&g('p_dateTo')<g('p_dateFrom')){showToast('⚠️ 終了日が開始日より前です');return;}
+  const totalQty=fields.reduce((s,f)=>s+num(f.qty),0);
+  if(!confirm(`${name}様 ${totalQty.toFixed(1)}t（${fields.length}圃場）を発注として登録しますか？`))return;
+  const now=new Date();
+  const btn=document.getElementById('p_submit');btn.disabled=true;
+  try{
+    await post('order',{name,phone:g('p_phone'),email:g('p_email'),lineName:g('p_line'),compostType:'牛ふん堆肥',fields,totalQty:totalQty.toFixed(1),
+      usage:g('p_usage'),vegType:g('p_vegtype'),prevCrop:'',organicJAS:g('p_organicJAS'),keical:g('p_keical'),
+      dateFrom:g('p_dateFrom'),dateTo:g('p_dateTo'),remarks:g('p_remarks'),source:'代行',
+      notifyCustomer:document.getElementById('p_notify').checked,
+      submittedAt:`${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`});
+    showToast(`✅ ${name}様の発注を登録しました`);clearProxyForm();switchTab('orders');
+  }finally{btn.disabled=false;}
+}
+function clearProxyForm(){
+  ['p_name','p_phone','p_email','p_line','p_vegtype','p_remarks'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p_usage').value='水稲';document.getElementById('p_notify').checked=false;
+  document.getElementById('proxyFieldRows').innerHTML='';addProxyField();
+}
+addProxyField();
+
+// ===== 地図 =====
+let bulkMapInstance=null,bulkMarkers=[],allBulkData=[];
+const FARMER_COLORS=['#c85a2a','#4a6741','#1a6b8a','#7a4098','#b5860d','#1a7a5e','#8a1a1a','#2a5a8a','#5c6b1a','#6b2a5c'];
+function openBulkMap(){
+  allBulkData=[];const names=[];
+  filteredOrders().forEach(o=>{if(!names.includes(o.name))names.push(o.name);
+    o.fields.forEach(f=>{if(f.lat&&f.lng)allBulkData.push({name:o.name,fieldName:f.name,qty:f.qty,service:f.service,lat:f.lat,lng:f.lng,
+      address:f.address,dateFrom:o.dateFrom,dateTo:o.dateTo,farmerIdx:names.indexOf(o.name)});});});
+  if(!allBulkData.length){showToast('⚠️ 地図ピンが設定された発注がありません');return;}
+  const fe=document.getElementById('bulkMapFilters');fe.innerHTML='';
+  const mk=(label,filter,color)=>{const b=document.createElement('button');b.className='map-filter-btn'+(filter==null?' active':'');
+    b.innerHTML=(color?`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:5px;"></span>`:'')+esc(label);
+    b.onclick=()=>{fe.querySelectorAll('.map-filter-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+      renderBulkMarkers(filter==null?allBulkData:allBulkData.filter(d=>d.name===filter));};fe.appendChild(b);};
+  mk(`全件（${allBulkData.length}か所）`,null);
+  names.forEach((n,i)=>{const c=allBulkData.filter(d=>d.name===n).length;if(c)mk(`${n}様（${c}か所）`,n,FARMER_COLORS[i%FARMER_COLORS.length]);});
+  document.getElementById('bulkMapModal').classList.add('show');
+  if(!window.google){const s=document.createElement('script');s.src=`https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&language=ja`;
+    s.onload=()=>initBulkMap();document.head.appendChild(s);}else setTimeout(initBulkMap,100);
+}
+function initBulkMap(){
+  bulkMapInstance=new google.maps.Map(document.getElementById('bulkMap'),{center:{lat:35.2178,lng:135.0456},zoom:11,mapTypeId:'hybrid',
+    gestureHandling:'greedy',mapTypeControl:false,streetViewControl:false});
+  renderBulkMarkers(allBulkData);
+}
+function renderBulkMarkers(data){
+  bulkMarkers.forEach(m=>m.setMap(null));bulkMarkers=[];if(!bulkMapInstance)return;
+  const bounds=new google.maps.LatLngBounds();const info=new google.maps.InfoWindow();
+  data.forEach((d,i)=>{const color=FARMER_COLORS[d.farmerIdx%FARMER_COLORS.length];
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="${color}" stroke="white" stroke-width="2.5"/><circle cx="18" cy="18" r="10" fill="white" opacity="0.95"/><text x="18" y="23" text-anchor="middle" font-size="11" font-weight="bold" font-family="sans-serif" fill="${color}">${i+1}</text></svg>`;
+    const m=new google.maps.Marker({position:{lat:d.lat,lng:d.lng},map:bulkMapInstance,title:`${d.name}様・${d.fieldName}`,
+      icon:{url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg),scaledSize:new google.maps.Size(36,48),anchor:new google.maps.Point(18,48)}});
+    m.addListener('click',()=>{info.setContent(`<div style="font-size:0.84rem;min-width:180px;"><div style="font-weight:700;">👤 ${esc(d.name)}様</div>
+      <div>📍 ${esc(d.fieldName)}</div><div>📦 ${d.qty}t　🚜 ${esc(d.service)}</div><div>📅 ${esc(d.dateFrom)}〜${esc(d.dateTo)}</div>
+      <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank">Googleマップで開く →</a></div>`);info.open(bulkMapInstance,m);});
+    bulkMarkers.push(m);bounds.extend({lat:d.lat,lng:d.lng});});
+  if(data.length){bulkMapInstance.fitBounds(bounds);if(data.length===1)bulkMapInstance.setZoom(15);}
+}
+function closeBulkMap(){document.getElementById('bulkMapModal').classList.remove('show');}
+document.getElementById('bulkMapModal').addEventListener('click',e=>{if(e.target.id==='bulkMapModal')closeBulkMap();});
+
+// ===== 旧版（この端末だけに保存されていたデータ）=====
+function showLegacyNotice(){
+  let raw=null;try{raw=localStorage.getItem(LEGACY_KEY);}catch(e){}
+  if(!raw) return;
+  const box=document.getElementById('legacyBox');box.style.display='block';
+  box.innerHTML=`この端末に旧版の管理画面のデータ（確認済の印・請求書の発行記録・単価など）が残っています。新しい画面ではスプレッドシートに保存するため使いません。
+    念のため <button class="btn btn-outline btn-sm" onclick="downloadLegacy()">バックアップを保存</button> してから
+    <button class="btn btn-outline btn-sm" onclick="if(confirm('この端末の旧データを消しますか？（バックアップ済みか確認してください）')){localStorage.removeItem('${LEGACY_KEY}');document.getElementById('legacyBox').style.display='none';}">この端末から消す</button>`;
+}
+function downloadLegacy(){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([localStorage.getItem(LEGACY_KEY)||''],{type:'application/json'}));
+  a.download=`旧管理画面データ_${localDate()}.json`;a.click();
+}
+
+// 再訪時（同じタブ）は自動ログイン
+if(sessionStorage.getItem(PW_KEY)) enterAdmin();
 </script>
 </body>
 </html>

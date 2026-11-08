@@ -380,29 +380,6 @@ textarea { resize: vertical; min-height: 72px; }
   </div>
 </header>
 
-<!-- 管理者ログインモーダル -->
-<div class="admin-modal-overlay" id="adminModal">
-  <div class="admin-modal-box">
-    <h2>🔐 管理者ログイン</h2>
-    <p>管理者パスワードを入力してください</p>
-    <input type="password" id="adminPwInput" placeholder="••••" maxlength="10"
-      style="width:100%;border:2px solid rgba(139,94,60,0.2);border-radius:10px;padding:12px;
-        font-size:1.2rem;text-align:center;letter-spacing:0.3em;outline:none;margin-bottom:12px;
-        font-family:'Noto Sans JP',sans-serif;"
-      onkeydown="if(event.key==='Enter')checkAdminPw()">
-    <button onclick="checkAdminPw()"
-      style="width:100%;padding:12px;background:linear-gradient(135deg,#3d2b1a,#5c3d22);
-        color:#c8a96e;border:none;border-radius:10px;font-size:0.9rem;
-        font-family:'Noto Serif JP',serif;font-weight:700;cursor:pointer;margin-bottom:8px;">
-      管理画面へ進む
-    </button>
-    <button onclick="closeAdminModal()"
-      style="width:100%;padding:8px;background:none;border:none;color:var(--text-mid);
-        font-size:0.8rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">キャンセル</button>
-    <div id="adminPwError" style="color:#c85a2a;font-size:0.78rem;margin-top:6px;min-height:18px;"></div>
-  </div>
-</div>
-
 <main>
 
 <!-- ステップナビ -->
@@ -429,6 +406,10 @@ textarea { resize: vertical; min-height: 72px; }
     <div class="field">
       <label>電話番号</label>
       <input type="text" id="phone" placeholder="例：079-000-0000">
+    </div>
+    <div class="field">
+      <label>LINEのお名前（請求書をLINEでお送りする場合）</label>
+      <input type="text" id="lineName" placeholder="例：やまだ">
     </div>
     <div class="field span2">
       <label>メールアドレス<span class="req">*</span></label>
@@ -639,7 +620,7 @@ textarea { resize: vertical; min-height: 72px; }
 
 <!-- ===== JS ===== -->
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyC7k3wKrr2p_UJRBzgG0dVi7hOOjWpjLHdPZBBx4jJ47eS-6h9ZnIeXKtHe-kNzmmVIA/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyC7k3wKrr2p_UJRBzgG0dVi7hOOjWpjLHdPZBBx4jJ47eS-6h9ZnIeXKtHe-kNzmmVIA/exec'; // 管理画面と同じGAS
 const NOTIFY_EMAILS = ['tamba.nosho@gmail.com']; // 2つ目は後ほど追加
 
 // 圃場ごとのピンカラー（10色）
@@ -793,29 +774,8 @@ function checkAsago(address) {
   updateTotal();
 }
 
-// ===== 管理者モーダル =====
-const ADMIN_PW = '1108';
-function openAdminModal() {
-  document.getElementById('adminModal').classList.add('show');
-  document.getElementById('adminPwInput').value = '';
-  document.getElementById('adminPwError').textContent = '';
-  setTimeout(() => document.getElementById('adminPwInput').focus(), 100);
-}
-function closeAdminModal() {
-  document.getElementById('adminModal').classList.remove('show');
-}
-function checkAdminPw() {
-  const val = document.getElementById('adminPwInput').value;
-  if (val === ADMIN_PW) {
-    window.location.href = 'tamba_admin.html';
-  } else {
-    document.getElementById('adminPwError').textContent = 'パスワードが違います';
-    document.getElementById('adminPwInput').value = '';
-  }
-}
-document.getElementById('adminModal').addEventListener('click', e => {
-  if (e.target === document.getElementById('adminModal')) closeAdminModal();
-});
+// ===== 管理者ページへ（パスワードは管理画面でサーバー側が確認）=====
+function openAdminModal() { window.location.href = 'tamba_admin.html'; }
 
 function startPinning(id) {
   if (activePinIdx !== null && activePinIdx !== id) stopPinning();
@@ -865,7 +825,7 @@ function updateLegend() {
       const name = nameEl?.value.trim() || `圃場${i+1}`;
       const div = document.createElement('div');
       div.className = 'legend-item';
-      div.innerHTML = `<div class="legend-dot" style="background:${color}">${i+1}</div><span>${name}</span>`;
+      div.innerHTML = `<div class="legend-dot" style="background:${color}">${i+1}</div><span>${esc(name)}</span>`;
       legend.appendChild(div);
     }
   });
@@ -1136,6 +1096,8 @@ function calcDistanceKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
 // 10円切捨て
 function floor10(n) { return Math.floor(n / 10) * 10; }
 
@@ -1199,6 +1161,7 @@ function calcPriceBreakdown(totalTon) {
     let distKm = null;
     let distSurcharge = 0;
     let distLabel = '';
+    let fieldConsult = false;
     if (pin && pin.lat && svc !== '自分で取りに来る' && !isAsago) {
       distKm = calcDistanceKm(BASE_LAT, BASE_LNG, parseFloat(pin.lat), parseFloat(pin.lng));
       maxDistKm = Math.max(maxDistKm, distKm);
@@ -1206,6 +1169,7 @@ function calcPriceBreakdown(totalTon) {
       if (rule) {
         if (rule.surcharge === null) {
           hasConsult = true;
+          fieldConsult = true;
           distLabel = `距離${distKm.toFixed(1)}km（要相談）`;
         } else {
           // 1.5tにつきsurcharge円
@@ -1222,8 +1186,8 @@ function calcPriceBreakdown(totalTon) {
     const smallLabel = smallLotExtra > 0 ? ` <span style="color:var(--accent);">少量割増 +¥${smallLotExtra.toLocaleString()}</span>` : '';
     const asagoLabel = asagoAdd > 0 ? ` <span style="color:#7a5c00;">朝来市割増 +¥${floor10(qty*asagoAdd).toLocaleString()}</span>` : '';
     lines.push(`<div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--text-mid);padding:3px 0;">
-      <span>${name}（${qty}t × ${svc.slice(0,6)}…）${distLabel ? ' <span style="color:#1a6b8a;">'+distLabel+'</span>' : ''}${smallLabel}${asagoLabel}</span>
-      <span style="font-weight:600;color:var(--soil);">${hasConsult && rule?.surcharge===null ? '要相談' : '¥'+fieldTotal.toLocaleString()}</span>
+      <span>${esc(name)}（${qty}t × ${svc.slice(0,6)}…）${distLabel ? ' <span style="color:#1a6b8a;">'+distLabel+'</span>' : ''}${smallLabel}${asagoLabel}</span>
+      <span style="font-weight:600;color:var(--soil);">${fieldConsult ? '要相談' : '¥'+fieldTotal.toLocaleString()}</span>
     </div>`);
   });
 
@@ -1346,6 +1310,9 @@ function validateStep(step) {
     if (!document.getElementById('dateFrom').value || !document.getElementById('dateTo').value) {
       showToast('⚠️ 配送希望期間を入力してください'); return false;
     }
+    if (document.getElementById('dateTo').value < document.getElementById('dateFrom').value) {
+      showToast('⚠️ 終了日が開始日より前になっています'); return false;
+    }
   }
   return true;
 }
@@ -1362,8 +1329,8 @@ function buildConfirmSummary() {
 
   const fieldsHtml = fields.map(f =>
     `<div style="padding:8px 12px;background:#fdfaf5;border-radius:6px;margin-bottom:6px;">
-      <strong>${f.num}. ${f.name}</strong>　${f.qty}トン　${f.service}
-      ${f.address ? `<div style="font-size:0.78rem;color:var(--text-mid);">📍 ${f.address}</div>` : ''}
+      <strong>${f.num}. ${esc(f.name)}</strong>　${esc(f.qty)}トン　${esc(f.service)}
+      ${f.address ? `<div style="font-size:0.78rem;color:var(--text-mid);">📍 ${esc(f.address)}</div>` : ''}
     </div>`
   ).join('');
 
@@ -1374,7 +1341,7 @@ function buildConfirmSummary() {
 
   document.getElementById('confirmSummary').innerHTML = `
     <div style="display:grid;gap:6px;margin-bottom:16px;">
-      <div>👤 <strong>${name}</strong>　${phone||''}　${email}</div>
+      <div>👤 <strong>${esc(name)}</strong>　${esc(phone||'')}　${esc(email)}</div>
       <div>🌾 合計 <strong>${totalQty} トン</strong>（${fields.length}か所）　用途：${usage}</div>
       <div>📅 配送希望：${dateFrom} 〜 ${dateTo}</div>
     </div>
@@ -1402,13 +1369,15 @@ function checkDateRange() {
   const warn = document.getElementById('date-warning');
   if (!from || !to) { warn.textContent = ''; return; }
   const diff = (new Date(to) - new Date(from)) / 86400000;
-  if (diff < 7) warn.textContent = '⚠️ 期間が1週間未満です。余裕をもってご指定ください。';
+  if (diff < 0) warn.textContent = '⚠️ 終了日が開始日より前になっています。';
+  else if (diff < 7) warn.textContent = '⚠️ 期間が1週間未満です。余裕をもってご指定ください。';
   else if (diff > 14) warn.textContent = '⚠️ 期間が2週間を超えています。1〜2週間でご指定ください。';
   else warn.textContent = '';
 }
 document.getElementById('dateFrom').addEventListener('change', checkDateRange);
 document.getElementById('dateTo').addEventListener('change', checkDateRange);
-const today = new Date().toISOString().split('T')[0];
+const _d = new Date();
+const today = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
 document.getElementById('dateFrom').min = today;
 document.getElementById('dateTo').min = today;
 
@@ -1421,7 +1390,9 @@ function showToast(msg, dur = 4000) {
 function setLoader(s) { document.getElementById('loader').classList.toggle('show', s); }
 
 // ===== 送信 =====
+let submitting = false;
 async function submitOrder() {
+  if (submitting) return;
   const name = document.getElementById('name').value.trim();
   const email = document.getElementById('email').value.trim();
   const dateFrom = document.getElementById('dateFrom').value;
@@ -1446,6 +1417,7 @@ async function submitOrder() {
 
   const payload = {
     name, phone: document.getElementById('phone').value.trim(), email,
+    lineName: document.getElementById('lineName').value.trim(),
     compostType: '牛ふん堆肥', fields, totalQty: totalQty.toFixed(1),
     usage: document.querySelector('input[name="usage"]:checked')?.value,
     vegType: document.getElementById('vegType').value.trim(),
@@ -1460,6 +1432,7 @@ async function submitOrder() {
   };
 
   const body = buildEmailBody(payload);
+  submitting = true;
   setLoader(true);
 
   try {
@@ -1477,10 +1450,12 @@ async function submitOrder() {
       showToast('✅ 発注を受け付けました！担当者よりご連絡いたします。', 5000);
       setTimeout(() => location.reload(), 5000);
     } else {
+      submitting = false;
       showToast('❌ 送信に失敗しました。お電話でご連絡ください。');
     }
   } catch (e) {
     setLoader(false);
+    submitting = false;
     showToast('❌ 通信エラーが発生しました。再度お試しください。');
   }
 }
@@ -1504,6 +1479,7 @@ function buildEmailBody(d) {
 氏名：${d.name}
 電話：${d.phone || '未記入'}
 メール：${d.email}
+LINE名：${d.lineName || '未記入'}
 
 ▼ 堆肥情報
 種類：${d.compostType}
