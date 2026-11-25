@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>森下農園 受注・出荷管理（試作）</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/encoding-japanese@2.0.0/encoding.min.js"></script>
+<style>
+  :root {
+    --bg:#f6f7f2; --card:#fff; --ink:#1d2618; --soft:#5b6653; --line:#dfe4d6;
+    --green:#3d7a3a; --green-d:#2a5a28; --green-l:#e9f3e6; --leaf:#8fbf5a;
+    --red:#b8382c; --amber:#b7791f; --amber-l:#fdf4e3;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Noto Sans JP',sans-serif; background:var(--bg); color:var(--ink); font-size:15px; padding-bottom:40px; }
+  header { background:var(--green-d); color:#fff; padding:12px 16px; position:sticky; top:0; z-index:10; }
+  .hrow { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  header h1 { font-size:16px; font-weight:700; letter-spacing:.04em; }
+  header h1 small { font-size:11px; font-weight:400; opacity:.8; margin-left:6px; }
+  header select { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.4); border-radius:6px; padding:6px 8px; font-size:13px; }
+  header select option { color:#000; }
+  nav { display:flex; gap:4px; margin-top:10px; overflow-x:auto; }
+  nav button { flex:1; min-width:72px; background:transparent; color:#fff; border:none; border-bottom:3px solid transparent; padding:8px 4px; font-size:14px; cursor:pointer; white-space:nowrap; }
+  nav button.on { border-bottom-color:var(--leaf); font-weight:700; }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  .banner { background:var(--amber-l); border:1px solid #ecd3a1; color:#6b4a12; border-radius:8px; padding:8px 12px; font-size:12px; margin-bottom:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; }
+  h2 { font-size:17px; margin-bottom:12px; }
+  h3 { font-size:14px; color:var(--soft); margin:14px 0 8px; }
+  label { display:block; font-size:12px; color:var(--soft); margin:10px 0 4px; }
+  input, select, textarea { width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:8px; font-size:15px; font-family:inherit; background:#fff; color:var(--ink); }
+  input:focus, select:focus { outline:none; border-color:var(--green); }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .btn { display:inline-block; background:var(--green); color:#fff; border:none; border-radius:8px; padding:11px 16px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn:active { background:var(--green-d); }
+  .btn.sub { background:#fff; color:var(--green-d); border:1.5px solid var(--green); }
+  .btn.sm { padding:6px 10px; font-size:13px; font-weight:500; }
+  .btn.danger { background:#fff; color:var(--red); border:1.5px solid #e6b8b3; }
+  .btn.block { width:100%; margin-top:14px; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; text-align:center; }
+  .stat b { display:block; font-size:26px; color:var(--green-d); }
+  .stat span { font-size:12px; color:var(--soft); }
+  .item { border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:8px; background:#fff; }
+  .item.done { background:var(--green-l); border-color:#bcd9b4; }
+  .item .top { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
+  .item .name { font-weight:700; }
+  .item .meta { font-size:12px; color:var(--soft); margin-top:4px; line-height:1.6; }
+  .qty { font-size:20px; font-weight:700; color:var(--green-d); white-space:nowrap; }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:99px; background:#eef0ea; color:var(--soft); margin-right:4px; }
+  .tag.ok { background:var(--green); color:#fff; }
+  .actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .stepper { display:flex; align-items:center; gap:10px; }
+  .stepper button { width:44px; height:44px; border-radius:50%; border:1.5px solid var(--green); background:#fff; color:var(--green-d); font-size:22px; cursor:pointer; }
+  .stepper output { font-size:24px; font-weight:700; min-width:48px; text-align:center; }
+  .empty { text-align:center; color:var(--soft); font-size:13px; padding:20px 0; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { border-bottom:1px solid var(--line); padding:6px 4px; text-align:left; }
+  td.n, th.n { text-align:right; white-space:nowrap; }
+  .hint { font-size:12px; color:var(--soft); margin-top:6px; line-height:1.6; }
+  .toast { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:99px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; }
+  .toast.show { opacity:.92; }
+  .split { display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+  .hidden { display:none !important; }
+  @media (max-width:480px){ .row { grid-template-columns:1fr; } .stat b { font-size:22px; } }
+  @media print {
+    header, nav, .banner, .noprint, .toast { display:none !important; }
+    body { background:#fff; } main { padding:0; max-width:none; } .card { border:none; padding:0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1>森下農園 受注・出荷管理<small>試作版</small></h1>
+    <select id="roleSel" onchange="setRole(this.value)" title="表示を切り替え（試作用）"></select>
+  </div>
+  <nav id="nav"></nav>
+</header>
+<main>
+  <div class="banner">試作版です。データはこの端末のブラウザにだけ保存され、他の人とは共有されません。</div>
+  <div id="view"></div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== データ層（本番はGASに差し替え） ===================== */
+const KEY = 'morishita_proto_v1';
+const PRODUCTS = [{ id:'iwatsu3', name:'岩津ネギ', spec:'1ケース3kg', kgPerCase:3, taxRate:0.08 }];
+const SHIPPING_TAX = 0.10;
+const TIMESLOTS = ['指定なし','午前中','12-14時','14-16時','16-18時','18-20時','19-21時'];
+
+function blank() {
+  return { sender:{ name:'森下農園', tel:'', zip:'', addr1:'', addr2:'' }, dealers:[], dests:[], orders:[], role:'admin' };
+}
+let db = load();
+function load() {
+  try { const s = localStorage.getItem(KEY); if (s) return Object.assign(blank(), JSON.parse(s)); } catch(e) {}
+  return blank();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(e) {} }
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
+/* ===================== 共通 ===================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen = n => '¥' + Math.round(n).toLocaleString('ja-JP');
+const ymd = d => { const z = n => String(n).padStart(2,'0'); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };
+const today = () => ymd(new Date());
+const addDays = (s, n) => { const d = new Date(s + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); };
+const jdate = s => { if (!s) return '-'; const d = new Date(s + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}(${'日月火水木金土'[d.getDay()]})`; };
+const dealer = id => db.dealers.find(x => x.id === id);
+const dest = id => db.dests.find(x => x.id === id);
+const product = id => PRODUCTS.find(p => p.id === id) || PRODUCTS[0];
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 1800); }
+
+/* ===================== 画面切替 ===================== */
+let tab = null;
+const ADMIN_TABS = [['ship','今日の出荷'],['orders','注文一覧'],['new','注文入力'],['bill','月末請求'],['master','設定']];
+const DEALER_TABS = [['new','注文する'],['mine','注文履歴'],['mydest','届け先']];
+
+function setRole(r) { db.role = r; save(); tab = null; render(); }
+function renderHeader() {
+  const sel = $('roleSel');
+  sel.innerHTML = `<option value="admin">森下農園（管理）</option>` +
+    db.dealers.map(d => `<option value="${d.id}">販売店：${esc(d.name)}</option>`).join('');
+  if (db.role !== 'admin' && !dealer(db.role)) db.role = 'admin';
+  sel.value = db.role;
+  const tabs = db.role === 'admin' ? ADMIN_TABS : DEALER_TABS;
+  if (!tab || !tabs.some(t => t[0] === tab)) tab = tabs[0][0];
+  $('nav').innerHTML = tabs.map(([k,l]) => `<button class="${k===tab?'on':''}" onclick="go('${k}')">${l}</button>`).join('');
+}
+function go(k) { tab = k; render(); window.scrollTo(0,0); }
+function render() {
+  renderHeader();
+  const v = $('view');
+  const f = { ship:viewShip, orders:viewOrders, new:viewNew, bill:viewBill, master:viewMaster, mine:viewMine, mydest:viewMyDest }[tab];
+  v.innerHTML = f();
+  if (tab === 'new') initNewForm();
+}
+
+/* ===================== 今日の出荷（森下さん） ===================== */
+let shipDate = today();
+function viewShip() {
+  const list = db.orders.filter(o => o.shipDate === shipDate && o.status !== 'キャンセル');
+  const cases = list.reduce((s,o) => s + o.cases, 0);
+  const kg = list.reduce((s,o) => s + o.cases * product(o.productId).kgPerCase, 0);
+  const done = list.filter(o => o.status === '出荷済').length;
+  const byDealer = {};
+  list.forEach(o => { byDealer[o.dealerId] = (byDealer[o.dealerId] || 0) + o.cases; });
+  return `
+  <div class="card">
+    <div class="split">
+      <h2 style="margin:0">出荷日</h2>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn sub sm" onclick="shiftShip(-1)">◀</button>
+        <input type="date" value="${shipDate}" onchange="shipDate=this.value;render()" style="width:160px">
+        <button class="btn sub sm" onclick="shiftShip(1)">▶</button>
+      </div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>${cases}</b><span>ケース</span></div>
+    <div class="stat"><b>${kg}</b><span>kg</span></div>
+    <div class="stat"><b>${done}/${list.length}</b><span>出荷済/件</span></div>
+  </div>
+  <div class="card">
+    <div class="split">
+      <h2 style="margin:0">出荷リスト</h2>
+      <button class="btn sm" onclick="exportCsv()" ${list.length?'':'disabled'}>e飛伝用CSV</button>
+    </div>
+    <div class="hint">${Object.entries(byDealer).map(([id,c]) => `${esc(dealer(id)?.name||'?')} ${c}ケース`).join('　') || ''}</div>
+    <div style="margin-top:10px">
+    ${list.length ? list.map(o => shipItem(o)).join('') : '<div class="empty">この日の出荷はありません</div>'}
+    </div>
+  </div>`;
+}
+function shipItem(o) {
+  const d = dest(o.destId) || {}, p = product(o.productId);
+  const isDone = o.status === '出荷済';
+  return `<div class="item ${isDone?'done':''}">
+    <div class="top">
+      <div>
+        <div class="name">${esc(d.name)}</div>
+        <div class="meta">${esc(dealer(o.dealerId)?.name)}経由 ／ 着 ${jdate(o.arriveDate)} ${o.timeslot!=='指定なし'?esc(o.timeslot):''}<br>
+        〒${esc(d.zip)} ${esc(d.addr1)}${esc(d.addr2)}${o.memo?`<br>📝 ${esc(o.memo)}`:''}</div>
+      </div>
+      <div class="qty">${o.cases}<small style="font-size:12px">ケース</small></div>
+    </div>
+    <div class="actions">
+      ${isDone
+        ? `<span class="tag ok">出荷済</span>${o.tracking?`<span class="tag">問合せ番号 ${esc(o.tracking)}</span>`:''}<button class="btn sub sm" onclick="undoShip('${o.id}')">取消</button>`
+        : `<button class="btn sm" onclick="markShipped('${o.id}')">出荷済にする</button>`}
+    </div>
+  </div>`;
+}
+function shiftShip(n) { shipDate = addDays(shipDate, n); render(); }
+function markShipped(id) {
+  const o = db.orders.find(x => x.id === id);
+  const t = prompt('佐川の問合せ番号（分かれば。空欄でもOK）', o.tracking || '');
+  if (t === null) return;
+  o.status = '出荷済'; o.tracking = t.trim(); save(); render(); toast('出荷済にしました');
+}
+function undoShip(id) { const o = db.orders.find(x => x.id === id); o.status = '受付'; save(); render(); }
+
+/* ===================== e飛伝CSV ===================== */
+function exportCsv() {
+  const list = db.orders.filter(o => o.shipDate === shipDate && o.status !== 'キャンセル');
+  const s = db.sender;
+  const head = ['お届け先電話番号','お届け先郵便番号','お届け先住所1','お届け先住所2','お届け先名称1','お届け先名称2',
+    'ご依頼主電話番号','ご依頼主郵便番号','ご依頼主住所1','ご依頼主住所2','ご依頼主名称1',
+    '品名1','品名2','出荷個数','配達日','配達指定時間帯','記事'];
+  const rows = list.map(o => {
+    const d = dest(o.destId) || {}, p = product(o.productId);
+    return [d.tel, d.zip, d.addr1, d.addr2, d.name, d.person || '',
+      s.tel, s.zip, s.addr1, s.addr2, s.name,
+      `${p.name} ${p.spec}`, `${o.cases}ケース`, o.cases, o.arriveDate.replace(/-/g,''), o.timeslot === '指定なし' ? '' : o.timeslot, o.memo || ''];
+  });
+  const csv = [head, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  let blob;
+  if (window.Encoding) {
+    const sjis = Encoding.convert(Encoding.stringToCode(csv), { to:'SJIS', from:'UNICODE' });
+    blob = new Blob([new Uint8Array(sjis)], { type:'text/csv' });
+  } else {
+    blob = new Blob(['﻿' + csv], { type:'text/csv' });
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `ehiden_${shipDate}.csv`; a.click();
+  if (!s.tel || !s.addr1) toast('設定でご依頼主（森下農園）の住所・電話を入れてください');
+}
+
+/* ===================== 注文一覧（森下さん） ===================== */
+let listFilter = 'open';
+function viewOrders() {
+  let list = [...db.orders].sort((a,b) => (a.shipDate+a.createdAt).localeCompare(b.shipDate+b.createdAt));
+  if (listFilter === 'open') list = list.filter(o => o.status === '受付');
+  return `<div class="card">
+    <div class="split"><h2 style="margin:0">注文一覧</h2>
+      <select style="width:auto" onchange="listFilter=this.value;render()">
+        <option value="open" ${listFilter==='open'?'selected':''}>未出荷のみ</option>
+        <option value="all" ${listFilter==='all'?'selected':''}>すべて</option>
+      </select></div>
+    <div style="margin-top:10px">${list.length ? list.map(o => orderItem(o, true)).join('') : '<div class="empty">注文はありません</div>'}</div>
+  </div>`;
+}
+function orderItem(o, admin) {
+  const d = dest(o.destId) || {}, p = product(o.productId);
+  const tagCls = o.status === '出荷済' ? 'ok' : '';
+  return `<div class="item ${o.status==='出荷済'?'done':''}">
+    <div class="top">
+      <div>
+        <div class="name">${esc(d.name)}</div>
+        <div class="meta">${admin ? esc(dealer(o.dealerId)?.name) + '経由 ／ ' : ''}${esc(p.name)} ${esc(p.spec)}<br>
+        出荷 ${jdate(o.shipDate)} → 着 ${jdate(o.arriveDate)} ${o.timeslot!=='指定なし'?esc(o.timeslot):''}${o.memo?`<br>📝 ${esc(o.memo)}`:''}</div>
+      </div>
+      <div class="qty">${o.cases}<small style="font-size:12px">ケース</small></div>
+    </div>
+    <div class="actions"><span class="tag ${tagCls}">${esc(o.status)}</span>${o.tracking?`<span class="tag">問合せ番号 ${esc(o.tracking)}</span>`:''}
+      ${o.status === '受付' ? `<button class="btn danger sm" onclick="cancelOrder('${o.id}')">キャンセル</button>` : ''}
+      ${admin && o.status === '受付' ? `<input type="date" value="${o.shipDate}" style="width:150px;padding:4px 8px;font-size:13px" onchange="changeShip('${o.id}',this.value)" title="出荷日を変更">` : ''}
+    </div>
+  </div>`;
+}
+function cancelOrder(id) { if (!confirm('この注文をキャンセルしますか？')) return; db.orders.find(o => o.id === id).status = 'キャンセル'; save(); render(); }
+function changeShip(id, v) { db.orders.find(o => o.id === id).shipDate = v; save(); toast('出荷日を変更しました'); }
+
+/* ===================== 注文入力（両方） ===================== */
+let qty = 1;
+function viewNew() {
+  const isAdmin = db.role === 'admin';
+  if (!db.dealers.length) return `<div class="card"><h2>注文入力</h2><div class="empty">先に「設定」で販売店を登録してください</div></div>`;
+  return `<div class="card">
+    <h2>${isAdmin ? '注文入力（LINE・電話で受けた分）' : '注文する'}</h2>
+    ${isAdmin ? `<label>販売店</label><select id="fDealer" onchange="fillDests()">${db.dealers.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select>` : ''}
+    <label>届け先</label>
+    <select id="fDest"></select>
+    <div class="hint">新しい届け先は「${isAdmin ? '設定' : '届け先'}」タブで一度だけ登録すれば、次から選ぶだけです。</div>
+    <label>商品</label>
+    <select id="fProd">${PRODUCTS.map(p => `<option value="${p.id}">${esc(p.name)}（${esc(p.spec)}）</option>`).join('')}</select>
+    <label>ケース数</label>
+    <div class="stepper"><button type="button" onclick="setQty(-1)">−</button><output id="fQty">${qty}</output><button type="button" onclick="setQty(1)">＋</button><span class="hint" id="fKg"></span></div>
+    <div class="row">
+      <div><label>到着希望日</label><input type="date" id="fArrive" onchange="syncShip()"></div>
+      <div><label>時間帯</label><select id="fSlot">${TIMESLOTS.map(t => `<option>${t}</option>`).join('')}</select></div>
+    </div>
+    ${isAdmin ? `<label>出荷日（通常は到着日の前日）</label><input type="date" id="fShip">` : ''}
+    <label>備考</label><input type="text" id="fMemo" placeholder="任意">
+    <button class="btn block" onclick="submitOrder()">注文を確定する</button>
+  </div>`;
+}
+function initNewForm() {
+  if (!db.dealers.length) return;
+  fillDests();
+  $('fArrive').value = addDays(today(), 2);
+  syncShip(); setQty(0);
+}
+function curDealerId() { return db.role === 'admin' ? $('fDealer').value : db.role; }
+function fillDests() {
+  const ds = db.dests.filter(d => d.dealerId === curDealerId());
+  $('fDest').innerHTML = ds.length ? ds.map(d => `<option value="${d.id}">${esc(d.name)}（${esc(d.addr1.slice(0,10))}…）</option>`).join('')
+    : '<option value="">届け先が未登録です</option>';
+}
+function setQty(n) { qty = Math.max(1, Math.min(99, qty + n)); $('fQty').textContent = qty; $('fKg').textContent = `＝ ${qty * product($('fProd').value).kgPerCase}kg`; }
+function syncShip() { if ($('fShip')) $('fShip').value = addDays($('fArrive').value, -1); }
+function submitOrder() {
+  const destId = $('fDest').value, arrive = $('fArrive').value;
+  if (!destId) return toast('届け先を選んでください');
+  if (!arrive) return toast('到着希望日を入れてください');
+  const dl = dealer(curDealerId()), d = dest(destId);
+  db.orders.push({
+    id:uid(), dealerId:dl.id, destId, productId:$('fProd').value, cases:qty,
+    arriveDate:arrive, shipDate:$('fShip') ? ($('fShip').value || addDays(arrive,-1)) : addDays(arrive,-1),
+    timeslot:$('fSlot').value, memo:$('fMemo').value.trim(),
+    unitPrice:Number(dl.unitPrice) || 0, shippingPerCase:Number(d.shipping) || 0,
+    status:'受付', tracking:'', createdAt:new Date().toISOString(), via: db.role === 'admin' ? '森下農園入力' : '販売店画面'
+  });
+  save(); qty = 1; toast('注文を受け付けました');
+  tab = db.role === 'admin' ? 'orders' : 'mine'; render();
+}
+
+/* ===================== 販売店：注文履歴・届け先 ===================== */
+function viewMine() {
+  const list = db.orders.filter(o => o.dealerId === db.role).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+  return `<div class="card"><h2>注文履歴</h2>${list.length ? list.map(o => orderItem(o, false)).join('') : '<div class="empty">まだ注文はありません</div>'}</div>`;
+}
+function viewMyDest() { return destSection(db.role); }
+
+/* ===================== 月末請求 ===================== */
+let billMonth = today().slice(0,7), billDealer = '';
+function viewBill() {
+  if (!db.dealers.length) return `<div class="card"><h2>月末請求</h2><div class="empty">販売店が未登録です</div></div>`;
+  if (!dealer(billDealer)) billDealer = db.dealers[0].id;
+  const dl = dealer(billDealer);
+  const list = db.orders.filter(o => o.dealerId === billDealer && o.status === '出荷済' && o.shipDate.startsWith(billMonth))
+    .sort((a,b) => a.shipDate.localeCompare(b.shipDate));
+  let goods = 0, ship = 0;
+  const rows = list.map(o => {
+    const g = o.cases * o.unitPrice, s = o.cases * o.shippingPerCase; goods += g; ship += s;
+    return `<tr><td>${jdate(o.shipDate)}</td><td>${esc(dest(o.destId)?.name)}</td><td class="n">${o.cases}</td><td class="n">${yen(g)}</td><td class="n">${yen(s)}</td></tr>`;
+  }).join('');
+  const gTax = Math.floor(goods * 0.08), sTax = Math.floor(ship * SHIPPING_TAX);
+  const [y,m] = billMonth.split('-');
+  return `<div class="card noprint">
+    <div class="row">
+      <div><label>販売店</label><select onchange="billDealer=this.value;render()">${db.dealers.map(d => `<option value="${d.id}" ${d.id===billDealer?'selected':''}>${esc(d.name)}</option>`).join('')}</select></div>
+      <div><label>対象月</label><input type="month" value="${billMonth}" onchange="billMonth=this.value;render()"></div>
+    </div>
+    <div class="hint">出荷済みの注文だけを集計します。送料は「届け先の送料（1ケースあたり）× ケース数」で計算しています。</div>
+    <button class="btn block" onclick="window.print()">請求書を印刷・PDF保存</button>
+  </div>
+  <div class="card">
+    <h2 style="text-align:center;font-size:20px">請求書</h2>
+    <div class="split" style="align-items:flex-start;margin:10px 0 14px">
+      <div><b style="font-size:16px">${esc(dl.name)} 御中</b><div class="hint">${y}年${Number(m)}月分（月末締め）</div></div>
+      <div style="text-align:right;font-size:12px;line-height:1.6">${esc(db.sender.name)}<br>${esc(db.sender.addr1)}${esc(db.sender.addr2)}<br>${db.sender.tel ? 'TEL ' + esc(db.sender.tel) : ''}${db.sender.invoiceNo ? '<br>登録番号 ' + esc(db.sender.invoiceNo) : ''}</div>
+    </div>
+    <table>
+      <thead><tr><th>出荷日</th><th>届け先</th><th class="n">ケース</th><th class="n">商品代</th><th class="n">送料</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="5" class="empty">対象の出荷はありません</td></tr>'}</tbody>
+    </table>
+    <table style="margin-top:12px;max-width:340px;margin-left:auto">
+      <tr><td>商品代（8%対象）</td><td class="n">${yen(goods)}</td></tr>
+      <tr><td>消費税 8%</td><td class="n">${yen(gTax)}</td></tr>
+      <tr><td>送料（10%対象）</td><td class="n">${yen(ship)}</td></tr>
+      <tr><td>消費税 10%</td><td class="n">${yen(sTax)}</td></tr>
+      <tr><th>ご請求額</th><th class="n" style="font-size:18px">${yen(goods + gTax + ship + sTax)}</th></tr>
+    </table>
+  </div>`;
+}
+
+/* ===================== 設定（販売店・届け先・依頼主） ===================== */
+function viewMaster() {
+  const s = db.sender;
+  return `<div class="card">
+    <h2>ご依頼主（伝票・請求書に印字）</h2>
+    <div class="row">
+      <div><label>名称</label><input id="sName" value="${esc(s.name)}"></div>
+      <div><label>電話番号</label><input id="sTel" value="${esc(s.tel)}"></div>
+      <div><label>郵便番号</label><input id="sZip" value="${esc(s.zip)}"></div>
+      <div><label>インボイス登録番号</label><input id="sInv" value="${esc(s.invoiceNo||'')}" placeholder="T+13桁（任意）"></div>
+    </div>
+    <label>住所1</label><input id="sAddr1" value="${esc(s.addr1)}">
+    <label>住所2</label><input id="sAddr2" value="${esc(s.addr2)}">
+    <button class="btn block" onclick="saveSender()">保存</button>
+  </div>
+  <div class="card">
+    <h2>販売店</h2>
+    ${db.dealers.map(d => `<div class="item"><div class="top"><div><div class="name">${esc(d.name)}</div>
+      <div class="meta">単価 ${yen(d.unitPrice||0)}／ケース ・ 届け先 ${db.dests.filter(x=>x.dealerId===d.id).length}件</div></div>
+      <div class="actions" style="margin:0"><button class="btn sub sm" onclick="editDealer('${d.id}')">編集</button></div></div></div>`).join('') || '<div class="empty">未登録</div>'}
+    <h3>販売店を追加</h3>
+    <div class="row">
+      <div><label>販売店名</label><input id="dName"></div>
+      <div><label>単価（円／ケース・税抜）</label><input id="dPrice" type="number" inputmode="numeric"></div>
+    </div>
+    <button class="btn block" onclick="addDealer()">追加</button>
+    <div class="hint">単価は販売店ごとに設定します。販売店の画面には単価や他の販売店の情報は表示されません。</div>
+  </div>
+  ${db.dealers.map(d => destSection(d.id)).join('')}
+  <div class="card noprint">
+    <h2>データ</h2>
+    <div class="actions">
+      <button class="btn sub sm" onclick="exportJson()">バックアップを保存</button>
+      <button class="btn danger sm" onclick="resetAll()">すべて消去</button>
+    </div>
+  </div>`;
+}
+function saveSender() {
+  Object.assign(db.sender, { name:$('sName').value.trim(), tel:$('sTel').value.trim(), zip:$('sZip').value.trim(),
+    addr1:$('sAddr1').value.trim(), addr2:$('sAddr2').value.trim(), invoiceNo:$('sInv').value.trim() });
+  save(); toast('保存しました');
+}
+function addDealer() {
+  const name = $('dName').value.trim(); if (!name) return toast('販売店名を入れてください');
+  db.dealers.push({ id:uid(), name, unitPrice:Number($('dPrice').value) || 0 }); save(); render(); toast('追加しました');
+}
+function editDealer(id) {
+  const d = dealer(id);
+  const name = prompt('販売店名', d.name); if (name === null) return;
+  const price = prompt('単価（円／ケース・税抜）', d.unitPrice); if (price === null) return;
+  d.name = name.trim() || d.name; d.unitPrice = Number(price) || 0; save(); render();
+}
+function destSection(dealerId) {
+  const dl = dealer(dealerId); if (!dl) return '';
+  const ds = db.dests.filter(d => d.dealerId === dealerId);
+  const isAdmin = db.role === 'admin';
+  const k = dealerId;
+  return `<div class="card">
+    <h2>届け先${isAdmin ? `（${esc(dl.name)}）` : ''}</h2>
+    ${ds.map(d => `<div class="item"><div class="top"><div><div class="name">${esc(d.name)}</div>
+      <div class="meta">〒${esc(d.zip)} ${esc(d.addr1)}${esc(d.addr2)}<br>TEL ${esc(d.tel)}${isAdmin ? ` ・ 送料 ${yen(d.shipping||0)}／ケース` : ''}</div></div>
+      <div class="actions" style="margin:0">${isAdmin ? `<button class="btn sub sm" onclick="editShip('${d.id}')">送料</button>` : ''}<button class="btn danger sm" onclick="delDest('${d.id}')">削除</button></div></div></div>`).join('') || '<div class="empty">未登録</div>'}
+    <h3>届け先を追加</h3>
+    <label>店名</label><input id="n_${k}">
+    <div class="row">
+      <div><label>郵便番号</label><input id="z_${k}" inputmode="numeric" placeholder="7桁" oninput="zipLookup('${k}')"></div>
+      <div><label>電話番号</label><input id="t_${k}" inputmode="tel"></div>
+    </div>
+    <label>住所（郵便番号から自動入力）</label><input id="a1_${k}">
+    <label>建物名など</label><input id="a2_${k}">
+    ${isAdmin ? `<label>送料（円／ケース・税抜）</label><input id="s_${k}" type="number" inputmode="numeric">` : ''}
+    <button class="btn block" onclick="addDest('${k}')">登録</button>
+  </div>`;
+}
+async function zipLookup(k) {
+  const z = $('z_'+k).value.replace(/\D/g,''); if (z.length !== 7) return;
+  try {
+    const r = await fetch('https://zipcloud.ibsnet.co.jp/api/search?zipcode=' + z);
+    const j = await r.json();
+    if (j.results && j.results[0]) { const x = j.results[0]; $('a1_'+k).value = x.address1 + x.address2 + x.address3; $('a1_'+k).focus(); }
+  } catch(e) {}
+}
+function addDest(k) {
+  const name = $('n_'+k).value.trim(), addr1 = $('a1_'+k).value.trim();
+  if (!name || !addr1) return toast('店名と住所は必須です');
+  db.dests.push({ id:uid(), dealerId:k, name, zip:$('z_'+k).value.trim(), tel:$('t_'+k).value.trim(), addr1, addr2:$('a2_'+k).value.trim(),
+    shipping: $('s_'+k) ? Number($('s_'+k).value) || 0 : 0 });
+  save(); render(); toast('届け先を登録しました');
+}
+function editShip(id) {
+  const d = dest(id); const v = prompt(`${d.name} の送料（円／ケース・税抜）\n※これから入る注文に反映されます`, d.shipping || 0);
+  if (v === null) return; d.shipping = Number(v) || 0; save(); render();
+}
+function delDest(id) {
+  if (db.orders.some(o => o.destId === id && o.status === '受付')) return toast('未出荷の注文がある届け先は削除できません');
+  if (!confirm('この届け先を削除しますか？')) return;
+  db.dests = db.dests.filter(d => d.id !== id); save(); render();
+}
+function exportJson() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(db, null, 2)], { type:'application/json' }));
+  a.download = `morishita_backup_${today()}.json`; a.click();
+}
+function resetAll() { if (!confirm('すべてのデータを消去します。よろしいですか？')) return; db = blank(); save(); tab = null; render(); }
+
+render();
+</script>
+</body>
+</html>
