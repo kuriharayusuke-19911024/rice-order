@@ -87,7 +87,9 @@
 <script>
 /* ===================== データ層（本番はGASに差し替え） ===================== */
 const KEY = 'morishita_proto_v1';
-const PRODUCTS = [{ id:'iwatsu3', name:'岩津ネギ', spec:'1ケース3kg', kgPerCase:3, taxRate:0.08 }];
+const PRODUCTS = [{ id:'iwatsu3', name:'岩津ネギ', spec:'1ケース3kg', kgPerCase:3, casesPerBox:2, taxRate:0.08 }];
+const boxes = o => Math.ceil(o.cases / (product(o.productId).casesPerBox || 1));
+const shipFee = o => boxes(o) * (o.shippingPerBox ?? o.shippingPerCase ?? 0);
 const SHIPPING_TAX = 0.10;
 const TIMESLOTS = ['指定なし','午前中','12-14時','14-16時','16-18時','18-20時','19-21時'];
 
@@ -162,7 +164,7 @@ function viewShip() {
   </div>
   <div class="stats">
     <div class="stat"><b>${cases}</b><span>ケース</span></div>
-    <div class="stat"><b>${kg}</b><span>kg</span></div>
+    <div class="stat"><b>${kg}</b><span>kg（${list.reduce((s,o)=>s+boxes(o),0)}個口）</span></div>
     <div class="stat"><b>${done}/${list.length}</b><span>出荷済/件</span></div>
   </div>
   <div class="card">
@@ -186,7 +188,7 @@ function shipItem(o) {
         <div class="meta">${esc(dealer(o.dealerId)?.name)}経由 ／ 着 ${jdate(o.arriveDate)} ${o.timeslot!=='指定なし'?esc(o.timeslot):''}<br>
         〒${esc(d.zip)} ${esc(d.addr1)}${esc(d.addr2)}${o.memo?`<br>📝 ${esc(o.memo)}`:''}</div>
       </div>
-      <div class="qty">${o.cases}<small style="font-size:12px">ケース</small></div>
+      <div class="qty">${o.cases}<small style="font-size:12px">ケース</small><div class="hint" style="margin:0;text-align:right">${boxes(o)}個口</div></div>
     </div>
     <div class="actions">
       ${isDone
@@ -215,7 +217,7 @@ function exportCsv() {
     const d = dest(o.destId) || {}, p = product(o.productId);
     return [d.tel, d.zip, d.addr1, d.addr2, d.name, d.person || '',
       s.tel, s.zip, s.addr1, s.addr2, s.name,
-      `${p.name} ${p.spec}`, `${o.cases}ケース`, o.cases, o.arriveDate.replace(/-/g,''), o.timeslot === '指定なし' ? '' : o.timeslot, o.memo || ''];
+      `${p.name} ${p.spec}`, `${o.cases}ケース`, boxes(o), o.arriveDate.replace(/-/g,''), o.timeslot === '指定なし' ? '' : o.timeslot, o.memo || ''];
   });
   const csv = [head, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
   let blob;
@@ -312,7 +314,7 @@ function submitOrder() {
     id:uid(), dealerId:dl.id, destId, productId:$('fProd').value, cases:qty,
     arriveDate:arrive, shipDate:$('fShip') ? ($('fShip').value || addDays(arrive,-1)) : addDays(arrive,-1),
     timeslot:$('fSlot').value, memo:$('fMemo').value.trim(),
-    unitPrice:Number(dl.unitPrice) || 0, shippingPerCase:Number(d.shipping) || 0,
+    unitPrice:Number(dl.unitPrice) || 0, shippingPerBox:Number(d.shipping) || 0,
     status:'受付', tracking:'', createdAt:new Date().toISOString(), via: db.role === 'admin' ? '森下農園入力' : '販売店画面'
   });
   save(); qty = 1; toast('注文を受け付けました');
@@ -336,8 +338,8 @@ function viewBill() {
     .sort((a,b) => a.shipDate.localeCompare(b.shipDate));
   let goods = 0, ship = 0;
   const rows = list.map(o => {
-    const g = o.cases * o.unitPrice, s = o.cases * o.shippingPerCase; goods += g; ship += s;
-    return `<tr><td>${jdate(o.shipDate)}</td><td>${esc(dest(o.destId)?.name)}</td><td class="n">${o.cases}</td><td class="n">${yen(g)}</td><td class="n">${yen(s)}</td></tr>`;
+    const g = o.cases * o.unitPrice, s = shipFee(o); goods += g; ship += s;
+    return `<tr><td>${jdate(o.shipDate)}</td><td>${esc(dest(o.destId)?.name)}</td><td class="n">${o.cases}</td><td class="n">${boxes(o)}</td><td class="n">${yen(g)}</td><td class="n">${yen(s)}</td></tr>`;
   }).join('');
   const gTax = Math.floor(goods * 0.08), sTax = Math.floor(ship * SHIPPING_TAX);
   const [y,m] = billMonth.split('-');
@@ -346,7 +348,7 @@ function viewBill() {
       <div><label>販売店</label><select onchange="billDealer=this.value;render()">${db.dealers.map(d => `<option value="${d.id}" ${d.id===billDealer?'selected':''}>${esc(d.name)}</option>`).join('')}</select></div>
       <div><label>対象月</label><input type="month" value="${billMonth}" onchange="billMonth=this.value;render()"></div>
     </div>
-    <div class="hint">出荷済みの注文だけを集計します。送料は「届け先の送料（1ケースあたり）× ケース数」で計算しています。</div>
+    <div class="hint">出荷済みの注文だけを集計します。送料は「届け先の送料（1個口あたり）× 個口数」で計算しています（1個口＝2ケースまで）。</div>
     <button class="btn block" onclick="window.print()">請求書を印刷・PDF保存</button>
   </div>
   <div class="card">
@@ -356,8 +358,8 @@ function viewBill() {
       <div style="text-align:right;font-size:12px;line-height:1.6">${esc(db.sender.name)}<br>${esc(db.sender.addr1)}${esc(db.sender.addr2)}<br>${db.sender.tel ? 'TEL ' + esc(db.sender.tel) : ''}${db.sender.invoiceNo ? '<br>登録番号 ' + esc(db.sender.invoiceNo) : ''}</div>
     </div>
     <table>
-      <thead><tr><th>出荷日</th><th>届け先</th><th class="n">ケース</th><th class="n">商品代</th><th class="n">送料</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="5" class="empty">対象の出荷はありません</td></tr>'}</tbody>
+      <thead><tr><th>出荷日</th><th>届け先</th><th class="n">ケース</th><th class="n">個口</th><th class="n">商品代</th><th class="n">送料</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="6" class="empty">対象の出荷はありません</td></tr>'}</tbody>
     </table>
     <table style="margin-top:12px;max-width:340px;margin-left:auto">
       <tr><td>商品代（8%対象）</td><td class="n">${yen(goods)}</td></tr>
@@ -429,7 +431,7 @@ function destSection(dealerId) {
   return `<div class="card">
     <h2>届け先${isAdmin ? `（${esc(dl.name)}）` : ''}</h2>
     ${ds.map(d => `<div class="item"><div class="top"><div><div class="name">${esc(d.name)}</div>
-      <div class="meta">〒${esc(d.zip)} ${esc(d.addr1)}${esc(d.addr2)}<br>TEL ${esc(d.tel)}${isAdmin ? ` ・ 送料 ${yen(d.shipping||0)}／ケース` : ''}</div></div>
+      <div class="meta">〒${esc(d.zip)} ${esc(d.addr1)}${esc(d.addr2)}<br>TEL ${esc(d.tel)}${isAdmin ? ` ・ 送料 ${yen(d.shipping||0)}／個口` : ''}</div></div>
       <div class="actions" style="margin:0">${isAdmin ? `<button class="btn sub sm" onclick="editShip('${d.id}')">送料</button>` : ''}<button class="btn danger sm" onclick="delDest('${d.id}')">削除</button></div></div></div>`).join('') || '<div class="empty">未登録</div>'}
     <h3>届け先を追加</h3>
     <label>店名</label><input id="n_${k}">
@@ -439,7 +441,7 @@ function destSection(dealerId) {
     </div>
     <label>住所（郵便番号から自動入力）</label><input id="a1_${k}">
     <label>建物名など</label><input id="a2_${k}">
-    ${isAdmin ? `<label>送料（円／ケース・税抜）</label><input id="s_${k}" type="number" inputmode="numeric">` : ''}
+    ${isAdmin ? `<label>送料（円／1個口＝2ケースまで・税抜）</label><input id="s_${k}" type="number" inputmode="numeric">` : ''}
     <button class="btn block" onclick="addDest('${k}')">登録</button>
   </div>`;
 }
@@ -459,7 +461,7 @@ function addDest(k) {
   save(); render(); toast('届け先を登録しました');
 }
 function editShip(id) {
-  const d = dest(id); const v = prompt(`${d.name} の送料（円／ケース・税抜）\n※これから入る注文に反映されます`, d.shipping || 0);
+  const d = dest(id); const v = prompt(`${d.name} の送料（円／1個口＝2ケースまで・税抜）\n※これから入る注文に反映されます`, d.shipping || 0);
   if (v === null) return; d.shipping = Number(v) || 0; save(); render();
 }
 function delDest(id) {
